@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta de Preços</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth.js"></script>
+</head>
+<body>
+    <script>routeGuard();</script>
+
+    <button class="mobile-menu-button">☰</button>
+    <aside class="sidebar">
+        <div class="sidebar-header"><h1>Preços AL</h1></div>
+        <nav class="sidebar-nav">
+            <ul>
+                <li><a href="/search.html" class="active"><span>🏠</span> Busca</a></li>
+                <li data-permission="compare"><a href="/compare.html"><span>📊</span> Comparador</a></li>
+                <li data-permission="dashboard"><a href="/dashboard.html"><span>📈</span> Dashboard</a></li>
+                <li data-permission="coleta"><a href="/admin.html"><span>⚙️</span> Coleta</a></li>
+                <li data-permission="markets"><a href="/markets.html"><span>🛒</span> Mercados</a></li>
+                <li data-permission="collections"><a href="/collections.html"><span>🗂️</span> Histórico</a></li>
+                <li data-permission="prune"><a href="/prune.html"><span>🗑️</span> Limpeza</a></li>
+                <li data-permission="product_log"><a href="/product-log.html"><span>📜</span> Log de Produtos</a></li>
+                <li data-permission="users"><a href="/users.html"><span>👥</span> Usuários</a></li>
+            </ul>
+        </nav>
+        <div class="theme-switcher">
+            <span>Tema</span><button id="themeToggle">Mudar</button>
+        </div>
+    </aside>
+
+    <div class="content-wrapper">
+        <header class="top-bar">
+            <div id="userProfileMenu" class="profile-menu" style="display: none;">
+                <img src="https://via.placeholder.com/40" alt="Avatar" id="userAvatar">
+                <span id="userName">Usuário</span>
+                <div class="profile-dropdown">
+                    <a href="/profile.html">Meu Perfil</a>
+                    <a href="#" id="logoutButton">Sair</a>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h2>Busca de Produtos</h2>
+                <p>Encontre os melhores preços de forma rápida e intuitiva.</p>
+            </div>
+            <div class="search-controls">
+                <div class="search-input-group"><input type="text" id="searchInput" placeholder="Digite o nome do produto..."></div>
+                <div class="search-buttons">
+                    <button id="searchButton">Buscar no Banco</button>
+                    <button id="realtimeSearchButton">Buscar em Tempo Real</button>
+                    <button id="clearButton">Limpar</button>
+                </div>
+                <details id="filters-details" style="margin-top: 1rem;">
+                    <summary id="filters-toggle">Filtrar por Supermercado</summary>
+                    <div class="filters-container" style="padding: 1rem 0 0 0; box-shadow: none; border: none; backdrop-filter: none;">
+                        <div id="supermarketFilters" class="supermarket-list"></div>
+                    </div>
+                </details>
+            </div>
+            <div id="loader" class="loader-container" style="display: none;"><div class="loader"></div></div>
+            <div id="resultsGrid" class="results-grid"></div>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
