@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Controle - Coleta</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth.js"></script>
+</head>
+<body>
+    <script>routeGuard('coleta');</script>
+
+    <button class="mobile-menu-button">☰</button>
+
+    <aside class="sidebar">
+        <div class="sidebar-header"><h1>Preços AL</h1></div>
+        <nav class="sidebar-nav">
+            <ul>
+                <li class="nav-header">ANÁLISE</li>
+                <li><a href="/search.html"><span>🏠</span> Busca</a></li>
+                <li data-permission="compare"><a href="/compare.html"><span>📊</span> Comparador</a></li>
+                <li data-permission="dashboard"><a href="/dashboard.html"><span>📈</span> Dashboard</a></li>
+                
+                <li class="nav-header">ADMINISTRAÇÃO</li>
+                <li data-permission="coleta"><a href="/admin.html" class="active"><span>⚙️</span> Coleta</a></li>
+                <li data-permission="collections"><a href="/collections.html"><span>🗂️</span> Histórico de Coletas</a></li>
+                <li data-permission="product_log"><a href="/product-log.html"><span>📜</span> Log de Produtos</a></li>
+                <li data-permission="prune"><a href="/prune.html"><span>🗑️</span> Limpeza de Dados</a></li>
+
+                <li class="nav-header">CONFIGURAÇÃO</li>
+                <li data-permission="markets"><a href="/markets.html"><span>🛒</span> Gerenciar Mercados</a></li>
+                <li data-permission="users"><a href="/users.html"><span>👥</span> Gerenciar Usuários</a></li>
+            </ul>
+        </nav>
+        <div class="theme-switcher">
+            <span>Tema</span><button id="themeToggle">Mudar</button>
+        </div>
+    </aside>
+
+    <div class="content-wrapper">
+        <header class="top-bar">
+            <div id="userProfileMenu" class="profile-menu" style="display: none;">
+                <img src="https://via.placeholder.com/40" alt="Avatar" id="userAvatar">
+                <span id="userName">Usuário</span>
+                <div class="profile-dropdown">
+                    <a href="/profile.html">Meu Perfil</a>
+                    <a href="#" id="logoutButton">Sair</a>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="admin-panel">
+                <h2>Coleta de Dados</h2>
+                <p>Inicie a coleta de dados de todos os supermercados cadastrados no sistema.</p>
+                <button id="startButton">Iniciar Coleta Manual</button>
+                
+                <div id="progress-container" class="status-box" style="display: none;">
+                    <h3>Coleta em Andamento...</h3>
+                    <div class="progress-bar-container">
+                        <div id="progressBar" class="progress-bar"></div>
+                    </div>
+                    <div class="progress-details">
+                        <span id="progressPercentText">0%</span>
+                        <span id="etaText">ETA: Calculando...</span>
+                    </div>
+                    <p id="progressText">Iniciando...</p>
+                    <p><strong>Itens Encontrados até agora:</strong> <span id="itemsFoundText">0</span></p>
+                </div>
+
+                <div id="report-container" class="table-container" style="display: none; margin-top: 2rem; text-align: left;">
+                    <h3>Relatório da Última Coleta</h3>
+                    <div class="summary-cards" style="grid-template-columns: 1fr 1fr; margin-bottom: 1rem;">
+                        <div class="card"><h3>Total Salvo</h3><p id="report-total-items"></p></div>
+                        <div class="card"><h3>Duração</h3><p id="report-duration"></p></div>
+                    </div>
+                    <h4>Detalhes por Mercado:</h4>
+                    <table id="reportTable">
+                        <thead>
+                            <tr>
+                                <th>Mercado</th>
+                                <th>Itens Salvos</th>
+                                <th>Duração (segundos)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="admin.js"></script>
+</body>
+</html>
