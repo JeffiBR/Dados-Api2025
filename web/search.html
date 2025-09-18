@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta de Preços</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            300: '#93c5fd',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-100 min-h-screen dark:bg-gray-900">
+    <script>routeGuard();</script>
+
+    <!-- Mobile menu button -->
+    <button class="fixed top-4 left-4 z-50 md:hidden bg-primary-600 text-white p-3 rounded-lg shadow-lg">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Sidebar -->
+    <aside class="fixed inset-y-0 left-0 w-64 bg-gradient-to-b from-gray-800 to-gray-900 text-white shadow-xl z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
+        <div class="flex flex-col h-full">
+            <div class="p-6 border-b border-gray-700">
+                <h1 class="text-2xl font-bold flex items-center">
+                    <i class="fas fa-chart-line mr-2 text-primary-400"></i>
+                    Preços AL
+                </h1>
+            </div>
+            
+            <nav class="flex-1 py-4">
+                <ul class="space-y-1 px-4">
+                    <li>
+                        <a href="/search.html" class="flex items-center p-3 rounded-lg bg-primary-600 text-white">
+                            <i class="fas fa-home mr-3"></i>
+                            <span>Busca</span>
+                        </a>
+                    </li>
+                    <li data-permission="compare">
+                        <a href="/compare.html" class="flex items-center p-3 rounded-lg hover:bg-gray-700 transition duration-200">
+                            <i class="fas fa-chart-bar mr-3"></i>
+                            <span>Comparador</span>
+                        </a>
+                    </li>
+                    <li data-permission="dashboard">
+                        <a href="/dashboard.html" class="flex items-center p-3 rounded-lg hover:bg-gray-700 transition duration-200">
+                            <i class="fas fa-chart-pie mr-3"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li data-permission="coleta">
+                        <a href="/admin.html" class="flex items-center p-3 rounded-lg hover:bg-gray-700 transition duration-200">
+                            <i class="fas fa-cogs mr-3"></i>
+                            <span>Coleta</span>
+                        </a>
+                    </li>
+                    <li data-permission="markets">
+                        <a href="/markets.html" class="flex items-center p-3 rounded-lg hover:bg-gray-700 transition duration-200">
+                            <i class="fas fa-shopping-cart mr-3"></i>
+                            <span>Mercados</span>
+                        </a>
+                    </li>
+                    <li data-permission="collections">
+                        <a href="/collections.html" class="flex items-center p-3 rounded-lg hover:bg-gray-700 transition duration-200">
+                            <i class="fas fa-history mr-3"></i>
+                            <span>Histórico</span>
+                        </a>
+                    </li>
+                    <li data-permission="prune">
+                        <a href="/prune.html" class="flex items-center p-3 rounded-lg hover:bg-gray-700 transition duration-200">
+                            <i class="fas fa-trash-alt mr-3"></i>
+                            <span>Limpeza</span>
+                        </a>
+                    </li>
+                    <li data-permission="product_log">
+                        <a href="/product-log.html" class="flex items-center p-3 rounded-lg hover:bg-gray-700 transition duration-200">
+                            <i class="fas fa-file-alt mr-3"></i>
+                            <span>Log de Produtos</span>
+                        </a>
+                    </li>
+                    <li data-permission="users">
+                        <a href="/users.html" class="flex items-center p-3 rounded-lg hover:bg-gray-700 transition duration-200">
+                            <i class="fas fa-users mr-3"></i>
+                            <span>Usuários</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <div class="p-4 border-t border-gray-700">
+                <div class="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                    <span>Tema</span>
+                    <button id="themeToggle" class="bg-primary-600 hover:bg-primary-700 text-white px-3 py-1 rounded transition duration-200">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main content -->
+    <div class="md:ml-64">
+        <!-- Top bar -->
+        <header class="bg-white shadow-sm h-16 flex items-center justify-between px-6 sticky top-0 z-30 dark:bg-gray-800">
+            <div class="flex items-center">
+                <h2 class="text-xl font-semibold text-gray-800 dark:text-white">Busca de Produtos</h2>
+            </div>
+            
+            <div id="userProfileMenu" class="relative" style="display: none;">
+                <button class="flex items-center space-x-2 focus:outline-none">
+                    <img src="https://via.placeholder.com/40" alt="Avatar" id="userAvatar" class="w-10 h-10 rounded-full border-2 border-primary-500">
+                    <span id="userName" class="text-gray-700 font-medium dark:text-white">Usuário</span>
+                    <i class="fas fa-chevron-down text-gray-500 dark:text-gray-400"></i>
+                </button>
+                
+                <div class="profile-dropdown absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 hidden dark:bg-gray-700">
+                    <a href="/profile.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-600">
+                        <i class="fas fa-user mr-2"></i>Meu Perfil
+                    </a>
+                    <a href="#" id="logoutButton" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-600">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Sair
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main content area -->
+        <main class="p-6">
+            <div class="mb-6">
+                <h1 class="text-2xl font-bold text-gray-800 dark:text-white">Busca de Produtos</h1>
+                <p class="text-gray-600 dark:text-gray-400">Encontre os melhores preços de forma rápida e intuitiva.</p>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-md p-6 mb-6 dark:bg-gray-800">
+                <div class="mb-4">
+                    <div class="relative">
+                        <input 
+                            type="text" 
+                            id="searchInput" 
+                            placeholder="Digite o nome do produto..." 
+                            class="w-full p-4 pl-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i class="fas fa-search text-gray-400 dark:text-gray-500"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <button id="searchButton" class="bg-primary-600 hover:bg-primary-700 text-white font-medium py-3 px-4 rounded-lg transition duration-300 flex items-center justify-center">
+                        <i class="fas fa-database mr-2"></i>Buscar no Banco
+                    </button>
+                    <button id="realtimeSearchButton" class="bg-amber-500 hover:bg-amber-600 text-white font-medium py-3 px-4 rounded-lg transition duration-300 flex items-center justify-center">
+                        <i class="fas fa-bolt mr-2"></i>Buscar em Tempo Real
+                    </button>
+                    <button id="clearButton" class="bg-red-500 hover:bg-red-600 text-white font-medium py-3 px-4 rounded-lg transition duration-300 flex items-center justify-center">
+                        <i class="fas fa-times mr-2"></i>Limpar
+                    </button>
+                </div>
+                
+                <details id="filters-details" class="border border-gray-200 rounded-lg dark:border-gray-700">
+                    <summary id="filters-toggle" class="p-4 font-medium cursor-pointer flex justify-between items-center dark:text-white">
+                        <span>Filtrar por Supermercado</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </summary>
+                    <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+                        <div id="supermarketFilters" class="flex flex-wrap gap-2"></div>
+                    </div>
+                </details>
+            </div>
+            
+            <div id="loader" class="hidden flex justify-center items-center py-12">
+                <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+            </div>
+            
+            <div id="resultsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        // Toggle mobile menu
+        document.addEventListener('DOMContentLoaded', function() {
+            const mobileMenuButton = document.querySelector('.fixed.top-4.left-4');
+            const sidebar = document.querySelector('aside');
+            
+            if (mobileMenuButton) {
+                mobileMenuButton.addEventListener('click', function() {
+                    sidebar.classList.toggle('-translate-x-full');
+                });
+            }
+            
+            // Toggle filters details
+            const filtersToggle = document.getElementById('filters-toggle');
+            const filtersDetails = document.getElementById('filters-details');
+            
+            if (filtersToggle) {
+                filtersToggle.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const icon = filtersToggle.querySelector('i');
+                    if (filtersDetails.open) {
+                        icon.classList.remove('fa-chevron-up');
+                        icon.classList.add('fa-chevron-down');
+                    } else {
+                        icon.classList.remove('fa-chevron-down');
+                        icon.classList.add('fa-chevron-up');
+                    }
+                });
+            }
+            
+            // Toggle user profile dropdown
+            const userProfileMenu = document.getElementById('userProfileMenu');
+            if (userProfileMenu) {
+                userProfileMenu.addEventListener('click', function() {
+                    const dropdown = this.querySelector('.profile-dropdown');
+                    dropdown.classList.toggle('hidden');
+                });
+            }
+            
+            // Dark mode toggle
+            const themeToggle = document.getElementById('themeToggle');
+            if (themeToggle) {
+                themeToggle.addEventListener('click', function() {
+                    document.documentElement.classList.toggle('dark');
+                    localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+                    
+                    // Toggle icon
+                    const icon = themeToggle.querySelector('i');
+                    if (document.documentElement.classList.contains('dark')) {
+                        icon.classList.remove('fa-moon');
+                        icon.classList.add('fa-sun');
+                    } else {
+                        icon.classList.remove('fa-sun');
+                        icon.classList.add('fa-moon');
+                    }
+                });
+            }
+            
+            // Check for saved theme preference
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+                if (themeToggle) {
+                    const icon = themeToggle.querySelector('i');
+                    icon.classList.remove('fa-moon');
+                    icon.classList.add('fa-sun');
+                }
+            } else if (savedTheme === 'light') {
+                document.documentElement.classList.remove('dark');
+            } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.classList.add('dark');
+                if (themeToggle) {
+                    const icon = themeToggle.querySelector('i');
+                    icon.classList.remove('fa-moon');
+                    icon.classList.add('fa-sun');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
