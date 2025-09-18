@@ -189,10 +189,6 @@
             transform: scale(1.05);
         }
 
-        .theme-toggle-btn i {
-            transition: transform var(--transition-speed) ease;
-        }
-
         .theme-toggle-btn.active i {
             transform: rotate(180deg);
         }
@@ -524,7 +520,7 @@
                     
                     <div class="progress-details">
                         <span id="progressPercentText">0%</span>
-                        <span id="etaText">ETA: Calculando...</span>
+                        <span id="etaText">Tempo Restante: Calculando...</span>
                     </div>
                     
                     <p id="progressText">Iniciando...</p>
@@ -611,67 +607,158 @@
             contentWrapper.classList.toggle('expanded');
         }
 
-        // Simulate Collection Process
-        const startButton = document.getElementById('startButton');
-        const progressContainer = document.getElementById('progress-container');
-        const progressBar = document.getElementById('progressBar');
-        const progressPercentText = document.getElementById('progressPercentText');
-        const etaText = document.getElementById('etaText');
-        const progressText = document.getElementById('progressText');
-        const itemsFoundText = document.getElementById('itemsFoundText');
-        const reportContainer = document.getElementById('report-container');
-
-        let collectionInterval;
-        let progress = 0;
-        let itemsFound = 0;
-
-        startButton.addEventListener('click', () => {
-            startButton.style.display = 'none';
-            progressContainer.style.display = 'block';
+        // API Functions
+        async function authenticatedFetch(url, options = {}) {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            const headers = {
+                ...options.headers,
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            };
             
-            collectionInterval = setInterval(() => {
-                progress += Math.random() * 3 + 1;
-                itemsFound += Math.floor(Math.random() * 10) + 5;
-                
-                if (progress >= 100) {
-                    progress = 100;
-                    clearInterval(collectionInterval);
-                    setTimeout(() => {
-                        progressContainer.style.display = 'none';
-                        reportContainer.style.display = 'block';
-                    }, 1000);
-                }
-                
-                updateProgress();
-            }, 500);
-        });
-
-        function updateProgress() {
-            progressBar.style.width = `${progress}%`;
-            progressPercentText.textContent = `${Math.round(progress)}%`;
-            itemsFoundText.textContent = itemsFound;
-            
-            // Update ETA
-            const remainingTime = Math.ceil((100 - progress) / 2); // Estimativa simplificada
-            etaText.textContent = `ETA: ${remainingTime} segundos`;
-            
-            // Update status text
-            if (progress < 30) {
-                progressText.textContent = "Iniciando coleta dos primeiros mercados...";
-            } else if (progress < 60) {
-                progressText.textContent = "Processando dados intermediários...";
-            } else if (progress < 90) {
-                progressText.textContent = "Finalizando coleta e salvando dados...";
-            } else {
-                progressText.textContent = "Concluindo operação final...";
-            }
+            return fetch(url, {...options, headers});
         }
 
-        // Logout functionality
-        document.getElementById('logoutButton').addEventListener('click', () => {
-            alert('Logout realizado com sucesso!');
-            // Implement actual logout logic here
-        });
+        // Format seconds to human readable time
+        const formatSeconds = (secs) => {
+            if (secs < 0 || secs === null || secs === undefined) return 'Calculando...';
+            if (secs === 0) return '0s';
+            const minutes = Math.floor(secs / 60);
+            const seconds = secs % 60;
+            return `${minutes}m ${seconds}s`;
+        };
+
+        // Show success notification
+        const showSuccess = (title, message, duration = 5000) => {
+            const notification = document.createElement('div');
+            notification.className = 'notification success';
+            notification.innerHTML = `
+                <div class="notification-header">
+                    <i class="fas fa-check-circle"></i>
+                    <span>${title}</span>
+                    <button class="close-notification">&times;</button>
+                </div>
+                <div class="notification-message">${message}</div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, duration);
+            
+            notification.querySelector('.close-notification').addEventListener('click', () => {
+                notification.remove();
+            });
+        };
+
+        // Show error notification
+        const showError = (title, message, duration = 5000) => {
+            const notification = document.createElement('div');
+            notification.className = 'notification error';
+            notification.innerHTML = `
+                <div class="notification-header">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span>${title}</span>
+                    <button class="close-notification">&times;</button>
+                </div>
+                <div class="notification-message">${message}</div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, duration);
+            
+            notification.querySelector('.close-notification').addEventListener('click', () => {
+                notification.remove();
+            });
+        };
+
+        // Update UI with collection status
+        const updateUI = (data) => {
+            if (data.status === 'RUNNING') {
+                document.getElementById('startButton').disabled = true;
+                document.getElementById('startButton').textContent = 'Coleta em Andamento...';
+                document.getElementById('progress-container').style.display = 'block';
+                document.getElementById('report-container').style.display = 'none';
+
+                const percent = Math.round(data.progressPercent || 0);
+                document.getElementById('progressBar').style.width = `${percent}%`;
+                document.getElementById('progressPercentText').textContent = `${percent}%`;
+                document.getElementById('etaText').textContent =`Tempo Restante: ${formatSeconds(data.etaSeconds)}`;
+                document.getElementById('progressText').textContent = data.progresso || '...';
+                document.getElementById('itemsFoundText').textContent = data.totalItemsFound || 0;
+                
+                if (!window.pollingInterval) {
+                    window.pollingInterval = setInterval(checkStatus, 3000);
+                }
+            } else {
+                document.getElementById('startButton').disabled = false;
+                document.getElementById('startButton').textContent = 'Iniciar Coleta Manual';
+                document.getElementById('progress-container').style.display = 'none';
+                
+                if (window.pollingInterval) {
+                    clearInterval(window.pollingInterval);
+                    window.pollingInterval = null;
+                }
+
+                if ((data.status === 'COMPLETED' || data.status === 'FAILED') && data.report) {
+                    document.getElementById('report-container').style.display = 'block';
+                    document.getElementById('report-total-items').textContent = data.report.totalItemsSaved;
+                    document.getElementById('report-duration').textContent = formatSeconds(data.report.totalDurationSeconds);
+                    const reportTableBody = document.querySelector('#reportTable tbody');
+                    reportTableBody.innerHTML = '';
+                    data.report.marketBreakdown.forEach(market => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td>${market.marketName}</td><td>${market.itemsFound}</td><td>${market.duration}</td>`;
+                        reportTableBody.appendChild(row);
+                    });
+                    
+                    if (data.status === 'COMPLETED') {
+                        showSuccess("Coleta concluída", `Coleta de dados finalizada com sucesso. ${data.report.totalItemsSaved} itens salvos.`, 5000);
+                    } else {
+                        showError("Coleta falhou", "A coleta de dados encontrou problemas e foi interrompida.", 5000);
+                    }
+                } else {
+                     document.getElementById('report-container').style.display = 'none';
+                }
+            }
+        };
+
+        // Check collection status
+        const checkStatus = async () => {
+            try {
+                const response = await authenticatedFetch('/api/collection-status');
+                if (!response.ok) throw new Error("Falha ao verificar status.");
+                const data = await response.json();
+                updateUI(data);
+            } catch (error) {
+                console.error('Erro ao verificar status:', error.message);
+                showError("Erro de status", "Não foi possível verificar o status da coleta.", 3000);
+                if (window.pollingInterval) clearInterval(window.pollingInterval);
+            }
+        };
+
+        // Start collection
+        const startCollection = async () => {
+            if (!confirm('Tem certeza que deseja iniciar a coleta de dados?')) return;
+            document.getElementById('report-container').style.display = 'none'; // Esconde relatório antigo
+            try {
+                const response = await authenticatedFetch(`/api/trigger-collection`, { method: 'POST' });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.detail);
+                showSuccess("Coleta iniciada", data.message, 3000);
+                checkStatus();
+            } catch (error) {
+                showError("Erro ao iniciar", `Falha ao iniciar a coleta: ${error.message}`, 5000);
+                checkStatus();
+            }
+        };
+
+        document.getElementById('startButton').addEventListener('click', startCollection);
+        checkStatus();
     </script>
 </body>
 </html>
