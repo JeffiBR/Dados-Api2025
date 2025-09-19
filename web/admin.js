@@ -115,14 +115,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const checkStatus = async () => {
         try {
             const response = await authenticatedFetch(`/api/collection-status`);
+            
+            // Verificar se a resposta é 401 (Unauthorized)
+            if (response.status === 401) {
+                throw new Error("Sessão expirada. Faça login novamente.");
+            }
+            
             if (!response.ok) throw new Error("Falha ao verificar status.");
+            
             const data = await response.json();
             updateUI(data);
         } catch (error) {
             console.error('Erro ao verificar status:', error.message);
             if (pollingInterval) clearInterval(pollingInterval);
             
-            // Mostrar notificação de erro
+            // Verificar se é um erro de autenticação
+            if (error.message.includes("Sessão não encontrada") || 
+                error.message.includes("Sessão expirada") ||
+                error.message.includes("401")) {
+                alert("Sua sessão expirou. Por favor, faça login novamente.");
+                window.location.href = '/login.html';
+                return;
+            }
+            
+            // Mostrar notificação de erro para outros tipos de erro
             const notification = document.createElement('div');
             notification.className = 'notification error';
             notification.innerHTML = `<i class="fas fa-exclamation-circle"></i> Erro ao verificar status: ${error.message}`;
@@ -146,6 +162,12 @@ document.addEventListener('DOMContentLoaded', () => {
         reportContainer.style.display = 'none'; // Esconde relatório antigo
         try {
             const response = await authenticatedFetch(`/api/trigger-collection`, { method: 'POST' });
+            
+            // Verificar se a resposta é 401 (Unauthorized)
+            if (response.status === 401) {
+                throw new Error("Sessão expirada. Faça login novamente.");
+            }
+            
             const data = await response.json();
             if (!response.ok) throw new Error(data.detail);
             
@@ -168,7 +190,16 @@ document.addEventListener('DOMContentLoaded', () => {
             
             checkStatus();
         } catch (error) {
-            // Mostrar notificação de erro
+            // Verificar se é um erro de autenticação
+            if (error.message.includes("Sessão não encontrada") || 
+                error.message.includes("Sessão expirada") ||
+                error.message.includes("401")) {
+                alert("Sua sessão expirou. Por favor, faça login novamente.");
+                window.location.href = '/login.html';
+                return;
+            }
+            
+            // Mostrar notificação de erro para outros tipos de erro
             const notification = document.createElement('div');
             notification.className = 'notification error';
             notification.innerHTML = `<i class="fas fa-exclamation-circle"></i> Falha ao iniciar a coleta: ${error.message}`;
