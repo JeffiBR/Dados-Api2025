@@ -708,3 +708,88 @@ body.light-mode .empty-state h3 {
 
 /* ÍCONES (Font Awesome) */
 .fa, .fas, .far, .fal, .fab { font-family: "Font Awesome 5 Free"; font-weight: 900; }
+
+/* Estilos adicionais para a página de limpeza de dados */
+.form-select {
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--border-dark);
+    border-radius: var(--radius);
+    font-size: 1rem;
+    background: var(--input-dark);
+    color: var(--text-dark);
+    width: 100%;
+    margin-bottom: 1rem;
+}
+
+body.light-mode .form-select {
+    background: var(--input-light);
+    color: var(--text-light);
+    border: 2px solid var(--border-light);
+}
+
+.form-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.13);
+}
+
+.btn.danger {
+    background: linear-gradient(90deg, var(--error), #f87171);
+}
+
+.btn.danger:hover {
+    background: linear-gradient(90deg, #ef4444, #dc2626);
+    box-shadow: 0 8px 30px rgba(239, 68, 68, 0.18);
+}
+
+.result-message {
+    text-align: center;
+    margin-top: 1.5rem;
+    padding: 1rem;
+    border-radius: var(--radius);
+    font-weight: 500;
+}
+
+.result-message.success {
+    background: rgba(34, 197, 94, 0.1);
+    color: var(--success);
+    border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.result-message.error {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.supermarket-list label {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    background: var(--input-dark);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: var(--transition);
+    margin-bottom: 0.5rem;
+}
+
+body.light-mode .supermarket-list label {
+    background: var(--input-light);
+}
+
+.supermarket-list label:hover {
+    background: rgba(79, 70, 229, 0.1);
+}
+
+.supermarket-list input {
+    margin-right: 0.75rem;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.supermarket-list i {
+    margin-right: 0.5rem;
+    color: var(--primary);
+}
+
