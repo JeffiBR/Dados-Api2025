@@ -13,53 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const reportDuration = document.getElementById('report-duration');
     const reportTableBody = document.querySelector('#reportTable tbody');
 
-    // Elementos do tema
-    const mobileMenuButton = document.querySelector('.mobile-menu-button');
-    const sidebar = document.querySelector('.sidebar');
-    const themeToggle = document.getElementById('themeToggle');
-    const profileButton = document.querySelector('.profile-button');
-    const profileDropdown = document.querySelector('.profile-dropdown');
-    const sidebarOverlay = document.querySelector('.sidebar-overlay');
-
     let pollingInterval;
-
-    // Toggle do tema
-    themeToggle.addEventListener('click', () => {
-        document.body.classList.toggle('light-mode');
-        const icon = themeToggle.querySelector('i');
-        if (document.body.classList.contains('light-mode')) {
-            icon.classList.remove('fa-moon');
-            icon.classList.add('fa-sun');
-        } else {
-            icon.classList.remove('fa-sun');
-            icon.classList.add('fa-moon');
-        }
-    });
-
-    // Toggle do menu mobile
-    mobileMenuButton.addEventListener('click', () => {
-        sidebar.classList.toggle('open');
-        sidebarOverlay.classList.toggle('show');
-    });
-
-    // Fechar menu ao clicar no overlay
-    sidebarOverlay.addEventListener('click', () => {
-        sidebar.classList.remove('open');
-        sidebarOverlay.classList.remove('show');
-    });
-
-    // Toggle do dropdown do perfil
-    profileButton.addEventListener('click', (e) => {
-        e.stopPropagation();
-        profileDropdown.classList.toggle('show');
-    });
-
-    // Fechar dropdown ao clicar fora
-    document.addEventListener('click', (e) => {
-        if (!profileButton.contains(e.target) && !profileDropdown.contains(e.target)) {
-            profileDropdown.classList.remove('show');
-        }
-    });
+    let sessionCheckInterval;
 
     const formatSeconds = (secs) => {
         if (secs < 0 || secs === null || secs === undefined) return 'Calculando...';
@@ -69,10 +24,28 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${minutes > 0 ? `${minutes}m ` : ''}${seconds}s`;
     };
 
+    // Função para verificar e manter a sessão ativa
+    const checkAndMaintainSession = async () => {
+        try {
+            const session = await getSession();
+            if (!session) {
+                // Tenta renovar a sessão
+                try {
+                    await refreshSession();
+                } catch (error) {
+                    console.error('Falha ao renovar sessão:', error);
+                    window.location.href = '/login.html';
+                }
+            }
+        } catch (error) {
+            console.error('Erro ao verificar sessão:', error);
+        }
+    };
+
     const updateUI = (data) => {
         if (data.status === 'RUNNING') {
             startButton.disabled = true;
-            startButton.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Coleta em Andamento...';
+            startButton.textContent = 'Coleta em Andamento...';
             progressContainer.style.display = 'block';
             reportContainer.style.display = 'none';
 
@@ -86,14 +59,25 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!pollingInterval) {
                 pollingInterval = setInterval(checkStatus, 3000);
             }
+            
+            // Inicia a verificação de sessão durante operações longas
+            if (!sessionCheckInterval) {
+                sessionCheckInterval = setInterval(checkAndMaintainSession, 60000); // Verifica a cada minuto
+            }
         } else {
             startButton.disabled = false;
-            startButton.innerHTML = '<i class="fas fa-play"></i> Iniciar Coleta Manual';
+            startButton.textContent = 'Iniciar Coleta Manual';
             progressContainer.style.display = 'none';
             
             if (pollingInterval) {
                 clearInterval(pollingInterval);
                 pollingInterval = null;
+            }
+            
+            // Para a verificação de sessão quando a operação termina
+            if (sessionCheckInterval) {
+                clearInterval(sessionCheckInterval);
+                sessionCheckInterval = null;
             }
 
             if ((data.status === 'COMPLETED' || data.status === 'FAILED') && data.report) {
@@ -115,107 +99,37 @@ document.addEventListener('DOMContentLoaded', () => {
     const checkStatus = async () => {
         try {
             const response = await authenticatedFetch(`/api/collection-status`);
-            
-            // Verificar se a resposta é 401 (Unauthorized)
-            if (response.status === 401) {
-                throw new Error("Sessão expirada. Faça login novamente.");
-            }
-            
             if (!response.ok) throw new Error("Falha ao verificar status.");
-            
             const data = await response.json();
             updateUI(data);
         } catch (error) {
             console.error('Erro ao verificar status:', error.message);
             if (pollingInterval) clearInterval(pollingInterval);
-            
-            // Verificar se é um erro de autenticação
-            if (error.message.includes("Sessão não encontrada") || 
-                error.message.includes("Sessão expirada") ||
-                error.message.includes("401")) {
-                alert("Sua sessão expirou. Por favor, faça login novamente.");
-                window.location.href = '/login.html';
-                return;
-            }
-            
-            // Mostrar notificação de erro para outros tipos de erro
-            const notification = document.createElement('div');
-            notification.className = 'notification error';
-            notification.innerHTML = `<i class="fas fa-exclamation-circle"></i> Erro ao verificar status: ${error.message}`;
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                notification.classList.add('show');
-            }, 10);
-            
-            setTimeout(() => {
-                notification.classList.remove('show');
-                setTimeout(() => {
-                    document.body.removeChild(notification);
-                }, 300);
-            }, 5000);
+            if (sessionCheckInterval) clearInterval(sessionCheckInterval);
         }
     };
 
     const startCollection = async () => {
         if (!confirm('Tem certeza que deseja iniciar a coleta de dados?')) return;
+        
+        // Verifica a sessão antes de iniciar
+        try {
+            await checkAndMaintainSession();
+        } catch (error) {
+            alert('Sessão expirada. Por favor, faça login novamente.');
+            window.location.href = '/login.html';
+            return;
+        }
+        
         reportContainer.style.display = 'none'; // Esconde relatório antigo
         try {
             const response = await authenticatedFetch(`/api/trigger-collection`, { method: 'POST' });
-            
-            // Verificar se a resposta é 401 (Unauthorized)
-            if (response.status === 401) {
-                throw new Error("Sessão expirada. Faça login novamente.");
-            }
-            
             const data = await response.json();
             if (!response.ok) throw new Error(data.detail);
-            
-            // Mostrar notificação de sucesso
-            const notification = document.createElement('div');
-            notification.className = 'notification success';
-            notification.innerHTML = `<i class="fas fa-check-circle"></i> ${data.message}`;
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                notification.classList.add('show');
-            }, 10);
-            
-            setTimeout(() => {
-                notification.classList.remove('show');
-                setTimeout(() => {
-                    document.body.removeChild(notification);
-                }, 300);
-            }, 3000);
-            
+            alert(data.message);
             checkStatus();
         } catch (error) {
-            // Verificar se é um erro de autenticação
-            if (error.message.includes("Sessão não encontrada") || 
-                error.message.includes("Sessão expirada") ||
-                error.message.includes("401")) {
-                alert("Sua sessão expirou. Por favor, faça login novamente.");
-                window.location.href = '/login.html';
-                return;
-            }
-            
-            // Mostrar notificação de erro para outros tipos de erro
-            const notification = document.createElement('div');
-            notification.className = 'notification error';
-            notification.innerHTML = `<i class="fas fa-exclamation-circle"></i> Falha ao iniciar a coleta: ${error.message}`;
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                notification.classList.add('show');
-            }, 10);
-            
-            setTimeout(() => {
-                notification.classList.remove('show');
-                setTimeout(() => {
-                    document.body.removeChild(notification);
-                }, 300);
-            }, 5000);
-            
+            alert(`Falha ao iniciar a coleta: ${error.message}`);
             checkStatus();
         }
     };
