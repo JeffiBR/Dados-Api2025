@@ -11,17 +11,13 @@ let currentUserProfile = null;
  * Ela cuida de obter o token e adicioná-lo aos cabeçalhos.
  */
 async function authenticatedFetch(url, options = {}) {
-    let session = await getSession();
+    const session = await getSession();
 
     if (!session) {
-        // Tenta renovar a sessão antes de redirecionar
-        try {
-            session = await refreshSession();
-        } catch (refreshError) {
-            alert("Sua sessão expirou ou é inválida. Por favor, faça login novamente.");
-            window.location.href = '/login.html';
-            throw new Error("Sessão não encontrada.");
-        }
+        alert("Sua sessão expirou ou é inválida. Por favor, faça login novamente.");
+        window.location.href = '/login.html';
+        // Lança um erro para interromper a execução da função que a chamou
+        throw new Error("Sessão não encontrada.");
     }
 
     const defaultHeaders = {
@@ -37,32 +33,7 @@ async function authenticatedFetch(url, options = {}) {
         }
     };
 
-    let response = await fetch(url, finalOptions);
-    
-    // Se receber um 401, tenta renovar a sessão e repete a requisição
-    if (response.status === 401) {
-        try {
-            session = await refreshSession();
-            finalOptions.headers.Authorization = `Bearer ${session.access_token}`;
-            response = await fetch(url, finalOptions);
-        } catch (refreshError) {
-            alert("Sua sessão expirou. Por favor, faça login novamente.");
-            window.location.href = '/login.html';
-            throw new Error("Sessão expirada.");
-        }
-    }
-
-    return response;
-}
-
-// Função para renovar a sessão
-async function refreshSession() {
-    const { data, error } = await supabase.auth.refreshSession();
-    if (error) {
-        console.error('Erro ao renovar sessão:', error);
-        throw error;
-    }
-    return data.session;
+    return fetch(url, finalOptions);
 }
 
 // --- O resto do arquivo auth.js (funções de suporte) ---
