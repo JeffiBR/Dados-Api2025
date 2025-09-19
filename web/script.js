@@ -22,6 +22,32 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentResults = [];
     let currentQuery = '';
 
+    // Função para obter a sessão do usuário
+    const getSession = async () => {
+        try {
+            // Verificar se há um token no localStorage
+            const token = localStorage.getItem('supabase.auth.token');
+            if (!token) return null;
+            
+            // Verificar se o token é válido (não expirado)
+            const tokenData = JSON.parse(token);
+            if (!tokenData || !tokenData.access_token) return null;
+            
+            // Verificar expiração do token
+            const currentTime = Math.floor(Date.now() / 1000);
+            if (tokenData.expires_at && tokenData.expires_at < currentTime) {
+                // Token expirado
+                localStorage.removeItem('supabase.auth.token');
+                return null;
+            }
+            
+            return tokenData;
+        } catch (error) {
+            console.error('Erro ao obter sessão:', error);
+            return null;
+        }
+    };
+
     // Toggle do tema
     themeToggle.addEventListener('click', () => {
         document.body.classList.toggle('light-mode');
@@ -245,16 +271,22 @@ document.addEventListener('DOMContentLoaded', () => {
         resultsFilters.style.display = 'none'; // Esconde filtros
 
         try {
-            // Usar a função getSession do auth.js
-            const session = await getSession();
-            if (isRealtime && !session) {
-                showMessage('Sua sessão expirou. Faça login novamente.');
-                setTimeout(() => window.location.href = '/login.html', 1200);
-                return;
+            let session = null;
+            
+            // Verificar sessão apenas para busca em tempo real
+            if (isRealtime) {
+                session = await getSession();
+                if (!session) {
+                    showMessage('Sua sessão expirou. Faça login novamente.');
+                    setTimeout(() => window.location.href = '/login.html', 1200);
+                    return;
+                }
             }
             
             const headers = { 'Content-Type': 'application/json' };
-            if (session) headers['Authorization'] = `Bearer ${session.access_token}`;
+            if (session) {
+                headers['Authorization'] = `Bearer ${session.access_token}`;
+            }
 
             let url = '', options = {};
             if (isRealtime) {
