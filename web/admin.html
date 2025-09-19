@@ -7,14 +7,31 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Scripts reordenados: Supabase primeiro, depois auth.js -->
     <script src="auth.js"></script>
 </head>
 <body>
-    <script>routeGuard('coleta');</script>
+    <script>
+        // Executar routeGuard após garantir que todos os scripts estão carregados
+        document.addEventListener('DOMContentLoaded', function() {
+            // Verificar se a função routeGuard existe antes de chamá-la
+            if (typeof routeGuard === 'function') {
+                routeGuard('coleta');
+            } else {
+                console.error('Função routeGuard não encontrada. Verifique o carregamento do auth.js');
+            }
+            
+            // Atualizar a UI do usuário após o carregamento
+            if (typeof updateUIVisibility === 'function') {
+                setTimeout(updateUIVisibility, 100);
+            }
+        });
+    </script>
 
     <div class="app-container">
         <div class="sidebar-overlay"></div>
-        <button class="mobile-menu-button"><i class="fas fa-bars"></i></button>
+        <!-- Apenas um botão de menu mobile -->
+        <button class="mobile-menu-button" id="mainMobileMenuButton"><i class="fas fa-bars"></i></button>
         
         <aside class="sidebar">
             <div class="sidebar-header">
@@ -47,7 +64,7 @@
 
         <div class="content-wrapper">
             <header class="top-bar">
-                <button class="mobile-menu-button"><i class="fas fa-bars"></i></button>
+                <!-- Removido o segundo botão de menu mobile -->
                 <div id="userProfileMenu" class="profile-menu">
                     <button class="profile-button">
                         <img src="https://via.placeholder.com/40" alt="Avatar" id="userAvatar">
