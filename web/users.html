@@ -2,54 +2,134 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Gerenciar Usuários</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Usuários - Preços AL</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth.js"></script>
 </head>
 <body>
     <script>routeGuard('users');</script>
-    <ul>
-                <li class="nav-header">ANÁLISE</li>
-                <li><a href="/search.html"><span>🏠</span> Busca</a></li>
-                <li data-permission="compare"><a href="/compare.html"><span>📊</span> Comparador</a></li>
-                <li data-permission="dashboard"><a href="/dashboard.html"><span>📈</span> Dashboard</a></li>
-                
-                <li class="nav-header">ADMINISTRAÇÃO</li>
-                <li data-permission="coleta"><a href="/admin.html" class="active"><span>⚙️</span> Coleta</a></li>
-                <li data-permission="collections"><a href="/collections.html"><span>🗂️</span> Histórico de Coletas</a></li>
-                <li data-permission="product_log"><a href="/product-log.html"><span>📜</span> Log de Produtos</a></li>
-                <li data-permission="prune"><a href="/prune.html"><span>🗑️</span> Limpeza de Dados</a></li>
 
-                <li class="nav-header">CONFIGURAÇÃO</li>
-                <li data-permission="markets"><a href="/markets.html"><span>🛒</span> Gerenciar Mercados</a></li>
-                <li data-permission="users"><a href="/users.html"><span>👥</span> Gerenciar Usuários</a></li>
-            </ul>
-    <main class="main-content">
-        <h2>Gerenciar Usuários</h2>
-        <div class="form-container">
-            <h3 id="formTitle">Criar Novo Usuário</h3>
-            <input type="hidden" id="userId">
-            <div class="form-group"><label for="fullName">Nome</label><input type="text" id="fullName"></div>
-            <div class="form-group"><label for="email">Email</label><input type="email" id="email"></div>
-            <div class="form-group"><label for="password">Senha</label><input type="password" id="password" placeholder="Obrigatório para novos usuários"></div>
-            <div class="form-group"><label for="role">Nível</label><select id="role"><option value="user">Usuário</option><option value="admin">Admin Geral</option></select></div>
-            
-            <div class="form-group full-width">
-                <label>Permissões de Página (para nível 'Usuário')</label>
-                <div id="permissions-container" class="supermarket-list">
-                    <label><input type="checkbox" value="compare"> Comparador</label>
-                    <label><input type="checkbox" value="dashboard"> Dashboard</label>
-                    <label><input type="checkbox" value="coleta"> Coleta</label>
-                    <label><input type="checkbox" value="markets"> Mercados</label>
-                    <label><input type="checkbox" value="collections"> Histórico</label>
-                    <label><input type="checkbox" value="prune"> Limpeza</label>
-                    <label><input type="checkbox" value="product_log"> Log de Produtos</label>
-                </div>
+    <div class="app-container">
+        <div class="sidebar-overlay"></div>
+        <button class="mobile-menu-button"><i class="fas fa-bars"></i></button>
+        
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-bolt"></i>
+                <h1>Preços AL</h1>
             </div>
-            <button id="saveUserBtn" class="full-width">Salvar</button>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="nav-header">ANÁLISE</li>
+                    <li><a href="/search.html"><i class="fas fa-home"></i> Busca</a></li>
+                    <li data-permission="compare"><a href="/compare.html"><i class="fas fa-chart-bar"></i> Comparador</a></li>
+                    <li data-permission="dashboard"><a href="/dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+                    
+                    <li class="nav-header">ADMINISTRAÇÃO</li>
+                    <li data-permission="coleta"><a href="/admin.html"><i class="fas fa-cog"></i> Coleta</a></li>
+                    <li data-permission="collections"><a href="/collections.html"><i class="fas fa-history"></i> Histórico de Coletas</a></li>
+                    <li data-permission="product_log"><a href="/product-log.html"><i class="fas fa-file-alt"></i> Log de Produtos</a></li>
+                    <li data-permission="prune"><a href="/prune.html"><i class="fas fa-trash"></i> Limpeza de Dados</a></li>
+
+                    <li class="nav-header">CONFIGURAÇÃO</li>
+                    <li data-permission="markets"><a href="/markets.html"><i class="fas fa-store"></i> Gerenciar Mercados</a></li>
+                    <li data-permission="users"><a href="/users.html" class="active"><i class="fas fa-users"></i> Gerenciar Usuários</a></li>
+                </ul>
+            </nav>
+            <div class="theme-switcher">
+                <span>Tema</span>
+                <button id="themeToggle"><i class="fas fa-moon"></i></button>
+            </div>
+        </aside>
+
+        <div class="content-wrapper">
+            <header class="top-bar">
+                <button class="mobile-menu-button"><i class="fas fa-bars"></i></button>
+                <div id="userProfileMenu" class="profile-menu">
+                    <button class="profile-button">
+                        <img src="https://via.placeholder.com/40" alt="Avatar" id="userAvatar">
+                        <span class="user-name" id="userName">Usuário</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="profile-dropdown">
+                        <a href="/profile.html"><i class="fas fa-user"></i> Meu Perfil</a>
+                        <a href="#" id="logoutButton"><i class="fas fa-sign-out-alt"></i> Sair</a>
+                    </div>
+                </div>
+            </header>
+
+            <main class="main-content">
+                <div class="admin-panel">
+                    <div class="panel-header">
+                        <i class="fas fa-users"></i>
+                        <h2>Gerenciar Usuários</h2>
+                    </div>
+                    <p class="panel-description">Crie, edite e gerencie os usuários do sistema e suas permissões.</p>
+                    
+                    <div class="form-container">
+                        <h3 id="formTitle">Criar Novo Usuário</h3>
+                        <input type="hidden" id="userId">
+                        <div class="form-group">
+                            <label for="fullName">Nome</label>
+                            <input type="text" id="fullName">
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email">
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Senha</label>
+                            <input type="password" id="password" placeholder="Obrigatório para novos usuários">
+                        </div>
+                        <div class="form-group">
+                            <label for="role">Nível</label>
+                            <select id="role">
+                                <option value="user">Usuário</option>
+                                <option value="admin">Admin Geral</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group full-width">
+                            <label>Permissões de Página (para nível 'Usuário')</label>
+                            <div id="permissions-container" class="supermarket-list">
+                                <label><input type="checkbox" value="compare"> Comparador</label>
+                                <label><input type="checkbox" value="dashboard"> Dashboard</label>
+                                <label><input type="checkbox" value="coleta"> Coleta</label>
+                                <label><input type="checkbox" value="markets"> Mercados</label>
+                                <label><input type="checkbox" value="collections"> Histórico</label>
+                                <label><input type="checkbox" value="prune"> Limpeza</label>
+                                <label><input type="checkbox" value="product_log"> Log de Produtos</label>
+                            </div>
+                        </div>
+                        <button id="saveUserBtn" class="btn full-width">Salvar</button>
+                    </div>
+                    
+                    <!-- Lista de usuários existentes -->
+                    <div class="table-container" style="margin-top: 2rem;">
+                        <h3>Usuários do Sistema</h3>
+                        <table id="usersTable">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Email</th>
+                                    <th>Nível</th>
+                                    <th>Permissões</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Conteúdo dinâmico será inserido aqui -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
         </div>
-        </main>
+    </div>
+    
     <script src="users.js"></script>
 </body>
 </html>
