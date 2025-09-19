@@ -3,71 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerenciar Supermercados</title>
+    <title>Gerenciar Supermercados - Preços AL</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-   <script src="auth.js"></script>
+    <script src="auth.js"></script>
 </head>
 <body>
     <script>routeGuard(['admin']);</script>
 
-    <button class="mobile-menu-button">☰</button>
-    <aside class="sidebar">
-        <div class="sidebar-header"><h1>Preços AL</h1></div>
-        <nav class="sidebar-nav">
-             <ul>
-                <li class="nav-header">ANÁLISE</li>
-                <li><a href="/search.html"><span>🏠</span> Busca</a></li>
-                <li data-permission="compare"><a href="/compare.html"><span>📊</span> Comparador</a></li>
-                <li data-permission="dashboard"><a href="/dashboard.html"><span>📈</span> Dashboard</a></li>
-                
-                <li class="nav-header">ADMINISTRAÇÃO</li>
-                <li data-permission="coleta"><a href="/admin.html" class="active"><span>⚙️</span> Coleta</a></li>
-                <li data-permission="collections"><a href="/collections.html"><span>🗂️</span> Histórico de Coletas</a></li>
-                <li data-permission="product_log"><a href="/product-log.html"><span>📜</span> Log de Produtos</a></li>
-                <li data-permission="prune"><a href="/prune.html"><span>🗑️</span> Limpeza de Dados</a></li>
+    <div class="app-container">
+        <div class="sidebar-overlay"></div>
+        <button class="mobile-menu-button"><i class="fas fa-bars"></i></button>
+        
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-bolt"></i>
+                <h1>Preços AL</h1>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="nav-header">ANÁLISE</li>
+                    <li><a href="/search.html"><i class="fas fa-home"></i> Busca</a></li>
+                    <li data-permission="compare"><a href="/compare.html"><i class="fas fa-chart-bar"></i> Comparador</a></li>
+                    <li data-permission="dashboard"><a href="/dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+                    
+                    <li class="nav-header">ADMINISTRAÇÃO</li>
+                    <li data-permission="coleta"><a href="/admin.html"><i class="fas fa-cog"></i> Coleta</a></li>
+                    <li data-permission="collections"><a href="/collections.html"><i class="fas fa-history"></i> Histórico de Coletas</a></li>
+                    <li data-permission="product_log"><a href="/product-log.html"><i class="fas fa-file-alt"></i> Log de Produtos</a></li>
+                    <li data-permission="prune"><a href="/prune.html"><i class="fas fa-trash"></i> Limpeza de Dados</a></li>
 
-                <li class="nav-header">CONFIGURAÇÃO</li>
-                <li data-permission="markets"><a href="/markets.html"><span>🛒</span> Gerenciar Mercados</a></li>
-                <li data-permission="users"><a href="/users.html"><span>👥</span> Gerenciar Usuários</a></li>
-            </ul>
-        </nav>
-        <div class="theme-switcher">
-            <span>Tema</span><button id="themeToggle">Mudar</button>
-        </div>
-    </aside>
+                    <li class="nav-header">CONFIGURAÇÃO</li>
+                    <li data-permission="markets"><a href="/markets.html" class="active"><i class="fas fa-store"></i> Gerenciar Mercados</a></li>
+                    <li data-permission="users"><a href="/users.html"><i class="fas fa-users"></i> Gerenciar Usuários</a></li>
+                </ul>
+            </nav>
+            <div class="theme-switcher">
+                <span>Tema</span>
+                <button id="themeToggle"><i class="fas fa-moon"></i></button>
+            </div>
+        </aside>
 
-    <div class="content-wrapper">
-        <header class="top-bar">
-            <div id="userProfileMenu" class="profile-menu" style="display: none;">
-                <img src="https://via.placeholder.com/40" alt="Avatar" id="userAvatar">
-                <span id="userName">Usuário</span>
-                <div class="profile-dropdown">
-                    <a href="/profile.html">Meu Perfil</a>
-                    <a href="#" id="logoutButton">Sair</a>
+        <div class="content-wrapper">
+            <header class="top-bar">
+                <button class="mobile-menu-button"><i class="fas fa-bars"></i></button>
+                <div id="userProfileMenu" class="profile-menu">
+                    <button class="profile-button">
+                        <img src="https://via.placeholder.com/40" alt="Avatar" id="userAvatar">
+                        <span class="user-name" id="userName">Usuário</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="profile-dropdown">
+                        <a href="/profile.html"><i class="fas fa-user"></i> Meu Perfil</a>
+                        <a href="#" id="logoutButton"><i class="fas fa-sign-out-alt"></i> Sair</a>
+                    </div>
                 </div>
-            </div>
-        </header>
+            </header>
 
-        <main class="main-content">
-            <div class="form-container">
-                <h2 id="formTitle">Adicionar Novo Mercado</h2>
-                <input type="hidden" id="marketId">
-                <div class="form-group"><label for="marketName">Nome do Mercado</label><input type="text" id="marketName" placeholder="Ex: Atacadão S.A"></div>
-                <div class="form-group"><label for="marketCnpj">CNPJ</label><input type="text" id="marketCnpj" placeholder="Apenas números"></div>
-                <button id="saveButton">Salvar</button>
-                <button id="cancelButton" style="display:none; background-color: #7f8c8d;">Cancelar Edição</button>
-            </div>
-            <div class="table-container">
-                <h2>Mercados Cadastrados</h2>
-                <table id="marketsTable">
-                    <thead><tr><th>Nome</th><th>CNPJ</th><th>Ações</th></tr></thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-        </main>
+            <main class="main-content">
+                <div class="admin-panel">
+                    <div class="panel-header">
+                        <i class="fas fa-store"></i>
+                        <h2>Gerenciar Supermercados</h2>
+                    </div>
+                    <p class="panel-description">Adicione, edite ou remove supermercados do sistema de coleta.</p>
+                    
+                    <div class="form-container">
+                        <h3 id="formTitle">Adicionar Novo Mercado</h3>
+                        <input type="hidden" id="marketId">
+                        <div class="form-group">
+                            <label for="marketName">Nome do Mercado</label>
+                            <input type="text" id="marketName" placeholder="Ex: Atacadão S.A">
+                        </div>
+                        <div class="form-group">
+                            <label for="marketCnpj">CNPJ</label>
+                            <input type="text" id="marketCnpj" placeholder="Apenas números">
+                        </div>
+                        <button id="saveButton" class="btn">Salvar</button>
+                        <button id="cancelButton" class="btn" style="display:none; background-color: #7f8c8d;">Cancelar Edição</button>
+                    </div>
+                    
+                    <div class="table-container" style="margin-top: 2rem;">
+                        <h3>Mercados Cadastrados</h3>
+                        <table id="marketsTable">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>CNPJ</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Conteúdo dinâmico será inserido aqui -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
     </div>
+    
     <script src="markets.js"></script>
 </body>
 </html>
-
