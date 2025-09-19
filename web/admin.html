@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel de Controle - Coleta</title>
+    <title>Consulta de Preços - Thunder Theme</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth.js"></script>
 </head>
 <body>
-    <script>routeGuard('coleta');</script>
+    <script>routeGuard();</script>
 
     <div class="app-container">
         <div class="sidebar-overlay"></div>
@@ -22,14 +22,14 @@
                 <h1>Preços AL</h1>
             </div>
             <nav class="sidebar-nav">
-                <ul>
+                 <ul>
                     <li class="nav-header">ANÁLISE</li>
-                    <li><a href="/search.html"><i class="fas fa-home"></i> Busca</a></li>
+                    <li><a href="/search.html" class="active"><i class="fas fa-home"></i> Busca</a></li>
                     <li data-permission="compare"><a href="/compare.html"><i class="fas fa-chart-bar"></i> Comparador</a></li>
                     <li data-permission="dashboard"><a href="/dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
                     
                     <li class="nav-header">ADMINISTRAÇÃO</li>
-                    <li data-permission="coleta"><a href="/admin.html" class="active"><i class="fas fa-cog"></i> Coleta</a></li>
+                    <li data-permission="coleta"><a href="/admin.html"><i class="fas fa-cog"></i> Coleta</a></li>
                     <li data-permission="collections"><a href="/collections.html"><i class="fas fa-history"></i> Histórico de Coletas</a></li>
                     <li data-permission="product_log"><a href="/product-log.html"><i class="fas fa-file-alt"></i> Log de Produtos</a></li>
                     <li data-permission="prune"><a href="/prune.html"><i class="fas fa-trash"></i> Limpeza de Dados</a></li>
@@ -64,67 +64,63 @@
             <main class="main-content">
                 <div class="admin-panel">
                     <div class="panel-header">
-                        <i class="fas fa-database"></i>
-                        <h2>Coleta de Dados</h2>
+                        <i class="fas fa-search"></i>
+                        <h2>Busca de Produtos</h2>
                     </div>
-                    <p class="panel-description">Inicie a coleta de dados de todos os supermercados cadastrados no sistema.</p>
+                    <p class="panel-description">Encontre os melhores preços de forma rápida e intuitiva.</p>
                     
-                    <button id="startButton" class="btn"><i class="fas fa-play"></i> Iniciar Coleta Manual</button>
-                    
-                    <div id="progress-container" class="status-box" style="display: none;">
-                        <div class="status-header">
-                            <i class="fas fa-sync-alt fa-spin"></i>
-                            <h3>Coleta em Andamento...</h3>
+                    <div class="search-controls">
+                        <div class="search-input-group">
+                            <input type="text" id="searchInput" placeholder="Digite o nome do produto...">
+                            <button id="clearSearchButton" class="clear-search"><i class="fas fa-times"></i></button>
                         </div>
-                        <div class="progress-bar-container">
-                            <div id="progressBar" class="progress-bar"></div>
+                        <div class="search-buttons">
+                            <button id="searchButton" class="btn"><i class="fas fa-database"></i> Buscar no Banco</button>
+                            <button id="realtimeSearchButton" class="btn"><i class="fas fa-bolt"></i> Buscar em Tempo Real</button>
                         </div>
-                        <div class="progress-details">
-                            <span id="progressPercentText">0%</span>
-                            <span id="etaText">ETA: Calculando...</span>
-                        </div>
-                        <p id="progressText" class="status-message">Iniciando...</p>
-                        <p class="items-found"><i class="fas fa-box-open"></i> <strong>Itens Encontrados até agora:</strong> <span id="itemsFoundText">0</span></p>
-                    </div>
-
-                    <div id="report-container" class="admin-panel" style="display: none; margin-top: 2rem;">
-                        <div class="panel-header">
-                            <i class="fas fa-clipboard-list"></i>
-                            <h3>Relatório da Última Coleta</h3>
-                        </div>
-                        <div class="summary-cards" style="grid-template-columns: 1fr 1fr; margin-bottom: 1.5rem;">
-                            <div class="card">
-                                <div class="card-icon"><i class="fas fa-boxes"></i></div>
-                                <div class="card-title">Total Salvo</div>
-                                <p id="report-total-items">0</p>
+                        <details id="filters-details">
+                            <summary id="filters-toggle"><i class="fas fa-filter"></i> Filtrar por Supermercado</summary>
+                            <div class="filters-container">
+                                <div id="supermarketFilters" class="supermarket-list"></div>
                             </div>
-                            <div class="card">
-                                <div class="card-icon"><i class="fas fa-clock"></i></div>
-                                <div class="card-title">Duração</div>
-                                <p id="report-duration">0s</p>
-                            </div>
-                        </div>
-                        
-                        <h4 class="table-title">Detalhes por Mercado:</h4>
-                        <div class="table-container">
-                            <table id="reportTable">
-                                <thead>
-                                    <tr>
-                                        <th>Mercado</th>
-                                        <th>Itens Salvos</th>
-                                        <th>Duração (segundos)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                </tbody>
-                            </table>
-                        </div>
+                        </details>
                     </div>
                 </div>
+                
+                <div id="loader" class="loader-container" style="display: none;">
+                    <div class="loader"></div>
+                    <p>Buscando produtos...</p>
+                </div>
+                
+                <!-- Área para os filtros de resultados -->
+                <div id="resultsFilters" class="admin-panel" style="display: none;">
+                    <div class="panel-header">
+                        <i class="fas fa-sliders-h"></i>
+                        <h3>Filtrar resultados</h3>
+                    </div>
+                    <div class="filter-controls">
+                        <div class="filter-group">
+                            <label for="marketFilter">Mercado:</label>
+                            <select id="marketFilter">
+                                <option value="all">Todos os mercados</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="sortFilter">Ordenar por:</label>
+                            <select id="sortFilter">
+                                <option value="recent">Mais recentes</option>
+                                <option value="cheap">Preço: mais barato</option>
+                                <option value="expensive">Preço: mais caro</option>
+                            </select>
+                        </div>
+                        <button id="clearFiltersButton" class="btn outline"><i class="fas fa-times"></i> Limpar Filtros</button>
+                    </div>
+                </div>
+                
+                <div id="resultsGrid" class="results-grid"></div>
             </main>
         </div>
     </div>
-    
-    <script src="admin.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
