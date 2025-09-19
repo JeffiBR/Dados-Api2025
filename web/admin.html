@@ -5,141 +5,91 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel de Controle - Coleta</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- Scripts reordenados: Supabase primeiro, depois auth.js -->
     <script src="auth.js"></script>
 </head>
 <body>
-    <script>
-        // Executar routeGuard após garantir que todos os scripts estão carregados
-        document.addEventListener('DOMContentLoaded', function() {
-            // Verificar se a função routeGuard existe antes de chamá-la
-            if (typeof routeGuard === 'function') {
-                routeGuard('coleta');
-            } else {
-                console.error('Função routeGuard não encontrada. Verifique o carregamento do auth.js');
-            }
-            
-            // Atualizar a UI do usuário após o carregamento
-            if (typeof updateUIVisibility === 'function') {
-                setTimeout(updateUIVisibility, 100);
-            }
-        });
-    </script>
+    <script>routeGuard('coleta');</script>
 
-    <div class="app-container">
-        <div class="sidebar-overlay"></div>
-        <!-- Apenas um botão de menu mobile -->
-        <button class="mobile-menu-button" id="mainMobileMenuButton"><i class="fas fa-bars"></i></button>
-        
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <i class="fas fa-bolt"></i>
-                <h1>Preços AL</h1>
-            </div>
-            <nav class="sidebar-nav">
-                <ul>
-                    <li class="nav-header">ANÁLISE</li>
-                    <li><a href="/search.html"><i class="fas fa-home"></i> Busca</a></li>
-                    <li data-permission="compare"><a href="/compare.html"><i class="fas fa-chart-bar"></i> Comparador</a></li>
-                    <li data-permission="dashboard"><a href="/dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
-                    
-                    <li class="nav-header">ADMINISTRAÇÃO</li>
-                    <li data-permission="coleta"><a href="/admin.html" class="active"><i class="fas fa-cog"></i> Coleta</a></li>
-                    <li data-permission="collections"><a href="/collections.html"><i class="fas fa-history"></i> Histórico de Coletas</a></li>
-                    <li data-permission="product_log"><a href="/product-log.html"><i class="fas fa-file-alt"></i> Log de Produtos</a></li>
-                    <li data-permission="prune"><a href="/prune.html"><i class="fas fa-trash"></i> Limpeza de Dados</a></li>
+    <button class="mobile-menu-button">☰</button>
 
-                    <li class="nav-header">CONFIGURAÇÃO</li>
-                    <li data-permission="markets"><a href="/markets.html"><i class="fas fa-store"></i> Gerenciar Mercados</a></li>
-                    <li data-permission="users"><a href="/users.html"><i class="fas fa-users"></i> Gerenciar Usuários</a></li>
-                </ul>
-            </nav>
-            <div class="theme-switcher">
-                <span>Tema</span>
-                <button id="themeToggle"><i class="fas fa-moon"></i></button>
-            </div>
-        </aside>
+    <aside class="sidebar">
+        <div class="sidebar-header"><h1>Preços AL</h1></div>
+        <nav class="sidebar-nav">
+            <ul>
+                <li class="nav-header">ANÁLISE</li>
+                <li><a href="/search.html"><span>🏠</span> Busca</a></li>
+                <li data-permission="compare"><a href="/compare.html"><span>📊</span> Comparador</a></li>
+                <li data-permission="dashboard"><a href="/dashboard.html"><span>📈</span> Dashboard</a></li>
+                
+                <li class="nav-header">ADMINISTRAÇÃO</li>
+                <li data-permission="coleta"><a href="/admin.html" class="active"><span>⚙️</span> Coleta</a></li>
+                <li data-permission="collections"><a href="/collections.html"><span>🗂️</span> Histórico de Coletas</a></li>
+                <li data-permission="product_log"><a href="/product-log.html"><span>📜</span> Log de Produtos</a></li>
+                <li data-permission="prune"><a href="/prune.html"><span>🗑️</span> Limpeza de Dados</a></li>
 
-        <div class="content-wrapper">
-            <header class="top-bar">
-                <!-- Removido o segundo botão de menu mobile -->
-                <div id="userProfileMenu" class="profile-menu">
-                    <button class="profile-button">
-                        <img src="https://via.placeholder.com/40" alt="Avatar" id="userAvatar">
-                        <span class="user-name" id="userName">Usuário</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                    <div class="profile-dropdown">
-                        <a href="/profile.html"><i class="fas fa-user"></i> Meu Perfil</a>
-                        <a href="#" id="logoutButton"><i class="fas fa-sign-out-alt"></i> Sair</a>
-                    </div>
-                </div>
-            </header>
-
-            <main class="main-content">
-                <div class="admin-panel">
-                    <div class="panel-header">
-                        <i class="fas fa-database"></i>
-                        <h2>Coleta de Dados</h2>
-                    </div>
-                    <p class="panel-description">Inicie a coleta de dados de todos os supermercados cadastrados no sistema.</p>
-                    
-                    <button id="startButton" class="btn"><i class="fas fa-play"></i> Iniciar Coleta Manual</button>
-                    
-                    <div id="progress-container" class="status-box" style="display: none;">
-                        <div class="status-header">
-                            <i class="fas fa-sync-alt fa-spin"></i>
-                            <h3>Coleta em Andamento...</h3>
-                        </div>
-                        <div class="progress-bar-container">
-                            <div id="progressBar" class="progress-bar"></div>
-                        </div>
-                        <div class="progress-details">
-                            <span id="progressPercentText">0%</span>
-                            <span id="etaText">ETA: Calculando...</span>
-                        </div>
-                        <p id="progressText" class="status-message">Iniciando...</p>
-                        <p class="items-found"><i class="fas fa-box-open"></i> <strong>Itens Encontrados até agora:</strong> <span id="itemsFoundText">0</span></p>
-                    </div>
-
-                    <div id="report-container" class="admin-panel" style="display: none; margin-top: 2rem;">
-                        <div class="panel-header">
-                            <i class="fas fa-clipboard-list"></i>
-                            <h3>Relatório da Última Coleta</h3>
-                        </div>
-                        <div class="summary-cards" style="grid-template-columns: 1fr 1fr; margin-bottom: 1.5rem;">
-                            <div class="card">
-                                <div class="card-icon"><i class="fas fa-boxes"></i></div>
-                                <div class="card-title">Total Salvo</div>
-                                <p id="report-total-items">0</p>
-                            </div>
-                            <div class="card">
-                                <div class="card-icon"><i class="fas fa-clock"></i></div>
-                                <div class="card-title">Duração</div>
-                                <p id="report-duration">0s</p>
-                            </div>
-                        </div>
-                        
-                        <h4 class="table-title">Detalhes por Mercado:</h4>
-                        <div class="table-container">
-                            <table id="reportTable">
-                                <thead>
-                                    <tr>
-                                        <th>Mercado</th>
-                                        <th>Itens Salvos</th>
-                                        <th>Duração (segundos)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </main>
+                <li class="nav-header">CONFIGURAÇÃO</li>
+                <li data-permission="markets"><a href="/markets.html"><span>🛒</span> Gerenciar Mercados</a></li>
+                <li data-permission="users"><a href="/users.html"><span>👥</span> Gerenciar Usuários</a></li>
+            </ul>
+        </nav>
+        <div class="theme-switcher">
+            <span>Tema</span><button id="themeToggle">Mudar</button>
         </div>
+    </aside>
+
+    <div class="content-wrapper">
+        <header class="top-bar">
+            <div id="userProfileMenu" class="profile-menu" style="display: none;">
+                <img src="https://via.placeholder.com/40" alt="Avatar" id="userAvatar">
+                <span id="userName">Usuário</span>
+                <div class="profile-dropdown">
+                    <a href="/profile.html">Meu Perfil</a>
+                    <a href="#" id="logoutButton">Sair</a>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="admin-panel">
+                <h2>Coleta de Dados</h2>
+                <p>Inicie a coleta de dados de todos os supermercados cadastrados no sistema.</p>
+                <button id="startButton">Iniciar Coleta Manual</button>
+                
+                <div id="progress-container" class="status-box" style="display: none;">
+                    <h3>Coleta em Andamento...</h3>
+                    <div class="progress-bar-container">
+                        <div id="progressBar" class="progress-bar"></div>
+                    </div>
+                    <div class="progress-details">
+                        <span id="progressPercentText">0%</span>
+                        <span id="etaText">ETA: Calculando...</span>
+                    </div>
+                    <p id="progressText">Iniciando...</p>
+                    <p><strong>Itens Encontrados até agora:</strong> <span id="itemsFoundText">0</span></p>
+                </div>
+
+                <div id="report-container" class="table-container" style="display: none; margin-top: 2rem; text-align: left;">
+                    <h3>Relatório da Última Coleta</h3>
+                    <div class="summary-cards" style="grid-template-columns: 1fr 1fr; margin-bottom: 1rem;">
+                        <div class="card"><h3>Total Salvo</h3><p id="report-total-items"></p></div>
+                        <div class="card"><h3>Duração</h3><p id="report-duration"></p></div>
+                    </div>
+                    <h4>Detalhes por Mercado:</h4>
+                    <table id="reportTable">
+                        <thead>
+                            <tr>
+                                <th>Mercado</th>
+                                <th>Itens Salvos</th>
+                                <th>Duração (segundos)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
     </div>
     
     <script src="admin.js"></script>
