@@ -8,6 +8,306 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth.js"></script>
+    <style>
+        /* Estilos adicionais específicos para a página de histórico */
+        .collections-filters {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            min-width: 200px;
+        }
+        
+        .filter-group label {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--muted-dark);
+        }
+        
+        body.light-mode .filter-group label {
+            color: var(--muted-light);
+        }
+        
+        .filter-group select, .filter-group input {
+            padding: 0.6rem 1rem;
+            border: 2px solid var(--border-dark);
+            border-radius: var(--radius);
+            font-size: 0.95rem;
+            background: var(--input-dark);
+            color: var(--text-dark);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        body.light-mode .filter-group select, 
+        body.light-mode .filter-group input {
+            background: var(--input-light);
+            color: var(--text-light);
+            border: 2px solid var(--border-light);
+        }
+        
+        .filter-group select:focus, .filter-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(79,70,229,0.13);
+        }
+        
+        .status-badge {
+            padding: 0.35rem 0.75rem;
+            border-radius: 100px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+        
+        .status-completed {
+            background: rgba(22, 163, 74, 0.2);
+            color: #16a34a;
+        }
+        
+        .status-processing {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+        }
+        
+        .status-error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+        }
+        
+        #collectionsTable {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        #collectionsTable th {
+            text-align: left;
+            padding: 1rem;
+            background: rgba(79, 70, 229, 0.1);
+            color: var(--muted-dark);
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-dark);
+        }
+        
+        body.light-mode #collectionsTable th {
+            background: rgba(79, 70, 229, 0.05);
+            color: var(--muted-light);
+            border-bottom: 1px solid var(--border-light);
+        }
+        
+        #collectionsTable td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-dark);
+        }
+        
+        body.light-mode #collectionsTable td {
+            border-bottom: 1px solid var(--border-light);
+        }
+        
+        #collectionsTable tr:hover {
+            background: rgba(79, 70, 229, 0.05);
+        }
+        
+        .actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .details-btn, .delete-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        .details-btn {
+            background: rgba(79, 70, 229, 0.1);
+            color: var(--primary);
+            border: 1px solid rgba(79, 70, 229, 0.2);
+        }
+        
+        .details-btn:hover {
+            background: rgba(79, 70, 229, 0.2);
+        }
+        
+        .delete-btn {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+        
+        .delete-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+        
+        .details-row {
+            background: var(--input-dark);
+        }
+        
+        body.light-mode .details-row {
+            background: var(--input-light);
+        }
+        
+        .details-content {
+            padding: 1.5rem;
+        }
+        
+        .market-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .market-card {
+            background: var(--panel-dark);
+            border-radius: var(--radius);
+            padding: 1rem;
+            border: 1px solid var(--border-dark);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        body.light-mode .market-card {
+            background: var(--panel-light);
+            border: 1px solid var(--border-light);
+        }
+        
+        .market-name {
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+        
+        body.light-mode .market-name {
+            color: var(--text-light);
+        }
+        
+        .items-count {
+            color: var(--muted-dark);
+            font-size: 0.9rem;
+        }
+        
+        body.light-mode .items-count {
+            color: var(--muted-light);
+        }
+        
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-dark);
+        }
+        
+        body.light-mode .summary-row {
+            border-top: 1px solid var(--border-light);
+        }
+        
+        .summary-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .summary-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        
+        .summary-label {
+            font-size: 0.85rem;
+            color: var(--muted-dark);
+        }
+        
+        body.light-mode .summary-label {
+            color: var(--muted-light);
+        }
+        
+        .empty-table {
+            text-align: center;
+            padding: 2rem;
+            color: var(--muted-dark);
+        }
+        
+        body.light-mode .empty-table {
+            color: var(--muted-light);
+        }
+        
+        @media (max-width: 768px) {
+            .collections-filters {
+                flex-direction: column;
+            }
+            
+            .filter-group {
+                min-width: 100%;
+            }
+            
+            #collectionsTable {
+                display: block;
+            }
+            
+            #collectionsTable thead {
+                display: none;
+            }
+            
+            #collectionsTable tr {
+                display: block;
+                margin-bottom: 1rem;
+                border: 1px solid var(--border-dark);
+                border-radius: var(--radius);
+            }
+            
+            body.light-mode #collectionsTable tr {
+                border: 1px solid var(--border-light);
+            }
+            
+            #collectionsTable td {
+                display: block;
+                text-align: right;
+                padding: 0.75rem;
+                position: relative;
+                border-bottom: 1px solid var(--border-dark);
+            }
+            
+            body.light-mode #collectionsTable td {
+                border-bottom: 1px solid var(--border-light);
+            }
+            
+            #collectionsTable td:last-child {
+                border-bottom: none;
+            }
+            
+            #collectionsTable td::before {
+                content: attr(data-label);
+                position: absolute;
+                left: 0.75rem;
+                font-weight: 600;
+                color: var(--muted-dark);
+            }
+            
+            body.light-mode #collectionsTable td::before {
+                color: var(--muted-light);
+            }
+            
+            .actions {
+                justify-content: flex-end;
+            }
+        }
+    </style>
 </head>
 <body>
     <script>routeGuard('collections');</script>
@@ -69,6 +369,33 @@
                     </div>
                     <p class="panel-description">Visualize o histórico de coletas realizadas e os detalhes de cada execução.</p>
                     
+                    <div class="collections-filters">
+                        <div class="filter-group">
+                            <label for="statusFilter">Status</label>
+                            <select id="statusFilter">
+                                <option value="all">Todos os status</option>
+                                <option value="concluída">Concluída</option>
+                                <option value="processando">Processando</option>
+                                <option value="falha">Falha</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="dateFilter">Data</label>
+                            <select id="dateFilter">
+                                <option value="all">Todas as datas</option>
+                                <option value="today">Hoje</option>
+                                <option value="week">Esta semana</option>
+                                <option value="month">Este mês</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="searchInput">Buscar</label>
+                            <input type="text" id="searchInput" placeholder="ID ou palavra-chave">
+                        </div>
+                    </div>
+                    
                     <div class="table-container">
                         <table id="collectionsTable">
                             <thead>
@@ -91,5 +418,86 @@
     </div>
     
     <script src="collections.js"></script>
+    <script>
+        // Adicionando funcionalidades de filtro e melhorias na interface
+        document.addEventListener('DOMContentLoaded', () => {
+            // Inicializar filtros
+            const statusFilter = document.getElementById('statusFilter');
+            const dateFilter = document.getElementById('dateFilter');
+            const searchInput = document.getElementById('searchInput');
+            
+            // Função para aplicar filtros
+            const applyFilters = () => {
+                const statusValue = statusFilter.value;
+                const dateValue = dateFilter.value;
+                const searchValue = searchInput.value.toLowerCase();
+                
+                const rows = document.querySelectorAll('#collectionsTable tbody tr:not(.details-row)');
+                
+                rows.forEach(row => {
+                    let showRow = true;
+                    
+                    // Filtrar por status
+                    if (statusValue !== 'all') {
+                        const statusCell = row.querySelector('td:nth-child(3)');
+                        if (statusCell.textContent.toLowerCase() !== statusValue) {
+                            showRow = false;
+                        }
+                    }
+                    
+                    // Filtrar por data (implementação básica)
+                    if (dateValue !== 'all' && showRow) {
+                        const dateCell = row.querySelector('td:nth-child(2)');
+                        const cellDate = new Date(dateCell.getAttribute('data-date'));
+                        const today = new Date();
+                        
+                        if (dateValue === 'today') {
+                            if (cellDate.toDateString() !== today.toDateString()) {
+                                showRow = false;
+                            }
+                        } else if (dateValue === 'week') {
+                            const weekStart = new Date(today);
+                            weekStart.setDate(today.getDate() - today.getDay());
+                            weekStart.setHours(0, 0, 0, 0);
+                            
+                            if (cellDate < weekStart) {
+                                showRow = false;
+                            }
+                        } else if (dateValue === 'month') {
+                            if (cellDate.getMonth() !== today.getMonth() || 
+                                cellDate.getFullYear() !== today.getFullYear()) {
+                                showRow = false;
+                            }
+                        }
+                    }
+                    
+                    // Filtrar por busca
+                    if (searchValue && showRow) {
+                        const idCell = row.querySelector('td:first-child');
+                        const dateCell = row.querySelector('td:nth-child(2)');
+                        
+                        if (!idCell.textContent.toLowerCase().includes(searchValue) && 
+                            !dateCell.textContent.toLowerCase().includes(searchValue)) {
+                            showRow = false;
+                        }
+                    }
+                    
+                    // Mostrar/ocultar linha
+                    row.style.display = showRow ? '' : 'none';
+                    
+                    // Ocultar também a linha de detalhes se existir
+                    const detailsRow = document.getElementById(`details-${row.querySelector('.details-btn').dataset.id}`);
+                    if (detailsRow) {
+                        detailsRow.style.display = showRow ? '' : 'none';
+                    }
+                });
+            };
+            
+            // Adicionar event listeners para os filtros
+            statusFilter.addEventListener('change', applyFilters);
+            dateFilter.addEventListener('change', applyFilters);
+            searchInput.addEventListener('input', applyFilters);
+        });
+    </script>
 </body>
 </html>
