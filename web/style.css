@@ -793,3 +793,258 @@ body.light-mode .supermarket-list label {
     color: var(--primary);
 }
 
+/* ====== ESTILOS PARA A TABELA DE HISTÓRICO ====== */
+        :root {
+            --primary: #4f46e5;
+            --accent: #7c3aed;
+            --success: #16a34a;
+            --warn: #f59e0b;
+            --error: #ef4444;
+            --radius: 14px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .table-container {
+            background: var(--panel-dark);
+            border-radius: var(--radius);
+            box-shadow: 0 5px 28px rgba(0,0,0,0.13);
+            border: 1px solid var(--border-dark);
+            margin-bottom: 2rem;
+            overflow: hidden;
+            transition: var(--transition);
+        }
+        
+        body.light-mode .table-container {
+            background: var(--panel-light);
+            border: 1px solid var(--border-light);
+        }
+
+        #collectionsTable {
+            width: 100%;
+            border-collapse: collapse;
+            border-spacing: 0;
+        }
+
+        #collectionsTable thead {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+        }
+
+        #collectionsTable th {
+            padding: 1rem 1.5rem;
+            text-align: left;
+            color: white;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        #collectionsTable tbody tr {
+            border-bottom: 1px solid var(--border-dark);
+            transition: var(--transition);
+        }
+
+        #collectionsTable tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        body.light-mode #collectionsTable tbody tr {
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        #collectionsTable tbody tr:hover {
+            background: rgba(79, 70, 229, 0.05);
+        }
+
+        #collectionsTable td {
+            padding: 1.25rem 1.5rem;
+            color: var(--text-dark);
+        }
+
+        body.light-mode #collectionsTable td {
+            color: var(--text-light);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            border-radius: 100px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .status-badge.concluída {
+            background: rgba(22, 163, 74, 0.15);
+            color: var(--success);
+        }
+
+        .status-badge.em-andamento {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warn);
+        }
+
+        .status-badge.falha {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--error);
+        }
+
+        .table-actions {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.6rem 1.25rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .details-btn {
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            color: white;
+        }
+
+        .details-btn:hover {
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+            transform: translateY(-2px);
+        }
+
+        .delete-btn {
+            background: transparent;
+            color: var(--error);
+            border: 1px solid var(--error);
+        }
+
+        .delete-btn:hover {
+            background: var(--error);
+            color: white;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+        }
+
+        .collection-id {
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .collection-date {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .date-main {
+            font-weight: 600;
+        }
+
+        .date-time {
+            font-size: 0.85rem;
+            color: var(--muted-dark);
+        }
+
+        body.light-mode .date-time {
+            color: var(--muted-light);
+        }
+
+        .records-count {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        /* Detalhes expandíveis */
+        .details-row {
+            background: var(--input-dark);
+        }
+
+        body.light-mode .details-row {
+            background: var(--input-light);
+        }
+
+        .details-content {
+            padding: 1.5rem;
+        }
+
+        .market-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .market-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            background: var(--panel-dark);
+            border-radius: 8px;
+            border: 1px solid var(--border-dark);
+        }
+
+        body.light-mode .market-item {
+            background: var(--panel-light);
+            border: 1px solid var(--border-light);
+        }
+
+        .market-name {
+            font-weight: 600;
+        }
+
+        .market-count {
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        /* Estado vazio */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--muted-dark);
+        }
+
+        body.light-mode .empty-state {
+            color: var(--muted-light);
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-dark);
+        }
+
+        body.light-mode .empty-state h3 {
+            color: var(--text-light);
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .table-container {
+                overflow-x: auto;
+            }
+            
+            #collectionsTable {
+                min-width: 700px;
+            }
+            
+            .table-actions {
+                flex-direction: column;
+            }
+            
+            .action-btn {
+                width: 100%;
+            }
+        }
