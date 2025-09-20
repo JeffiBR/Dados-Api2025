@@ -8,6 +8,273 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth.js"></script>
+    <style>
+        /* Estilos adicionais para melhorar a apresentação */
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-block;
+            text-transform: uppercase;
+        }
+        
+        .status-completed {
+            background-color: rgba(22, 163, 74, 0.15);
+            color: #16a34a;
+        }
+        
+        .status-running {
+            background-color: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+        }
+        
+        .status-failed {
+            background-color: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .details-btn, .delete-btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+        }
+        
+        .details-btn {
+            background: rgba(79, 70, 229, 0.1);
+            color: var(--primary);
+        }
+        
+        .details-btn:hover {
+            background: rgba(79, 70, 229, 0.2);
+        }
+        
+        .delete-btn {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+        }
+        
+        .delete-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+        
+        .details-row {
+            background: rgba(79, 70, 229, 0.03);
+        }
+        
+        .details-content {
+            padding: 16px;
+            background: var(--input-dark);
+            border-radius: 8px;
+            margin: 8px 0;
+        }
+        
+        body.light-mode .details-content {
+            background: var(--input-light);
+        }
+        
+        .details-content ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 12px;
+        }
+        
+        .details-content li {
+            padding: 12px;
+            background: var(--panel-dark);
+            border-radius: 8px;
+            border-left: 3px solid var(--primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        body.light-mode .details-content li {
+            background: var(--panel-light);
+        }
+        
+        .market-name {
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+        
+        body.light-mode .market-name {
+            color: var(--text-light);
+        }
+        
+        .items-count {
+            font-weight: 700;
+            color: var(--primary);
+        }
+        
+        .table-container {
+            position: relative;
+        }
+        
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(11, 16, 32, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            border-radius: var(--radius);
+            display: none;
+        }
+        
+        body.light-mode .loading-overlay {
+            background: rgba(244, 246, 251, 0.9);
+        }
+        
+        .loading-overlay.visible {
+            display: flex;
+        }
+        
+        /* Sistema de notificações */
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .notification {
+            padding: 16px 20px;
+            border-radius: 10px;
+            color: white;
+            font-weight: 500;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            max-width: 350px;
+            transform: translateX(100%);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        
+        .notification.success {
+            background: linear-gradient(90deg, var(--success), #22c55e);
+        }
+        
+        .notification.error {
+            background: linear-gradient(90deg, var(--error), #f87171);
+        }
+        
+        .notification.warning {
+            background: linear-gradient(90deg, var(--warn), #fbbf24);
+        }
+        
+        .notification.info {
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+        }
+        
+        .notification-icon {
+            font-size: 1.2rem;
+        }
+        
+        /* Filtros e controles */
+        .table-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .search-box {
+            position: relative;
+            min-width: 250px;
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 10px 15px 10px 40px;
+            border-radius: 8px;
+            border: 1px solid var(--border-dark);
+            background: var(--input-dark);
+            color: var(--text-dark);
+            font-size: 0.9rem;
+        }
+        
+        body.light-mode .search-box input {
+            background: var(--input-light);
+            color: var(--text-light);
+            border: 1px solid var(--border-light);
+        }
+        
+        .search-box i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted-dark);
+        }
+        
+        body.light-mode .search-box i {
+            color: var(--muted-light);
+        }
+        
+        .filter-select {
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border-dark);
+            background: var(--input-dark);
+            color: var(--text-dark);
+            font-size: 0.9rem;
+            min-width: 150px;
+        }
+        
+        body.light-mode .filter-select {
+            background: var(--input-light);
+            color: var(--text-light);
+            border: 1px solid var(--border-light);
+        }
+        
+        @media (max-width: 768px) {
+            .table-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .search-box {
+                min-width: 100%;
+            }
+            
+            .actions {
+                flex-direction: column;
+            }
+            
+            .details-content ul {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>
     <script>routeGuard('collections');</script>
@@ -69,7 +336,23 @@
                     </div>
                     <p class="panel-description">Visualize o histórico de coletas realizadas e os detalhes de cada execução.</p>
                     
+                    <div class="table-controls">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="searchInput" placeholder="Buscar coletas...">
+                        </div>
+                        <select class="filter-select" id="statusFilter">
+                            <option value="">Todos os status</option>
+                            <option value="completed">Concluída</option>
+                            <option value="running">Em execução</option>
+                            <option value="failed">Falha</option>
+                        </select>
+                    </div>
+                    
                     <div class="table-container">
+                        <div class="loading-overlay" id="loadingOverlay">
+                            <div class="loader"></div>
+                        </div>
                         <table id="collectionsTable">
                             <thead>
                                 <tr>
@@ -90,6 +373,65 @@
         </div>
     </div>
     
+    <!-- Container para notificações -->
+    <div class="notification-container" id="notificationContainer"></div>
+    
     <script src="collections.js"></script>
+    <script>
+        // Sistema de notificações
+        function showNotification(message, type = 'info') {
+            const notificationContainer = document.getElementById('notificationContainer');
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            
+            let icon = 'fa-info-circle';
+            if (type === 'success') icon = 'fa-check-circle';
+            if (type === 'error') icon = 'fa-exclamation-circle';
+            if (type === 'warning') icon = 'fa-exclamation-triangle';
+            
+            notification.innerHTML = `
+                <i class="fas ${icon} notification-icon"></i>
+                <span>${message}</span>
+            `;
+            
+            notificationContainer.appendChild(notification);
+            
+            // Trigger animation
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 10);
+            
+            // Remove after 5 seconds
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    if (notificationContainer.contains(notification)) {
+                        notificationContainer.removeChild(notification);
+                    }
+                }, 300);
+            }, 5000);
+            
+            return notification;
+        }
+        
+        // Função para mostrar/ocultar loading
+        function toggleLoading(show) {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (show) {
+                loadingOverlay.classList.add('visible');
+            } else {
+                loadingOverlay.classList.remove('visible');
+            }
+        }
+        
+        // Adicionar event listeners para busca e filtro
+        document.addEventListener('DOMContentLoaded', () => {
+            const searchInput = document.getElementById('searchInput');
+            const statusFilter = document.getElementById('statusFilter');
+            
+            // Implementar funcionalidade de busca e filtro aqui
+            // (será integrado com o código existente no collections.js)
+        });
+    </script>
 </body>
 </html>
