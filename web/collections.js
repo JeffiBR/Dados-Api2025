@@ -81,12 +81,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (button.classList.contains('details-btn')) {
             const id = button.dataset.id;
             const detailsRow = document.getElementById(`details-${id}`);
-            
-            // Verificar se a linha está visível antes de tentar mostrar detalhes
-            if (button.closest('tr').style.display === 'none') {
-                return; // Não fazer nada se a linha estiver oculta por filtros
-            }
-            
             const detailsContent = detailsRow.querySelector('.details-content');
             const detailsButton = button;
 
@@ -150,12 +144,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // Lógica para o botão "Excluir"
         if (button.classList.contains('delete-btn')) {
             const id = button.dataset.id;
-            
-            // Verificar se a linha está visível antes de tentar excluir
-            if (button.closest('tr').style.display === 'none') {
-                return; // Não fazer nada se a linha estiver oculta por filtros
-            }
-            
             const confirmacao = confirm(`Tem certeza que deseja excluir a coleta #${id}?`);
             
             if (confirmacao) {
