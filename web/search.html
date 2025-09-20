@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consulta de Preços - Thunder Theme</title>
+    <title>Consulta de Preços</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth.js"></script>
 </head>
@@ -13,16 +13,15 @@
     <script>routeGuard();</script>
 
     <div class="app-container">
+        <button class="mobile-menu-button">☰</button>
         <div class="sidebar-overlay"></div>
-        <button class="mobile-menu-button"><i class="fas fa-bars"></i></button>
         
         <aside class="sidebar">
             <div class="sidebar-header">
-                <i class="fas fa-bolt"></i>
                 <h1>Preços AL</h1>
             </div>
             <nav class="sidebar-nav">
-                 <ul>
+                <ul>
                     <li class="nav-header">ANÁLISE</li>
                     <li><a href="/search.html" class="active"><i class="fas fa-home"></i> Busca</a></li>
                     <li data-permission="compare"><a href="/compare.html"><i class="fas fa-chart-bar"></i> Comparador</a></li>
@@ -47,8 +46,8 @@
 
         <div class="content-wrapper">
             <header class="top-bar">
-                <button class="mobile-menu-button"><i class="fas fa-bars"></i></button>
-                <div id="userProfileMenu" class="profile-menu">
+                <button class="mobile-menu-button">☰</button>
+                <div id="userProfileMenu" class="profile-menu" style="display: none;">
                     <button class="profile-button">
                         <img src="https://via.placeholder.com/40" alt="Avatar" id="userAvatar">
                         <span class="user-name" id="userName">Usuário</span>
@@ -72,55 +71,33 @@
                     <div class="search-controls">
                         <div class="search-input-group">
                             <input type="text" id="searchInput" placeholder="Digite o nome do produto...">
-                            <button id="clearSearchButton" class="clear-search"><i class="fas fa-times"></i></button>
+                            <button class="clear-search"><i class="fas fa-times"></i></button>
                         </div>
                         <div class="search-buttons">
                             <button id="searchButton" class="btn"><i class="fas fa-database"></i> Buscar no Banco</button>
                             <button id="realtimeSearchButton" class="btn"><i class="fas fa-bolt"></i> Buscar em Tempo Real</button>
+                            <button id="clearButton" class="btn outline"><i class="fas fa-eraser"></i> Limpar</button>
                         </div>
+                        
                         <details id="filters-details">
-                            <summary id="filters-toggle"><i class="fas fa-filter"></i> Filtrar por Supermercado</summary>
+                            <summary>Filtrar por Supermercado</summary>
                             <div class="filters-container">
                                 <div id="supermarketFilters" class="supermarket-list"></div>
                             </div>
                         </details>
                     </div>
-                </div>
-                
-                <div id="loader" class="loader-container" style="display: none;">
-                    <div class="loader"></div>
-                    <p>Buscando produtos...</p>
-                </div>
-                
-                <!-- Área para os filtros de resultados -->
-                <div id="resultsFilters" class="admin-panel" style="display: none;">
-                    <div class="panel-header">
-                        <i class="fas fa-sliders-h"></i>
-                        <h3>Filtrar resultados</h3>
+                    
+                    <div id="loader" class="loader-container" style="display: none;">
+                        <div class="loader"></div>
+                        <p>Buscando produtos...</p>
                     </div>
-                    <div class="filter-controls">
-                        <div class="filter-group">
-                            <label for="marketFilter">Mercado:</label>
-                            <select id="marketFilter">
-                                <option value="all">Todos os mercados</option>
-                            </select>
-                        </div>
-                        <div class="filter-group">
-                            <label for="sortFilter">Ordenar por:</label>
-                            <select id="sortFilter">
-                                <option value="recent">Mais recentes</option>
-                                <option value="cheap">Preço: mais barato</option>
-                                <option value="expensive">Preço: mais caro</option>
-                            </select>
-                        </div>
-                        <button id="clearFiltersButton" class="btn outline"><i class="fas fa-times"></i> Limpar Filtros</button>
-                    </div>
+                    
+                    <div id="resultsGrid" class="results-grid"></div>
                 </div>
-                
-                <div id="resultsGrid" class="results-grid"></div>
             </main>
         </div>
     </div>
+    
     <script src="script.js"></script>
 </body>
 </html>
