@@ -10,63 +10,12 @@
     <script src="auth.js"></script>
     <style>
         /* Estilos adicionais específicos para a página de histórico */
-        .collections-filters {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-            flex-wrap: wrap;
-            align-items: flex-end;
-        }
-        
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            min-width: 200px;
-            flex: 1;
-        }
-        
-        .filter-group label {
-            font-weight: 600;
-            font-size: 0.9rem;
-            color: var(--muted-dark);
-        }
-        
-        body.light-mode .filter-group label {
-            color: var(--muted-light);
-        }
-        
-        .filter-group select, .filter-group input {
-            padding: 0.6rem 1rem;
-            border: 2px solid var(--border-dark);
-            border-radius: var(--radius);
-            font-size: 0.95rem;
-            background: var(--input-dark);
-            color: var(--text-dark);
-            cursor: pointer;
-            transition: var(--transition);
-        }
-        
-        body.light-mode .filter-group select, 
-        body.light-mode .filter-group input {
-            background: var(--input-light);
-            color: var(--text-light);
-            border: 2px solid var(--border-light);
-        }
-        
-        .filter-group select:focus, .filter-group input:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(79,70,229,0.13);
-        }
-        
         .status-badge {
             padding: 0.35rem 0.75rem;
             border-radius: 100px;
             font-size: 0.85rem;
             font-weight: 600;
             display: inline-block;
-            transition: all 0.2s ease;
         }
         
         .status-completed {
@@ -86,14 +35,11 @@
         
         .table-container {
             overflow-x: auto;
-            border-radius: var(--radius);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         }
         
         #collectionsTable {
             width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
+            border-collapse: collapse;
         }
         
         #collectionsTable th {
@@ -103,8 +49,6 @@
             color: var(--muted-dark);
             font-weight: 600;
             border-bottom: 1px solid var(--border-dark);
-            position: sticky;
-            top: 0;
         }
         
         body.light-mode #collectionsTable th {
@@ -116,17 +60,14 @@
         #collectionsTable td {
             padding: 1rem;
             border-bottom: 1px solid var(--border-dark);
-            transition: background-color 0.2s ease;
         }
         
         body.light-mode #collectionsTable td {
             border-bottom: 1px solid var(--border-light);
         }
         
-        #collectionsTable tr:not(.details-row):hover {
+        #collectionsTable tr:hover {
             background: rgba(79, 70, 229, 0.05);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
         }
         
         .actions {
@@ -140,10 +81,7 @@
             font-size: 0.85rem;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.2s ease;
-            border: 1px solid transparent;
-            position: relative;
-            overflow: hidden;
+            transition: var(--transition);
         }
         
         .details-btn {
@@ -154,12 +92,6 @@
         
         .details-btn:hover {
             background: rgba(79, 70, 229, 0.2);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(79, 70, 229, 0.2);
-        }
-        
-        .details-btn:active {
-            transform: translateY(0);
         }
         
         .delete-btn {
@@ -170,48 +102,10 @@
         
         .delete-btn:hover {
             background: rgba(239, 68, 68, 0.2);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(239, 68, 68, 0.2);
-        }
-        
-        .delete-btn:active {
-            transform: translateY(0);
-        }
-        
-        /* Efeito de ripple para os botões */
-        .details-btn::after, .delete-btn::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 5px;
-            height: 5px;
-            background: rgba(255, 255, 255, 0.5);
-            opacity: 0;
-            border-radius: 100%;
-            transform: scale(1, 1) translate(-50%);
-            transform-origin: 50% 50%;
-        }
-        
-        .details-btn:focus:not(:active)::after, 
-        .delete-btn:focus:not(:active)::after {
-            animation: ripple 1s ease-out;
-        }
-        
-        @keyframes ripple {
-            0% {
-                transform: scale(0, 0);
-                opacity: 0.5;
-            }
-            100% {
-                transform: scale(20, 20);
-                opacity: 0;
-            }
         }
         
         .details-row {
             background: var(--input-dark);
-            transition: all 0.3s ease;
         }
         
         body.light-mode .details-row {
@@ -220,12 +114,6 @@
         
         .details-content {
             padding: 1.5rem;
-            animation: fadeIn 0.3s ease;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
         }
         
         .market-cards {
@@ -243,12 +131,6 @@
             display: flex;
             flex-direction: column;
             gap: 0.5rem;
-            transition: all 0.2s ease;
-        }
-        
-        .market-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
         }
         
         body.light-mode .market-card {
@@ -317,43 +199,7 @@
             color: var(--muted-light);
         }
         
-        .filter-actions {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 0.5rem;
-        }
-        
-        .filter-actions button {
-            padding: 0.5rem 1rem;
-            border-radius: var(--radius);
-            border: 1px solid var(--border-dark);
-            background: var(--input-dark);
-            color: var(--text-dark);
-            cursor: pointer;
-            transition: var(--transition);
-            font-size: 0.9rem;
-        }
-        
-        body.light-mode .filter-actions button {
-            background: var(--input-light);
-            color: var(--text-light);
-            border: 1px solid var(--border-light);
-        }
-        
-        .filter-actions button:hover {
-            background: var(--primary);
-            color: white;
-        }
-        
         @media (max-width: 768px) {
-            .collections-filters {
-                flex-direction: column;
-            }
-            
-            .filter-group {
-                min-width: 100%;
-            }
-            
             #collectionsTable {
                 display: block;
             }
@@ -367,12 +213,6 @@
                 margin-bottom: 1rem;
                 border: 1px solid var(--border-dark);
                 border-radius: var(--radius);
-                transition: all 0.2s ease;
-            }
-            
-            #collectionsTable tr:hover {
-                transform: none;
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             }
             
             body.light-mode #collectionsTable tr {
@@ -409,11 +249,6 @@
             
             .actions {
                 justify-content: flex-end;
-            }
-            
-            .details-btn, .delete-btn {
-                padding: 0.4rem 0.8rem;
-                font-size: 0.8rem;
             }
         }
     </style>
@@ -478,38 +313,6 @@
                     </div>
                     <p class="panel-description">Visualize o histórico de coletas realizadas e os detalhes de cada execução.</p>
                     
-                    <div class="filter-actions">
-                        <button id="applyFilters">Aplicar Filtros</button>
-                        <button id="clearFilters">Limpar Filtros</button>
-                    </div>
-                    
-                    <div class="collections-filters">
-                        <div class="filter-group">
-                            <label for="statusFilter">Status</label>
-                            <select id="statusFilter">
-                                <option value="all">Todos os status</option>
-                                <option value="concluída">Concluída</option>
-                                <option value="processando">Processando</option>
-                                <option value="falha">Falha</option>
-                            </select>
-                        </div>
-                        
-                        <div class="filter-group">
-                            <label for="dateFilter">Data</label>
-                            <select id="dateFilter">
-                                <option value="all">Todas as datas</option>
-                                <option value="today">Hoje</option>
-                                <option value="week">Esta semana</option>
-                                <option value="month">Este mês</option>
-                            </select>
-                        </div>
-                        
-                        <div class="filter-group">
-                            <label for="searchInput">Buscar</label>
-                            <input type="text" id="searchInput" placeholder="ID ou palavra-chave">
-                        </div>
-                    </div>
-                    
                     <div class="table-container">
                         <table id="collectionsTable">
                             <thead>
@@ -532,122 +335,5 @@
     </div>
     
     <script src="collections.js"></script>
-    <script>
-        // Adicionando funcionalidades de filtro e melhorias na interface
-        document.addEventListener('DOMContentLoaded', () => {
-            // Inicializar filtros
-            const statusFilter = document.getElementById('statusFilter');
-            const dateFilter = document.getElementById('dateFilter');
-            const searchInput = document.getElementById('searchInput');
-            const applyFiltersBtn = document.getElementById('applyFilters');
-            const clearFiltersBtn = document.getElementById('clearFilters');
-            
-            // Função para aplicar filtros
-            const applyFilters = () => {
-                const statusValue = statusFilter.value;
-                const dateValue = dateFilter.value;
-                const searchValue = searchInput.value.toLowerCase();
-                
-                const rows = document.querySelectorAll('#collectionsTable tbody tr:not(.details-row)');
-                
-                rows.forEach(row => {
-                    let showRow = true;
-                    
-                    // Filtrar por status
-                    if (statusValue !== 'all') {
-                        const statusCell = row.querySelector('td:nth-child(3)');
-                        if (statusCell) {
-                            const statusText = statusCell.querySelector('.status-badge').textContent.toLowerCase();
-                            if (statusText !== statusValue) {
-                                showRow = false;
-                            }
-                        }
-                    }
-                    
-                    // Filtrar por data (implementação básica)
-                    if (dateValue !== 'all' && showRow) {
-                        const dateCell = row.querySelector('td:nth-child(2)');
-                        if (dateCell) {
-                            const cellDate = new Date(dateCell.getAttribute('data-date'));
-                            const today = new Date();
-                            
-                            if (dateValue === 'today') {
-                                if (cellDate.toDateString() !== today.toDateString()) {
-                                    showRow = false;
-                                }
-                            } else if (dateValue === 'week') {
-                                const weekStart = new Date(today);
-                                weekStart.setDate(today.getDate() - today.getDay());
-                                weekStart.setHours(0, 0, 0, 0);
-                                
-                                if (cellDate < weekStart) {
-                                    showRow = false;
-                                }
-                            } else if (dateValue === 'month') {
-                                if (cellDate.getMonth() !== today.getMonth() || 
-                                    cellDate.getFullYear() !== today.getFullYear()) {
-                                    showRow = false;
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Filtrar por busca
-                    if (searchValue && showRow) {
-                        const idCell = row.querySelector('td:first-child');
-                        const dateCell = row.querySelector('td:nth-child(2)');
-                        
-                        if ((idCell && !idCell.textContent.toLowerCase().includes(searchValue)) && 
-                            (dateCell && !dateCell.textContent.toLowerCase().includes(searchValue))) {
-                            showRow = false;
-                        }
-                    }
-                    
-                    // Mostrar/ocultar linha
-                    row.style.display = showRow ? '' : 'none';
-                    
-                    // Ocultar também a linha de detalhes se existir
-                    const detailsBtn = row.querySelector('.details-btn');
-                    if (detailsBtn) {
-                        const detailsRow = document.getElementById(`details-${detailsBtn.dataset.id}`);
-                        if (detailsRow) {
-                            detailsRow.style.display = showRow ? '' : 'none';
-                            // Se a linha principal está oculta, garantir que o botão de detalhes volte ao estado inicial
-                            if (!showRow) {
-                                detailsBtn.innerHTML = '<i class="fas fa-eye"></i> Detalhes';
-                            }
-                        }
-                    }
-                });
-            };
-            
-            // Função para limpar filtros
-            const clearFilters = () => {
-                statusFilter.value = 'all';
-                dateFilter.value = 'all';
-                searchInput.value = '';
-                
-                // Mostrar todas as linhas
-                const rows = document.querySelectorAll('#collectionsTable tbody tr');
-                rows.forEach(row => {
-                    row.style.display = '';
-                    // Resetar botões de detalhes
-                    const detailsBtn = row.querySelector('.details-btn');
-                    if (detailsBtn && detailsBtn.innerHTML.includes('Ocultar')) {
-                        detailsBtn.innerHTML = '<i class="fas fa-eye"></i> Detalhes';
-                    }
-                });
-            };
-            
-            // Adicionar event listeners para os filtros
-            applyFiltersBtn.addEventListener('click', applyFilters);
-            clearFiltersBtn.addEventListener('click', clearFilters);
-            
-            // Aplicar filtros automaticamente ao alterar os filtros (opcional)
-            statusFilter.addEventListener('change', applyFilters);
-            dateFilter.addEventListener('change', applyFilters);
-            searchInput.addEventListener('input', applyFilters);
-        });
-    </script>
 </body>
 </html>
