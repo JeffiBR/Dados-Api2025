@@ -1,16 +1,28 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8"><title>Log de Produtos Coletados</title><link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="auth.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log de Produtos Coletados - Preços AL</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth.js"></script>
 </head>
 <body>
     <script>routeGuard('product_log');</script>
-    <button class="mobile-menu-button">☰</button>
-    <aside class="sidebar">
-        <div class="sidebar-header"><h1>Preços AL</h1></div>
-        <nav class="sidebar-nav">
-             <ul>
+
+    <div class="app-container">
+        <div class="sidebar-overlay"></div>
+        <button class="mobile-menu-button"><i class="fas fa-bars"></i></button>
+        
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-bolt"></i>
+                <h1>Preços AL</h1>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
                     <li class="nav-header">ANÁLISE</li>
                     <li><a href="/search.html"><i class="fas fa-home"></i> Busca</a></li>
                     <li data-permission="compare"><a href="/compare.html"><i class="fas fa-chart-bar"></i> Comparador</a></li>
@@ -18,41 +30,75 @@
                     
                     <li class="nav-header">ADMINISTRAÇÃO</li>
                     <li data-permission="coleta"><a href="/admin.html"><i class="fas fa-cog"></i> Coleta</a></li>
-                    <li data-permission="collections"><a href="/collections.html" class="active"><i class="fas fa-history"></i> Histórico de Coletas</a></li>
-                    <li data-permission="product_log"><a href="/product-log.html"><i class="fas fa-file-alt"></i> Log de Produtos</a></li>
+                    <li data-permission="collections"><a href="/collections.html"><i class="fas fa-history"></i> Histórico de Coletas</a></li>
+                    <li data-permission="product_log"><a href="/product-log.html" class="active"><i class="fas fa-file-alt"></i> Log de Produtos</a></li>
                     <li data-permission="prune"><a href="/prune.html"><i class="fas fa-trash"></i> Limpeza de Dados</a></li>
 
                     <li class="nav-header">CONFIGURAÇÃO</li>
                     <li data-permission="markets"><a href="/markets.html"><i class="fas fa-store"></i> Gerenciar Mercados</a></li>
                     <li data-permission="users"><a href="/users.html"><i class="fas fa-users"></i> Gerenciar Usuários</a></li>
                 </ul>
-        </nav>
-        <div class="theme-switcher"><span>Tema</span><button id="themeToggle">Mudar</button></div>
-    </aside>
-    <div class="content-wrapper">
-        <header class="top-bar">
-            <div id="userProfileMenu" class="profile-menu" style="display: none;">
-                <img src="https://via.placeholder.com/40" alt="Avatar" id="userAvatar">
-                <span id="userName">Usuário</span>
-                <div class="profile-dropdown"><a href="/profile.html">Meu Perfil</a><a href="#" id="logoutButton">Sair</a></div>
+            </nav>
+            <div class="theme-switcher">
+                <span>Tema</span>
+                <button id="themeToggle"><i class="fas fa-moon"></i></button>
             </div>
-        </header>
-        <main class="main-content">
-            <div class="table-container">
-                <h2>Todos os Registros de Produtos</h2>
-                <p>Navegue por todos os dados brutos coletados do banco de dados.</p><br>
-                <table id="productsTable">
-                    <thead><tr><th>Produto</th><th>Preço</th><th>Supermercado</th><th>Data Venda</th><th>Cód. Barras</th><th>Coleta ID</th></tr></thead>
-                    <tbody></tbody>
-                </table>
-                <div class="pagination-controls">
-                    <button id="prevPageBtn" disabled>Anterior</button>
-                    <span id="pageInfo">Página 1 de 1</span>
-                    <button id="nextPageBtn" disabled>Próxima</button>
+        </aside>
+
+        <div class="content-wrapper">
+            <header class="top-bar">
+                <button class="mobile-menu-button"><i class="fas fa-bars"></i></button>
+                <div id="userProfileMenu" class="profile-menu">
+                    <button class="profile-button">
+                        <img src="https://via.placeholder.com/40" alt="Avatar" id="userAvatar">
+                        <span class="user-name" id="userName">Usuário</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="profile-dropdown">
+                        <a href="/profile.html"><i class="fas fa-user"></i> Meu Perfil</a>
+                        <a href="#" id="logoutButton"><i class="fas fa-sign-out-alt"></i> Sair</a>
+                    </div>
                 </div>
-            </div>
-        </main>
+            </header>
+
+            <main class="main-content">
+                <div class="admin-panel">
+                    <div class="panel-header">
+                        <i class="fas fa-file-alt"></i>
+                        <h2>Log de Produtos</h2>
+                    </div>
+                    <p class="panel-description">Navegue por todos os dados brutos coletados do banco de dados.</p>
+                    
+                    <div class="table-container">
+                        <table id="productsTable" class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Produto</th>
+                                    <th>Preço</th>
+                                    <th>Supermercado</th>
+                                    <th>Data Venda</th>
+                                    <th>Cód. Barras</th>
+                                    <th>Coleta ID</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                        
+                        <div class="pagination-controls">
+                            <button id="prevPageBtn" class="btn btn-secondary" disabled>
+                                <i class="fas fa-chevron-left"></i> Anterior
+                            </button>
+                            <span id="pageInfo" class="page-info">Página 1 de 1</span>
+                            <button id="nextPageBtn" class="btn btn-secondary" disabled>
+                                Próxima <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
     </div>
+    
     <script src="product-log.js"></script>
 </body>
 </html>
