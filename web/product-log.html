@@ -8,6 +8,254 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth.js"></script>
+    <style>
+        /* Estilos adicionais específicos para a página de log */
+        .view-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .view-toggle button {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border-dark);
+            background: var(--input-dark);
+            color: var(--muted-dark);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        body.light-mode .view-toggle button {
+            border-color: var(--border-light);
+            background: var(--input-light);
+        }
+        
+        .view-toggle button.active {
+            background: rgba(79, 70, 229, 0.15);
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+        
+        .filters-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+            padding: 20px;
+            background: var(--input-dark);
+            border-radius: var(--radius);
+            border: 1px solid var(--border-dark);
+        }
+        
+        body.light-mode .filters-container {
+            background: var(--input-light);
+            border-color: var(--border-light);
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .filter-group label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--muted-dark);
+        }
+        
+        body.light-mode .filter-group label {
+            color: var(--muted-light);
+        }
+        
+        .filter-group input, .filter-group select {
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border-dark);
+            background: var(--panel-dark);
+            color: var(--text-dark);
+            font-family: inherit;
+        }
+        
+        body.light-mode .filter-group input, 
+        body.light-mode .filter-group select {
+            border-color: var(--border-light);
+            background: var(--panel-light);
+            color: var(--text-light);
+        }
+        
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .product-card {
+            background: var(--panel-dark);
+            border-radius: var(--radius);
+            padding: 20px;
+            border: 1px solid var(--border-dark);
+            transition: var(--transition);
+            position: relative;
+        }
+        
+        body.light-mode .product-card {
+            background: var(--panel-light);
+            border-color: var(--border-light);
+        }
+        
+        .product-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        
+        .product-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        
+        .product-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--text-dark);
+            margin-right: 15px;
+            line-height: 1.4;
+        }
+        
+        body.light-mode .product-name {
+            color: var(--text-light);
+        }
+        
+        .product-price {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--primary);
+            white-space: nowrap;
+        }
+        
+        .product-detail {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+        
+        .product-detail i {
+            width: 20px;
+            margin-right: 10px;
+            color: var(--muted-dark);
+        }
+        
+        body.light-mode .product-detail i {
+            color: var(--muted-light);
+        }
+        
+        .product-detail span {
+            color: var(--muted-dark);
+        }
+        
+        body.light-mode .product-detail span {
+            color: var(--muted-light);
+        }
+        
+        .coleta-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(79, 70, 229, 0.1);
+            color: var(--primary);
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .table-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .items-per-page {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .items-per-page select {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-dark);
+            background: var(--input-dark);
+            color: var(--text-dark);
+        }
+        
+        body.light-mode .items-per-page select {
+            border-color: var(--border-light);
+            background: var(--input-light);
+            color: var(--text-light);
+        }
+        
+        .sortable-header {
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .sortable-header:hover {
+            color: var(--primary);
+        }
+        
+        .table-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border-dark);
+        }
+        
+        body.light-mode .table-footer {
+            border-top-color: var(--border-light);
+        }
+        
+        .total-items {
+            font-size: 0.9rem;
+            color: var(--muted-dark);
+        }
+        
+        body.light-mode .total-items {
+            color: var(--muted-light);
+        }
+        
+        @media (max-width: 768px) {
+            .filters-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .products-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .table-controls {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+            
+            .table-footer {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
 </head>
 <body>
     <script>routeGuard('product_log');</script>
@@ -67,31 +315,119 @@
                         <i class="fas fa-file-alt"></i>
                         <h2>Log de Produtos</h2>
                     </div>
-                    <p class="panel-description">Navegue por todos os dados brutos coletados do banco de dados.</p>
+                    <p class="panel-description">Navegue por todos os dados brutos coletados do banco de dados. Use os filtros para encontrar produtos específicos.</p>
                     
-                    <div class="table-container">
-                        <table id="productsTable" class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Produto</th>
-                                    <th>Preço</th>
-                                    <th>Supermercado</th>
-                                    <th>Data Venda</th>
-                                    <th>Cód. Barras</th>
-                                    <th>Coleta ID</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
+                    <div class="view-toggle">
+                        <button id="tableViewBtn" class="active"><i class="fas fa-table"></i> Visualização em Tabela</button>
+                        <button id="cardViewBtn"><i class="fas fa-th-large"></i> Visualização em Cards</button>
+                    </div>
+                    
+                    <div class="filters-container">
+                        <div class="filter-group">
+                            <label for="searchInput">Buscar produto</label>
+                            <input type="text" id="searchInput" placeholder="Digite o nome do produto...">
+                        </div>
                         
-                        <div class="pagination-controls">
-                            <button id="prevPageBtn" class="btn btn-secondary" disabled>
-                                <i class="fas fa-chevron-left"></i> Anterior
-                            </button>
-                            <span id="pageInfo" class="page-info">Página 1 de 1</span>
-                            <button id="nextPageBtn" class="btn btn-secondary" disabled>
-                                Próxima <i class="fas fa-chevron-right"></i>
-                            </button>
+                        <div class="filter-group">
+                            <label for="supermarketFilter">Filtrar por supermercado</label>
+                            <select id="supermarketFilter">
+                                <option value="">Todos os supermercados</option>
+                                <!-- Opções serão preenchidas via JavaScript -->
+                            </select>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="dateFilter">Filtrar por data</label>
+                            <input type="date" id="dateFilter">
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="priceRange">Faixa de preço</label>
+                            <select id="priceRange">
+                                <option value="">Todos os preços</option>
+                                <option value="0-10">Até R$ 10,00</option>
+                                <option value="10-50">R$ 10,00 a R$ 50,00</option>
+                                <option value="50-100">R$ 50,00 a R$ 100,00</option>
+                                <option value="100-9999">Acima de R$ 100,00</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="table-view">
+                        <div class="table-controls">
+                            <div class="items-per-page">
+                                <span>Itens por página:</span>
+                                <select id="itemsPerPage">
+                                    <option value="20">20</option>
+                                    <option value="50" selected>50</option>
+                                    <option value="100">100</option>
+                                    <option value="200">200</option>
+                                </select>
+                            </div>
+                            
+                            <button id="exportBtn" class="btn outline"><i class="fas fa-download"></i> Exportar Dados</button>
+                        </div>
+                        
+                        <div class="table-container">
+                            <table id="productsTable" class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th class="sortable-header" data-sort="nome_produto">
+                                            Produto <i class="fas fa-sort"></i>
+                                        </th>
+                                        <th class="sortable-header" data-sort="preco_produto">
+                                            Preço <i class="fas fa-sort"></i>
+                                        </th>
+                                        <th class="sortable-header" data-sort="nome_supermercado">
+                                            Supermercado <i class="fas fa-sort"></i>
+                                        </th>
+                                        <th class="sortable-header" data-sort="data_ultima_venda">
+                                            Data Venda <i class="fas fa-sort"></i>
+                                        </th>
+                                        <th class="sortable-header" data-sort="codigo_barras">
+                                            Cód. Barras <i class="fas fa-sort"></i>
+                                        </th>
+                                        <th class="sortable-header" data-sort="coleta_id">
+                                            Coleta ID <i class="fas fa-sort"></i>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="table-footer">
+                            <div class="total-items" id="totalItems">Total: 0 produtos</div>
+                            
+                            <div class="pagination-controls">
+                                <button id="prevPageBtn" class="btn btn-secondary" disabled>
+                                    <i class="fas fa-chevron-left"></i> Anterior
+                                </button>
+                                <span id="pageInfo" class="page-info">Página 1 de 1</span>
+                                <button id="nextPageBtn" class="btn btn-secondary" disabled>
+                                    Próxima <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-view" style="display: none;">
+                        <div class="products-grid" id="productsGrid">
+                            <!-- Cards serão preenchidos via JavaScript -->
+                        </div>
+                        
+                        <div class="table-footer">
+                            <div class="total-items" id="totalItemsCard">Total: 0 produtos</div>
+                            
+                            <div class="pagination-controls">
+                                <button id="prevPageBtnCard" class="btn btn-secondary" disabled>
+                                    <i class="fas fa-chevron-left"></i> Anterior
+                                </button>
+                                <span id="pageInfoCard" class="page-info">Página 1 de 1</span>
+                                <button id="nextPageBtnCard" class="btn btn-secondary" disabled>
+                                    Próxima <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -100,5 +436,93 @@
     </div>
     
     <script src="product-log.js"></script>
+    <script>
+        // Script adicional para funcionalidades de UI
+        document.addEventListener('DOMContentLoaded', () => {
+            // Alternar entre visualização de tabela e cards
+            const tableViewBtn = document.getElementById('tableViewBtn');
+            const cardViewBtn = document.getElementById('cardViewBtn');
+            const tableView = document.querySelector('.table-view');
+            const cardView = document.querySelector('.card-view');
+            
+            tableViewBtn.addEventListener('click', () => {
+                tableView.style.display = 'block';
+                cardView.style.display = 'none';
+                tableViewBtn.classList.add('active');
+                cardViewBtn.classList.remove('active');
+            });
+            
+            cardViewBtn.addEventListener('click', () => {
+                tableView.style.display = 'none';
+                cardView.style.display = 'block';
+                tableViewBtn.classList.remove('active');
+                cardViewBtn.classList.add('active');
+            });
+            
+            // Ordenação de tabela
+            const sortableHeaders = document.querySelectorAll('.sortable-header');
+            let currentSort = { column: 'data_ultima_venda', direction: 'desc' };
+            
+            sortableHeaders.forEach(header => {
+                header.addEventListener('click', () => {
+                    const column = header.dataset.sort;
+                    
+                    // Alternar direção se clicar na mesma coluna
+                    if (currentSort.column === column) {
+                        currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        currentSort.column = column;
+                        currentSort.direction = 'asc';
+                    }
+                    
+                    // Atualizar ícones de ordenação
+                    sortableHeaders.forEach(h => {
+                        const icon = h.querySelector('i');
+                        if (h.dataset.sort === currentSort.column) {
+                            icon.className = currentSort.direction === 'asc' ? 
+                                'fas fa-sort-up' : 'fas fa-sort-down';
+                        } else {
+                            icon.className = 'fas fa-sort';
+                        }
+                    });
+                    
+                    // Recarregar dados com nova ordenação
+                    // (esta funcionalidade precisa ser implementada no product-log.js)
+                });
+            });
+            
+            // Filtros
+            const searchInput = document.getElementById('searchInput');
+            const supermarketFilter = document.getElementById('supermarketFilter');
+            const dateFilter = document.getElementById('dateFilter');
+            const priceRange = document.getElementById('priceRange');
+            
+            // Debounce para busca em tempo real
+            let searchTimeout;
+            searchInput.addEventListener('input', () => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    // Aplicar filtros
+                    applyFilters();
+                }, 300);
+            });
+            
+            supermarketFilter.addEventListener('change', applyFilters);
+            dateFilter.addEventListener('change', applyFilters);
+            priceRange.addEventListener('change', applyFilters);
+            
+            function applyFilters() {
+                // Esta função precisa ser implementada no product-log.js
+                // para filtrar os dados com base nos critérios selecionados
+                console.log('Aplicando filtros...');
+            }
+            
+            // Exportar dados
+            document.getElementById('exportBtn').addEventListener('click', () => {
+                // Implementar funcionalidade de exportação
+                alert('Funcionalidade de exportação será implementada em breve.');
+            });
+        });
+    </script>
 </body>
 </html>
