@@ -1,7 +1,6 @@
-// users.js
 document.addEventListener('DOMContentLoaded', () => {
     const API_URL = '/api/users';
-    const tableBody = document.querySelector('#usersTable tbody');
+    const tableBody = document.getElementById('usersTableBody');
     const saveButton = document.getElementById('saveUserBtn');
     const cancelButton = document.getElementById('cancelButton');
     const formTitle = document.getElementById('formTitle');
@@ -11,100 +10,82 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordInput = document.getElementById('password');
     const roleSelect = document.getElementById('role');
     const permissionsContainer = document.getElementById('permissions-container');
+    const permissionCheckboxes = permissionsContainer.querySelectorAll('input[type="checkbox"]');
 
-    // Carregar usuários
     const loadUsers = async () => {
         try {
-            const session = await getSession();
-            if (!session) {
-                alert("Sua sessão expirou. Por favor, faça login novamente.");
-                window.location.href = '/login.html';
-                return;
-            }
-
-            const response = await fetch(API_URL, {
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`
-                }
-            });
-            
-            // Verificar se a resposta é JSON
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                const text = await response.text();
-                throw new Error(`Resposta inesperada do servidor: ${text.substring(0, 100)}...`);
-            }
-            
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || `Erro ${response.status} ao carregar usuários`);
-            }
-            
+            const response = await authenticatedFetch(API_URL);
+            if (!response.ok) throw new Error('Erro ao carregar usuários');
             const users = await response.json();
+
             tableBody.innerHTML = '';
-            
             users.forEach(user => {
                 const row = document.createElement('tr');
+                // Salva os dados no próprio elemento para fácil acesso
+                row.dataset.user = JSON.stringify(user);
+
                 row.innerHTML = `
-                    <td>${user.full_name}</td>
-                    <td>${user.email}</td>
+                    <td>${user.full_name || 'N/A'}</td>
                     <td>${user.role === 'admin' ? 'Admin Geral' : 'Usuário'}</td>
-                    <td>${user.allowed_pages ? user.allowed_pages.join(', ') : 'Nenhuma'}</td>
+                    <td>${(user.allowed_pages || []).length} permissões</td>
                     <td class="actions">
-                        <button class="edit-btn" data-id="${user.id}" data-name="${user.full_name}" 
-                                data-email="${user.email}" data-role="${user.role}" 
-                                data-permissions="${user.allowed_pages ? JSON.stringify(user.allowed_pages) : '[]'}">Editar</button>
-                        <button class="delete-btn" data-id="${user.id}">Excluir</button>
+                        <button class="btn-icon edit-btn" title="Editar"><i class="fas fa-pencil-alt"></i></button>
+                        <button class="btn-icon delete-btn" title="Excluir"><i class="fas fa-trash-alt"></i></button>
                     </td>
                 `;
                 tableBody.appendChild(row);
             });
         } catch (error) {
-            console.error('Erro ao carregar usuários:', error);
-            alert(error.message || 'Não foi possível carregar a lista de usuários.');
+            console.error('Erro:', error);
+            alert('Não foi possível carregar a lista de usuários.');
         }
     };
 
-    // Resetar formulário
     const resetForm = () => {
         formTitle.textContent = 'Criar Novo Usuário';
         userIdInput.value = '';
         fullNameInput.value = '';
         emailInput.value = '';
         passwordInput.value = '';
-        roleSelect.value = 'user';
-        
-        // Desmarcar todas as permissões
-        permissionsContainer.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-            checkbox.checked = false;
-        });
-        
-        saveButton.textContent = 'Salvar';
-        cancelButton.style.display = 'none';
+        emailInput.disabled = false;
+        passwordInput.disabled = false;
         passwordInput.placeholder = 'Obrigatório para novos usuários';
+        roleSelect.value = 'user';
+        permissionCheckboxes.forEach(checkbox => checkbox.checked = false);
+        saveButton.textContent = 'Criar Usuário';
+        cancelButton.style.display = 'none';
     };
 
-    // Salvar usuário
+    const populateFormForEdit = (user) => {
+        formTitle.textContent = `Editando Usuário: ${user.full_name}`;
+        userIdInput.value = user.id;
+        fullNameInput.value = user.full_name;
+        emailInput.value = '******'; // Não mostramos/editamos email
+        emailInput.disabled = true;
+        passwordInput.value = '';
+        passwordInput.placeholder = 'Deixe em branco para não alterar';
+        passwordInput.disabled = true; // Desabilita senha na edição por padrão
+        roleSelect.value = user.role;
+        
+        permissionCheckboxes.forEach(checkbox => {
+            checkbox.checked = (user.allowed_pages || []).includes(checkbox.value);
+        });
+        
+        saveButton.textContent = 'Atualizar Usuário';
+        cancelButton.style.display = 'inline-flex';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     const saveUser = async () => {
         const id = userIdInput.value;
-        const fullName = fullNameInput.value.trim();
+        const full_name = fullNameInput.value.trim();
         const email = emailInput.value.trim();
         const password = passwordInput.value;
         const role = roleSelect.value;
-        
-        // Validação de email
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            alert('Por favor, insira um email válido.');
-            return;
-        }
+        const allowed_pages = Array.from(permissionCheckboxes).filter(cb => cb.checked).map(cb => cb.value);
 
-        // Obter permissões selecionadas
-        const allowedPagesCheckboxes = permissionsContainer.querySelectorAll('input:checked');
-        const allowed_pages = Array.from(allowedPagesCheckboxes).map(cb => cb.value);
-
-        if (!fullName || !email) {
-            alert('Nome e email são obrigatórios.');
+        if (!full_name || (!id && !email)) {
+            alert('Nome completo e email são obrigatórios.');
             return;
         }
 
@@ -113,130 +94,68 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (!id && password.length < 6) {
-            alert('A senha deve ter pelo menos 6 caracteres.');
-            return;
+        const isUpdating = !!id;
+        const url = isUpdating ? `${API_URL}/${id}` : API_URL;
+        const method = isUpdating ? 'PUT' : 'POST';
+        
+        let body;
+        if (isUpdating) {
+            body = JSON.stringify({ full_name, role, allowed_pages });
+        } else {
+            body = JSON.stringify({ email, password, full_name, role, allowed_pages });
         }
-
-        const session = await getSession();
-        if (!session) {
-            alert("Sua sessão expirou. Por favor, faça login novamente.");
-            window.location.href = '/login.html';
-            return;
-        }
-
-        const method = id ? 'PUT' : 'POST';
-        const url = id ? `${API_URL}/${id}` : API_URL;
 
         try {
-            const userData = id 
-                ? { full_name: fullName, email, role, allowed_pages }
-                : { full_name: fullName, email, password, role, allowed_pages };
-
-            const response = await fetch(url, {
-                method: method,
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session.access_token}`
-                },
-                body: JSON.stringify(userData)
-            });
-
-            // Verificar se a resposta é JSON
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                const text = await response.text();
-                throw new Error(`Resposta inesperada do servidor: ${text.substring(0, 100)}...`);
-            }
-
+            saveButton.disabled = true;
+            saveButton.innerHTML = isUpdating ? 'Atualizando...' : 'Criando...';
+            const response = await authenticatedFetch(url, { method, body });
             if (!response.ok) {
                 const error = await response.json();
-                throw new Error(error.detail || `Erro ${response.status} ao salvar usuário`);
+                throw new Error(error.detail || 'Erro ao salvar usuário');
             }
-            
+            alert(`Usuário ${isUpdating ? 'atualizado' : 'criado'} com sucesso!`);
             resetForm();
             loadUsers();
-            alert('Usuário salvo com sucesso!');
-
         } catch (error) {
-            console.error('Erro ao salvar usuário:', error);
+            console.error('Erro:', error);
             alert(`Erro: ${error.message}`);
+        } finally {
+            saveButton.disabled = false;
         }
     };
 
-    // Preencher formulário para edição
-    tableBody.addEventListener('click', (e) => {
-        if (e.target.classList.contains('edit-btn')) {
-            const id = e.target.dataset.id;
-            const name = e.target.dataset.name;
-            const email = e.target.dataset.email;
-            const role = e.target.dataset.role;
-            const permissions = JSON.parse(e.target.dataset.permissions || '[]');
-            
-            formTitle.textContent = 'Editar Usuário';
-            userIdInput.value = id;
-            fullNameInput.value = name;
-            emailInput.value = email;
-            roleSelect.value = role;
-            passwordInput.placeholder = 'Deixe em branco para manter a senha atual';
-            
-            // Marcar as permissões do usuário
-            permissionsContainer.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-                checkbox.checked = permissions.includes(checkbox.value);
-            });
-            
-            saveButton.textContent = 'Atualizar';
-            cancelButton.style.display = 'inline-block';
-        }
-        
-        if (e.target.classList.contains('delete-btn')) {
-            if (!confirm('Tem certeza que deseja excluir este usuário?')) return;
-            
-            const id = e.target.dataset.id;
-            deleteUser(id);
-        }
-    });
-
-    // Excluir usuário
     const deleteUser = async (id) => {
-        const session = await getSession();
-        if (!session) {
-            alert("Sua sessão expirou. Por favor, faça login novamente.");
-            return;
-        }
+        if (!confirm('Tem certeza que deseja excluir este usuário? Esta ação não pode ser desfeita.')) return;
 
         try {
-            const response = await fetch(`${API_URL}/${id}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`
-                }
-            });
-
-            // Verificar se a resposta é JSON
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                const text = await response.text();
-                throw new Error(`Resposta inesperada do servidor: ${text.substring(0, 100)}...`);
-            }
-
-            if (response.ok) {
-                loadUsers();
-                alert('Usuário excluído com sucesso!');
-            } else {
-                const error = await response.json();
-                throw new Error(error.detail || `Erro ${response.status} ao excluir usuário`);
-            }
+            const response = await authenticatedFetch(`${API_URL}/${id}`, { method: 'DELETE' });
+            if (!response.ok) throw new Error('Falha ao excluir usuário.');
+            alert('Usuário excluído com sucesso!');
+            loadUsers();
         } catch (error) {
-            console.error('Erro ao excluir usuário:', error);
-            alert(`Erro: ${error.message}`);
+            console.error('Erro:', error);
+            alert(error.message);
         }
     };
 
-    // Event listeners
+    // Event Delegation para os botões da tabela
+    tableBody.addEventListener('click', (e) => {
+        const editButton = e.target.closest('.edit-btn');
+        const deleteButton = e.target.closest('.delete-btn');
+        
+        if (editButton) {
+            const user = JSON.parse(editButton.closest('tr').dataset.user);
+            populateFormForEdit(user);
+        }
+
+        if (deleteButton) {
+            const user = JSON.parse(deleteButton.closest('tr').dataset.user);
+            deleteUser(user.id);
+        }
+    });
+    
     saveButton.addEventListener('click', saveUser);
     cancelButton.addEventListener('click', resetForm);
     
-    // Inicializar a página
     loadUsers();
 });
