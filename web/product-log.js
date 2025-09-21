@@ -10,12 +10,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalItems = document.getElementById('totalItems');
     const totalItemsCard = document.getElementById('totalItemsCard');
     const itemsPerPage = document.getElementById('itemsPerPage');
+    const searchInput = document.getElementById('searchInput');
+    const supermarketFilter = document.getElementById('supermarketFilter');
+    const dateFilter = document.getElementById('dateFilter');
+    const priceRange = document.getElementById('priceRange');
+    const exportBtn = document.getElementById('exportBtn');
+    const sortableHeaders = document.querySelectorAll('.sortable-header');
 
     let currentPage = 1;
     let pageSize = parseInt(itemsPerPage.value);
     let totalCount = 0;
-    let allProducts = [];
-    let filteredProducts = [];
+    let currentSort = { column: 'data_ultima_venda', direction: 'desc' };
+    let searchTimeout;
 
     const formatarData = (dataISO) => {
         if (!dataISO) return 'N/A';
@@ -39,7 +45,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            const response = await fetch(`/api/products-log?page=${page}&page_size=${pageSize}`, {
+            // Construir query parameters com filtros e ordenação
+            const params = new URLSearchParams({
+                page: page,
+                page_size: pageSize,
+                sort_by: currentSort.column,
+                sort_order: currentSort.direction
+            });
+            
+            // Adicionar filtros aos parâmetros
+            if (searchInput.value) params.append('search', searchInput.value);
+            if (supermarketFilter.value) params.append('supermarket', supermarketFilter.value);
+            if (dateFilter.value) params.append('date', dateFilter.value);
+            if (priceRange.value) params.append('price_range', priceRange.value);
+            
+            const response = await fetch(`/api/products-log?${params}`, {
                 headers: {
                     'Authorization': `Bearer ${session.access_token}`
                 }
@@ -53,8 +73,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await response.json();
             const products = result.data;
             totalCount = result.total_count || 0;
-            allProducts = products;
-            filteredProducts = products;
             
             renderTable(products);
             renderCards(products);
@@ -99,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const card = document.createElement('div');
                 card.className = 'product-card';
                 card.innerHTML = `
-                    <div class="product-header">
+                    <div class="card-header">
                         <div class="product-name">${product.nome_produto || 'Produto sem nome'}</div>
                         <div class="product-price">${formatarPreco(product.preco_produto)}</div>
                     </div>
@@ -140,6 +158,102 @@ document.addEventListener('DOMContentLoaded', () => {
         totalItemsCard.textContent = `Total: ${totalCount} produtos`;
     };
 
+    const applyFilters = () => {
+        currentPage = 1;
+        fetchLogs(currentPage);
+    };
+
+    const handleSort = (column) => {
+        if (currentSort.column === column) {
+            currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+            currentSort.column = column;
+            currentSort.direction = 'asc';
+        }
+        
+        // Atualizar ícones de ordenação
+        sortableHeaders.forEach(header => {
+            const icon = header.querySelector('i');
+            if (header.dataset.sort === currentSort.column) {
+                icon.className = currentSort.direction === 'asc' ? 
+                    'fas fa-sort-up' : 'fas fa-sort-down';
+            } else {
+                icon.className = 'fas fa-sort';
+            }
+        });
+        
+        fetchLogs(currentPage);
+    };
+
+    const populateSupermarketFilter = async () => {
+        try {
+            const session = await getSession();
+            if (!session) return;
+            
+            const response = await fetch('/api/supermarkets', {
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`
+                }
+            });
+            
+            if (response.ok) {
+                const supermarkets = await response.json();
+                supermarketFilter.innerHTML = '<option value="">Todos os supermercados</option>';
+                
+                supermarkets.forEach(supermarket => {
+                    const option = document.createElement('option');
+                    option.value = supermarket.id;
+                    option.textContent = supermarket.nome;
+                    supermarketFilter.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('Erro ao carregar supermercados:', error);
+        }
+    };
+
+    const exportData = async () => {
+        try {
+            const session = await getSession();
+            if (!session) return;
+            
+            // Construir query parameters com filtros e ordenação
+            const params = new URLSearchParams({
+                sort_by: currentSort.column,
+                sort_order: currentSort.direction
+            });
+            
+            // Adicionar filtros aos parâmetros
+            if (searchInput.value) params.append('search', searchInput.value);
+            if (supermarketFilter.value) params.append('supermarket', supermarketFilter.value);
+            if (dateFilter.value) params.append('date', dateFilter.value);
+            if (priceRange.value) params.append('price_range', priceRange.value);
+            
+            const response = await fetch(`/api/export-products?${params}`, {
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`
+                }
+            });
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'produtos.csv';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } else {
+                throw new Error('Falha ao exportar dados');
+            }
+        } catch (error) {
+            console.error('Erro ao exportar dados:', error);
+            alert('Erro ao exportar dados: ' + error.message);
+        }
+    };
+
     // Event listeners para paginação
     prevPageBtn.addEventListener('click', () => {
         if (currentPage > 1) {
@@ -178,6 +292,32 @@ document.addEventListener('DOMContentLoaded', () => {
         fetchLogs(currentPage);
     });
 
-    // A função routeGuard (em auth.js) garante que o usuário está logado antes de chamar fetchLogs
-    fetchLogs(currentPage);
+    // Filtros
+    searchInput.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(applyFilters, 300);
+    });
+    
+    supermarketFilter.addEventListener('change', applyFilters);
+    dateFilter.addEventListener('change', applyFilters);
+    priceRange.addEventListener('change', applyFilters);
+
+    // Ordenação
+    sortableHeaders.forEach(header => {
+        header.addEventListener('click', () => {
+            handleSort(header.dataset.sort);
+        });
+    });
+
+    // Exportação
+    exportBtn.addEventListener('click', exportData);
+
+    // Inicializar a página
+    const init = async () => {
+        await populateSupermarketFilter();
+        fetchLogs(currentPage);
+    };
+
+    // A função routeGuard (em auth.js) garante que o usuário está logado antes de chamar init
+    init();
 });
