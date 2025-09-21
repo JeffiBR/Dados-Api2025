@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${product.nome_produto || 'N/A'}</td>
-                    <td style="font-weight: 600; color: var(--primary);">${formatarPreco(product.preco_produto)}</td>
+                    <td class="price-cell">${formatarPreco(product.preco_produto)}</td>
                     <td>${product.nome_supermercado || 'N/A'}</td>
                     <td>${formatarData(product.data_ultima_venda)}</td>
                     <td>${product.codigo_barras || 'N/A'}</td>
@@ -173,12 +173,12 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Atualizar ícones de ordenação
         sortableHeaders.forEach(header => {
-            const icon = header.querySelector('i');
+            const icon = header.querySelector('.sort-indicator');
             if (header.dataset.sort === currentSort.column) {
                 icon.className = currentSort.direction === 'asc' ? 
-                    'fas fa-sort-up' : 'fas fa-sort-down';
+                    'fas fa-sort-up sort-indicator' : 'fas fa-sort-down sort-indicator';
             } else {
-                icon.className = 'fas fa-sort';
+                icon.className = 'fas fa-sort sort-indicator';
             }
         });
         
