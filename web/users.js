@@ -1,7 +1,6 @@
-// users.js
 document.addEventListener('DOMContentLoaded', () => {
-    const API_URL = '/api/users';
-    const tableBody = document.querySelector('#usersTable tbody');
+    // --- ELEMENTOS DA UI ---
+    const tableBody = document.getElementById('usersTableBody');
     const saveButton = document.getElementById('saveUserBtn');
     const cancelButton = document.getElementById('cancelButton');
     const formTitle = document.getElementById('formTitle');
@@ -11,42 +10,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordInput = document.getElementById('password');
     const roleSelect = document.getElementById('role');
     const permissionsContainer = document.getElementById('permissions-container');
+    const permissionCheckboxes = permissionsContainer.querySelectorAll('input[type="checkbox"]');
 
-    // Carregar usuários
+    // --- LÓGICA DE NEGÓCIO ---
+
     const loadUsers = async () => {
         try {
-            const session = await getSession();
-            if (!session) {
-                alert("Sua sessão expirou. Por favor, faça login novamente.");
-                window.location.href = '/login.html';
-                return;
-            }
+            const users = await authenticatedFetch('/api/users').then(res => res.json());
 
-            const response = await fetch(API_URL, {
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`
-                }
-            });
-            
-            if (!response.ok) {
-                throw new Error('Erro ao carregar usuários');
-            }
-            
-            const users = await response.json();
             tableBody.innerHTML = '';
-            
             users.forEach(user => {
                 const row = document.createElement('tr');
+                // Salva os dados completos no elemento para fácil acesso ao editar
+                row.dataset.user = JSON.stringify(user);
+
                 row.innerHTML = `
-                    <td>${user.full_name}</td>
-                    <td>${user.email}</td>
+                    <td>${user.full_name || 'N/A'}</td>
                     <td>${user.role === 'admin' ? 'Admin Geral' : 'Usuário'}</td>
-                    <td>${user.allowed_pages ? user.allowed_pages.join(', ') : 'Nenhuma'}</td>
+                    <td>${(user.allowed_pages || []).length} permissões</td>
                     <td class="actions">
-                        <button class="edit-btn" data-id="${user.id}" data-name="${user.full_name}" 
-                                data-email="${user.email}" data-role="${user.role}" 
-                                data-permissions="${user.allowed_pages ? JSON.stringify(user.allowed_pages) : '[]'}">Editar</button>
-                        <button class="delete-btn" data-id="${user.id}">Excluir</button>
+                        <button class="btn-icon edit-btn" title="Editar"><i class="fas fa-pencil-alt"></i></button>
+                        <button class="btn-icon delete-btn" title="Excluir"><i class="fas fa-trash-alt"></i></button>
                     </td>
                 `;
                 tableBody.appendChild(row);
@@ -57,154 +41,119 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Resetar formulário
     const resetForm = () => {
         formTitle.textContent = 'Criar Novo Usuário';
         userIdInput.value = '';
         fullNameInput.value = '';
         emailInput.value = '';
         passwordInput.value = '';
-        roleSelect.value = 'user';
-        emailInput.readOnly = false;
-        
-        // Desmarcar todas as permissões
-        permissionsContainer.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-            checkbox.checked = false;
-        });
-        
-        saveButton.textContent = 'Salvar';
-        cancelButton.style.display = 'none';
+        emailInput.disabled = false;
+        passwordInput.disabled = false;
         passwordInput.placeholder = 'Obrigatório para novos usuários';
+        roleSelect.value = 'user';
+        permissionCheckboxes.forEach(checkbox => checkbox.checked = false);
+        saveButton.textContent = 'Criar Usuário';
+        cancelButton.style.display = 'none';
     };
 
-    // Salvar usuário
+    const populateFormForEdit = (user) => {
+        formTitle.textContent = `Editando Usuário: ${user.full_name}`;
+        userIdInput.value = user.id;
+        fullNameInput.value = user.full_name;
+        emailInput.value = '********'; // Email não pode ser alterado
+        emailInput.disabled = true;
+        passwordInput.value = '';
+        passwordInput.placeholder = 'Deixe em branco para não alterar';
+        passwordInput.disabled = true; // Senha não é editada aqui por segurança
+        roleSelect.value = user.role;
+        
+        permissionCheckboxes.forEach(checkbox => {
+            checkbox.checked = (user.allowed_pages || []).includes(checkbox.value);
+        });
+        
+        saveButton.textContent = 'Atualizar Usuário';
+        cancelButton.style.display = 'inline-flex';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     const saveUser = async () => {
         const id = userIdInput.value;
-        const fullName = fullNameInput.value.trim();
+        const full_name = fullNameInput.value.trim();
         const email = emailInput.value.trim();
         const password = passwordInput.value;
         const role = roleSelect.value;
+        const allowed_pages = Array.from(permissionCheckboxes).filter(cb => cb.checked).map(cb => cb.value);
+
+        if (!full_name) {
+            alert('Nome completo é obrigatório.');
+            return;
+        }
+
+        const isUpdating = !!id;
         
-        // Obter permissões selecionadas
-        const allowedPagesCheckboxes = permissionsContainer.querySelectorAll('input:checked');
-        const allowed_pages = Array.from(allowedPagesCheckboxes).map(cb => cb.value);
-
-        if (!fullName || !email) {
-            alert('Nome e email são obrigatórios.');
+        if (!isUpdating && (!email || !password)) {
+            alert('Email e Senha são obrigatórios para novos usuários.');
             return;
         }
 
-        if (!id && !password) {
-            alert('Senha é obrigatória para novos usuários.');
-            return;
+        const url = isUpdating ? `/api/users/${id}` : '/api/users';
+        const method = isUpdating ? 'PUT' : 'POST';
+        
+        let body;
+        if (isUpdating) {
+            body = JSON.stringify({ full_name, role, allowed_pages });
+        } else {
+            body = JSON.stringify({ email, password, full_name, role, allowed_pages });
         }
-
-        const session = await getSession();
-        if (!session) {
-            alert("Sua sessão expirou. Por favor, faça login novamente.");
-            window.location.href = '/login.html';
-            return;
-        }
-
-        const method = id ? 'PUT' : 'POST';
-        const url = id ? `${API_URL}/${id}` : API_URL;
 
         try {
-            const userData = id 
-                ? { full_name: fullName, role, allowed_pages }
-                : { full_name: fullName, email, password, role, allowed_pages };
-
-            const response = await fetch(url, {
-                method: method,
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session.access_token}`
-                },
-                body: JSON.stringify(userData)
-            });
-
+            saveButton.disabled = true;
+            saveButton.innerHTML = isUpdating ? 'Atualizando...' : 'Criando...';
+            const response = await authenticatedFetch(url, { method, body });
+            
             if (!response.ok) {
                 const error = await response.json();
                 throw new Error(error.detail || 'Erro ao salvar usuário');
             }
             
+            alert(`Usuário ${isUpdating ? 'atualizado' : 'criado'} com sucesso!`);
             resetForm();
             loadUsers();
-            alert('Usuário salvo com sucesso!');
-
         } catch (error) {
             console.error('Erro ao salvar usuário:', error);
             alert(`Erro: ${error.message}`);
+        } finally {
+            saveButton.disabled = false;
         }
     };
 
-    // Preencher formulário para edição
+    const deleteUser = async (id) => {
+        // Lógica para deletar usuário (requer um endpoint de deleção na API)
+        // Por segurança, vamos deixar desabilitado por enquanto até que o endpoint seja criado.
+        alert("Funcionalidade de exclusão de usuário a ser implementada na API.");
+    };
+
+    // --- EVENT LISTENERS ---
+    
     tableBody.addEventListener('click', (e) => {
-        if (e.target.classList.contains('edit-btn')) {
-            const id = e.target.dataset.id;
-            const name = e.target.dataset.name;
-            const email = e.target.dataset.email;
-            const role = e.target.dataset.role;
-            const permissions = JSON.parse(e.target.dataset.permissions || '[]');
-            
-            formTitle.textContent = 'Editar Usuário';
-            userIdInput.value = id;
-            fullNameInput.value = name;
-            emailInput.value = email;
-            emailInput.readOnly = true; // Não permitir editar email
-            roleSelect.value = role;
-            passwordInput.placeholder = 'Deixe em branco para manter a senha atual';
-            
-            // Marcar as permissões do usuário
-            permissionsContainer.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-                checkbox.checked = permissions.includes(checkbox.value);
-            });
-            
-            saveButton.textContent = 'Atualizar';
-            cancelButton.style.display = 'inline-block';
-        }
+        const editButton = e.target.closest('.edit-btn');
+        const deleteButton = e.target.closest('.delete-btn');
         
-        if (e.target.classList.contains('delete-btn')) {
-            if (!confirm('Tem certeza que deseja excluir este usuário?')) return;
-            
-            const id = e.target.dataset.id;
-            deleteUser(id);
+        if (editButton) {
+            const user = JSON.parse(editButton.closest('tr').dataset.user);
+            populateFormForEdit(user);
+        }
+
+        if (deleteButton) {
+            const user = JSON.parse(deleteButton.closest('tr').dataset.user);
+            // deleteUser(user.id); // Descomente quando o endpoint de deleção estiver pronto
+            alert("A exclusão de usuários precisa ser implementada na API primeiro.");
         }
     });
-
-    // Excluir usuário
-    const deleteUser = async (id) => {
-        const session = await getSession();
-        if (!session) {
-            alert("Sua sessão expirou. Por favor, faça login novamente.");
-            return;
-        }
-
-        try {
-            const response = await fetch(`${API_URL}/${id}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`
-                }
-            });
-
-            if (response.ok) {
-                loadUsers();
-                alert('Usuário excluído com sucesso!');
-            } else {
-                const error = await response.json();
-                throw new Error(error.detail || 'Falha ao excluir usuário');
-            }
-        } catch (error) {
-            console.error('Erro ao excluir usuário:', error);
-            alert(`Erro: ${error.message}`);
-        }
-    };
-
-    // Event listeners
+    
     saveButton.addEventListener('click', saveUser);
     cancelButton.addEventListener('click', resetForm);
     
-    // Inicializar a página
+    // Inicialização da página
     loadUsers();
 });
