@@ -9,279 +9,21 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth.js"></script>
     <style>
-        /* Estilos específicos para a tabela moderna */
-        .table-container {
-            background: linear-gradient(135deg, var(--panel-dark), #0a0f1a);
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--border-dark);
-            margin-bottom: 1.5rem;
-        }
-        
-        body.light-mode .table-container {
-            background: var(--panel-light);
-            border: 1px solid var(--border-light);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-        }
-        
-        .data-table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            margin: 0;
-        }
-        
-        .data-table thead {
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-        
-        .data-table th {
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            color: white;
-            padding: 16px 20px;
-            text-align: left;
-            font-weight: 600;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            position: relative;
-            border-bottom: 2px solid var(--border-dark);
-        }
-        
-        .data-table th:not(:last-child)::after {
-            content: '';
-            position: absolute;
-            right: 0;
-            top: 50%;
-            transform: translateY(-50%);
-            height: 60%;
-            width: 1px;
-            background: rgba(255, 255, 255, 0.2);
-        }
-        
-        .data-table td {
-            padding: 16px 20px;
-            border-bottom: 1px solid var(--border-dark);
-            color: var(--text-dark);
-            font-size: 0.95rem;
-            transition: all 0.3s ease;
-            position: relative;
-        }
-        
-        body.light-mode .data-table td {
-            color: var(--text-light);
-            border-bottom: 1px solid var(--border-light);
-        }
-        
-        .data-table tbody tr {
-            background: rgba(255, 255, 255, 0.02);
-            transition: all 0.3s ease;
-        }
-        
-        .data-table tbody tr:nth-child(even) {
-            background: rgba(255, 255, 255, 0.05);
-        }
-        
-        body.light-mode .data-table tbody tr {
-            background: rgba(0, 0, 0, 0.02);
-        }
-        
-        body.light-mode .data-table tbody tr:nth-child(even) {
-            background: rgba(0, 0, 0, 0.05);
-        }
-        
-        .data-table tbody tr:hover {
-            background: rgba(79, 70, 229, 0.1);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-        }
-        
-        .data-table tbody tr:last-child td {
-            border-bottom: none;
-        }
-        
-        .sortable-header {
-            cursor: pointer;
-            user-select: none;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            transition: all 0.3s ease;
-        }
-        
-        .sortable-header:hover {
-            opacity: 0.9;
-        }
-        
-        .coleta-badge {
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            color: white;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            display: inline-block;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        }
-        
-        .price-cell {
-            font-weight: 700;
-            color: var(--primary) !important;
-            font-size: 1rem !important;
-        }
-        
-        .action-cell {
-            text-align: center;
-        }
-        
-        .action-btn {
-            background: transparent;
-            border: none;
-            color: var(--muted-dark);
-            cursor: pointer;
-            padding: 8px;
-            border-radius: 6px;
-            transition: all 0.3s ease;
-        }
-        
-        .action-btn:hover {
-            background: rgba(79, 70, 229, 0.1);
-            color: var(--primary);
-        }
-        
-        .table-scroll {
-            overflow-x: auto;
-            max-height: 65vh;
-            scrollbar-width: thin;
-            scrollbar-color: var(--primary) transparent;
-        }
-        
-        .table-scroll::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        
-        .table-scroll::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        
-        .table-scroll::-webkit-scrollbar-thumb {
-            background: var(--primary);
-            border-radius: 4px;
-        }
-        
-        .table-scroll::-webkit-scrollbar-thumb:hover {
-            background: var(--accent);
-        }
-        
-        /* Animações */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .data-table tbody tr {
-            animation: fadeIn 0.5s ease forwards;
-        }
-        
-        .data-table tbody tr:nth-child(1) { animation-delay: 0.05s; }
-        .data-table tbody tr:nth-child(2) { animation-delay: 0.1s; }
-        .data-table tbody tr:nth-child(3) { animation-delay: 0.15s; }
-        .data-table tbody tr:nth-child(4) { animation-delay: 0.2s; }
-        .data-table tbody tr:nth-child(5) { animation-delay: 0.25s; }
-        .data-table tbody tr:nth-child(6) { animation-delay: 0.3s; }
-        .data-table tbody tr:nth-child(7) { animation-delay: 0.35s; }
-        .data-table tbody tr:nth-child(8) { animation-delay: 0.4s; }
-        .data-table tbody tr:nth-child(9) { animation-delay: 0.45s; }
-        .data-table tbody tr:nth-child(10) { animation-delay: 0.5s; }
-        
-        /* Responsividade */
-        @media (max-width: 1024px) {
-            .table-container {
-                border-radius: 10px;
-            }
-            
-            .data-table th,
-            .data-table td {
-                padding: 14px 16px;
-            }
-        }
-        
-        @media (max-width: 768px) {
-            .table-scroll {
-                max-height: 60vh;
-            }
-            
-            .data-table {
-                min-width: 700px;
-            }
-            
-            .data-table th,
-            .data-table td {
-                padding: 12px 14px;
-                font-size: 0.9rem;
-            }
-            
-            .price-cell {
-                font-size: 0.95rem !important;
-            }
-        }
-        
-        /* Indicador de ordenação */
-        .sort-indicator {
-            margin-left: 5px;
-            font-size: 0.8rem;
-            transition: transform 0.3s ease;
-        }
-        
-        .sort-asc .sort-indicator {
-            transform: rotate(180deg);
-        }
-        
-        /* Efeito de brilho nas linhas */
-        .data-table tbody tr::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(79, 70, 229, 0.05), transparent);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            pointer-events: none;
-        }
-        
-        .data-table tbody tr:hover::before {
-            opacity: 1;
-        }
-        
-        /* Estilo para células vazias */
-        .empty-cell {
-            color: var(--muted-dark) !important;
-            font-style: italic;
-        }
-        
-        body.light-mode .empty-cell {
-            color: var(--muted-light) !important;
-        }
-         /* Estilos específicos para os filtros */
+        /* Estilos específicos para os filtros */
         .filters-container {
-            background: linear-gradient(135deg, var(--input-dark), #0b1220) !important;
-            border: 1px solid var(--border-dark) !important;
+            background: linear-gradient(135deg, var(--input-dark), #0b1220);
+            border: 1px solid var(--border-dark);
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2), 
-                        inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
-            padding: 25px !important;
-            border-radius: 12px !important;
+                        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
         }
         
         body.light-mode .filters-container {
-            background: var(--input-light) !important;
-            border: 1px solid var(--border-light) !important;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05) !important;
+            background: var(--input-light);
+            border: 1px solid var(--border-light);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
         }
         
         .filter-group {
@@ -436,7 +178,7 @@
         /* Estilo para o container de filtros em dispositivos móveis */
         @media (max-width: 768px) {
             .filters-container {
-                padding: 15px !important;
+                padding: 15px;
             }
             
             .filter-group input, 
@@ -449,6 +191,247 @@
                 align-items: flex-start;
                 gap: 8px;
             }
+        }
+
+        /* Estilos específicos para a tabela moderna */
+        .table-container {
+            background: linear-gradient(135deg, var(--panel-dark), #0a0f1a);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-dark);
+            margin-bottom: 1.5rem;
+        }
+        
+        body.light-mode .table-container {
+            background: var(--panel-light);
+            border: 1px solid var(--border-light);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 0;
+        }
+        
+        .data-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .data-table th {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            padding: 16px 20px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: relative;
+            border-bottom: 2px solid var(--border-dark);
+        }
+        
+        .data-table th:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 60%;
+            width: 1px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .data-table td {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-dark);
+            color: var(--text-dark);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        body.light-mode .data-table td {
+            color: var(--text-light);
+            border-bottom: 1px solid var(--border-light);
+        }
+        
+        .data-table tbody tr {
+            background: rgba(255, 255, 255, 0.02);
+            transition: all 0.3s ease;
+        }
+        
+        .data-table tbody tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        body.light-mode .data-table tbody tr {
+            background: rgba(0, 0, 0, 0.02);
+        }
+        
+        body.light-mode .data-table tbody tr:nth-child(even) {
+            background: rgba(0, 0, 0, 0.05);
+        }
+        
+        .data-table tbody tr:hover {
+            background: rgba(79, 70, 229, 0.1);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .data-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .sortable-header {
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.3s ease;
+        }
+        
+        .sortable-header:hover {
+            opacity: 0.9;
+        }
+        
+        .coleta-badge {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: inline-block;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .price-cell {
+            font-weight: 700;
+            color: var(--primary) !important;
+            font-size: 1rem !important;
+        }
+        
+        .table-scroll {
+            overflow-x: auto;
+            max-height: 65vh;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) transparent;
+        }
+        
+        .table-scroll::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        .table-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .table-scroll::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 4px;
+        }
+        
+        .table-scroll::-webkit-scrollbar-thumb:hover {
+            background: var(--accent);
+        }
+        
+        /* Animações */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .data-table tbody tr {
+            animation: fadeIn 0.5s ease forwards;
+        }
+        
+        .data-table tbody tr:nth-child(1) { animation-delay: 0.05s; }
+        .data-table tbody tr:nth-child(2) { animation-delay: 0.1s; }
+        .data-table tbody tr:nth-child(3) { animation-delay: 0.15s; }
+        .data-table tbody tr:nth-child(4) { animation-delay: 0.2s; }
+        .data-table tbody tr:nth-child(5) { animation-delay: 0.25s; }
+        .data-table tbody tr:nth-child(6) { animation-delay: 0.3s; }
+        .data-table tbody tr:nth-child(7) { animation-delay: 0.35s; }
+        .data-table tbody tr:nth-child(8) { animation-delay: 0.4s; }
+        .data-table tbody tr:nth-child(9) { animation-delay: 0.45s; }
+        .data-table tbody tr:nth-child(10) { animation-delay: 0.5s; }
+        
+        /* Responsividade */
+        @media (max-width: 1024px) {
+            .table-container {
+                border-radius: 10px;
+            }
+            
+            .data-table th,
+            .data-table td {
+                padding: 14px 16px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .table-scroll {
+                max-height: 60vh;
+            }
+            
+            .data-table {
+                min-width: 700px;
+            }
+            
+            .data-table th,
+            .data-table td {
+                padding: 12px 14px;
+                font-size: 0.9rem;
+            }
+            
+            .price-cell {
+                font-size: 0.95rem !important;
+            }
+        }
+        
+        /* Indicador de ordenação */
+        .sort-indicator {
+            margin-left: 5px;
+            font-size: 0.8rem;
+            transition: transform 0.3s ease;
+        }
+        
+        .sort-asc .sort-indicator {
+            transform: rotate(180deg);
+        }
+        
+        /* Efeito de brilho nas linhas */
+        .data-table tbody tr::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(79, 70, 229, 0.05), transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        
+        .data-table tbody tr:hover::before {
+            opacity: 1;
+        }
+        
+        /* Estilo para células vazias */
+        .empty-cell {
+            color: var(--muted-dark) !important;
+            font-style: italic;
+        }
+        
+        body.light-mode .empty-cell {
+            color: var(--muted-light) !important;
         }
     </style>
 </head>
@@ -589,7 +572,6 @@
                                             <th class="sortable-header" data-sort="coleta_id">
                                                 <span>Coleta ID <i class="fas fa-sort sort-indicator"></i></span>
                                             </th>
-                                            <th>Ações</th>
                                         </tr>
                                     </thead>
                                     <tbody>
