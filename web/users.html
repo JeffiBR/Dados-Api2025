@@ -8,9 +8,263 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth.js"></script>
+    <style>
+        /* Estilos específicos para a página de usuários */
+        .form-container {
+            position: relative;
+            overflow: hidden;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+        }
+        
+        .form-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            opacity: 0.8;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--muted-dark);
+            transition: var(--transition);
+        }
+        
+        body.light-mode .form-group label {
+            color: var(--muted-light);
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 1rem 1.25rem;
+            border: 2px solid var(--border-dark);
+            border-radius: var(--radius);
+            font-size: 1rem;
+            transition: var(--transition);
+            background: var(--input-dark);
+            color: var(--text-dark);
+            font-family: inherit;
+        }
+        
+        body.light-mode .form-group input, 
+        body.light-mode .form-group select {
+            background: var(--input-light);
+            color: var(--text-light);
+            border: 2px solid var(--border-light);
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(79,70,229,0.13);
+            transform: translateY(-2px);
+        }
+        
+        .form-group input:hover,
+        .form-group select:hover {
+            border-color: rgba(79,70,229,0.5);
+        }
+        
+        .full-width {
+            width: 100%;
+        }
+        
+        .supermarket-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+        }
+        
+        .supermarket-list label {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem;
+            background: var(--input-dark);
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        body.light-mode .supermarket-list label {
+            background: var(--input-light);
+        }
+        
+        .supermarket-list label:hover {
+            background: rgba(79, 70, 229, 0.1);
+        }
+        
+        .supermarket-list input {
+            margin-right: 0.75rem;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        #saveUserBtn, #cancelButton {
+            margin-right: 1rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #saveUserBtn::after, #cancelButton::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 5px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.5);
+            opacity: 0;
+            border-radius: 100%;
+            transform: scale(1, 1) translate(-50%);
+            transform-origin: 50% 50%;
+        }
+        
+        #saveUserBtn:hover::after, #cancelButton:hover::after {
+            animation: ripple 1s ease-out;
+        }
+        
+        @keyframes ripple {
+            0% {
+                transform: scale(0, 0);
+                opacity: 0.5;
+            }
+            100% {
+                transform: scale(30, 30);
+                opacity: 0;
+            }
+        }
+        
+        .table-container {
+            position: relative;
+            overflow: hidden;
+            border-radius: var(--radius);
+        }
+        
+        .table-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            opacity: 0.8;
+        }
+        
+        #usersTable {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 1rem 0;
+        }
+        
+        #usersTable th {
+            background: rgba(79,70,229,0.1);
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--primary);
+            border-bottom: 2px solid var(--border-dark);
+        }
+        
+        body.light-mode #usersTable th {
+            border-bottom: 2px solid var(--border-light);
+        }
+        
+        #usersTable td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-dark);
+            transition: var(--transition);
+        }
+        
+        body.light-mode #usersTable td {
+            border-bottom: 1px solid var(--border-light);
+        }
+        
+        #usersTable tr:last-child td {
+            border-bottom: none;
+        }
+        
+        #usersTable tr:hover td {
+            background: rgba(79,70,229,0.05);
+        }
+        
+        .actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .edit-btn, .delete-btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            font-size: 0.9rem;
+        }
+        
+        .edit-btn {
+            background: linear-gradient(90deg, var(--warn), #f59e0b);
+            color: white;
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+        }
+        
+        .edit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+        }
+        
+        .delete-btn {
+            background: linear-gradient(90deg, var(--error), #ef4444);
+            color: white;
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+        }
+        
+        .delete-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        }
+        
+        @media (max-width: 768px) {
+            .actions {
+                flex-direction: column;
+            }
+            
+            .edit-btn, .delete-btn {
+                width: 100%;
+            }
+            
+            #usersTable {
+                display: block;
+                overflow-x: auto;
+            }
+            
+            .supermarket-list {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>
-    <script>routeGuard('users');</script>
+    <script>routeGuard(['admin']);</script>
 
     <div class="app-container">
         <div class="sidebar-overlay"></div>
@@ -67,25 +321,25 @@
                         <i class="fas fa-users"></i>
                         <h2>Gerenciar Usuários</h2>
                     </div>
-                    <p class="panel-description">Crie, edite e gerencie os usuários do sistema e suas permissões.</p>
+                    <p class="panel-description">Adicione, edite ou remova usuários do sistema.</p>
                     
                     <div class="form-container">
                         <h3 id="formTitle">Criar Novo Usuário</h3>
                         <input type="hidden" id="userId">
                         <div class="form-group">
-                            <label for="fullName">Nome</label>
-                            <input type="text" id="fullName">
+                            <label for="fullName">Nome Completo</label>
+                            <input type="text" id="fullName" placeholder="Digite o nome completo">
                         </div>
                         <div class="form-group">
                             <label for="email">Email</label>
-                            <input type="email" id="email">
+                            <input type="email" id="email" placeholder="Digite o email">
                         </div>
                         <div class="form-group">
                             <label for="password">Senha</label>
                             <input type="password" id="password" placeholder="Obrigatório para novos usuários">
                         </div>
                         <div class="form-group">
-                            <label for="role">Nível</label>
+                            <label for="role">Nível de Acesso</label>
                             <select id="role">
                                 <option value="user">Usuário</option>
                                 <option value="admin">Admin Geral</option>
@@ -105,11 +359,11 @@
                             </div>
                         </div>
                         <button id="saveUserBtn" class="btn full-width">Salvar</button>
+                        <button id="cancelButton" class="btn" style="display:none; background-color: #7f8c8d;">Cancelar Edição</button>
                     </div>
                     
-                    <!-- Lista de usuários existentes -->
                     <div class="table-container" style="margin-top: 2rem;">
-                        <h3>Usuários do Sistema</h3>
+                        <h3>Usuários Cadastrados</h3>
                         <table id="usersTable">
                             <thead>
                                 <tr>
