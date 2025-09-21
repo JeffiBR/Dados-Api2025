@@ -28,8 +28,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
             
+            // Verificar se a resposta é JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                throw new Error(`Resposta inesperada do servidor: ${text.substring(0, 100)}...`);
+            }
+            
             if (!response.ok) {
-                throw new Error('Erro ao carregar usuários');
+                const error = await response.json();
+                throw new Error(error.detail || `Erro ${response.status} ao carregar usuários`);
             }
             
             const users = await response.json();
@@ -53,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } catch (error) {
             console.error('Erro ao carregar usuários:', error);
-            alert('Não foi possível carregar a lista de usuários.');
+            alert(error.message || 'Não foi possível carregar a lista de usuários.');
         }
     };
 
@@ -84,6 +92,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const password = passwordInput.value;
         const role = roleSelect.value;
         
+        // Validação de email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            alert('Por favor, insira um email válido.');
+            return;
+        }
+
         // Obter permissões selecionadas
         const allowedPagesCheckboxes = permissionsContainer.querySelectorAll('input:checked');
         const allowed_pages = Array.from(allowedPagesCheckboxes).map(cb => cb.value);
@@ -95,6 +110,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!id && !password) {
             alert('Senha é obrigatória para novos usuários.');
+            return;
+        }
+
+        if (!id && password.length < 6) {
+            alert('A senha deve ter pelo menos 6 caracteres.');
             return;
         }
 
@@ -122,9 +142,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify(userData)
             });
 
+            // Verificar se a resposta é JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                throw new Error(`Resposta inesperada do servidor: ${text.substring(0, 100)}...`);
+            }
+
             if (!response.ok) {
                 const error = await response.json();
-                throw new Error(error.detail || 'Erro ao salvar usuário');
+                throw new Error(error.detail || `Erro ${response.status} ao salvar usuário`);
             }
             
             resetForm();
@@ -186,15 +213,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
+            // Verificar se a resposta é JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                throw new Error(`Resposta inesperada do servidor: ${text.substring(0, 100)}...`);
+            }
+
             if (response.ok) {
                 loadUsers();
                 alert('Usuário excluído com sucesso!');
             } else {
-                alert('Falha ao excluir usuário. Verifique suas permissões.');
+                const error = await response.json();
+                throw new Error(error.detail || `Erro ${response.status} ao excluir usuário`);
             }
         } catch (error) {
             console.error('Erro ao excluir usuário:', error);
-            alert('Erro ao excluir usuário.');
+            alert(`Erro: ${error.message}`);
         }
     };
 
