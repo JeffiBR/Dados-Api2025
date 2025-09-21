@@ -20,7 +20,7 @@ load_dotenv()
 app = FastAPI(
     title="API de Preços Arapiraca",
     description="Sistema completo para coleta e análise de preços de supermercados.",
-    version="3.1.1"
+    version="3.1.2"
 )
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] [%(levelname)s] %(message)s')
 
@@ -124,17 +124,14 @@ async def create_user(user_data: UserCreate, admin_user: UserProfile = Depends(r
     try:
         logging.info(f"Admin {admin_user.id} tentando criar usuário: {user_data.email}")
         created_user_res = supabase_admin.auth.admin.create_user({
-            "email": user_data.email,
-            "password": user_data.password,
-            "email_confirm": True,
-            "user_metadata": {'full_name': user_data.full_name}
+            "email": user_data.email, "password": user_data.password,
+            "email_confirm": True, "user_metadata": {'full_name': user_data.full_name}
         })
         user_id = created_user_res.user.id
         logging.info(f"Usuário criado no Auth com ID: {user_id}")
         
         profile_update_response = supabase_admin.table('profiles').update({
-            'role': user_data.role,
-            'allowed_pages': user_data.allowed_pages
+            'role': user_data.role, 'allowed_pages': user_data.allowed_pages
         }).eq('id', user_id).execute()
         
         if not profile_update_response.data:
@@ -159,6 +156,16 @@ async def update_user(user_id: str, user_data: UserUpdate, admin_user: UserProfi
 async def list_users(admin_user: UserProfile = Depends(require_page_access('users'))):
     response = supabase.table('profiles').select('id, full_name, role, allowed_pages, avatar_url').execute()
     return response.data
+
+@app.delete("/api/users/{user_id}", status_code=204)
+async def delete_user(user_id: str, admin_user: UserProfile = Depends(require_page_access('users'))):
+    try:
+        supabase_admin.auth.admin.delete_user(user_id)
+        logging.info(f"Usuário com ID {user_id} foi excluído pelo admin {admin_user.id}")
+        return
+    except Exception as e:
+        logging.error(f"Falha ao excluir usuário {user_id}: {e}")
+        raise HTTPException(status_code=400, detail="Não foi possível excluir o usuário.")
 
 # --- Gerenciamento de Perfil Pessoal ---
 @app.get("/api/users/me")
