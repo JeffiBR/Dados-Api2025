@@ -20,7 +20,7 @@ load_dotenv()
 app = FastAPI(
     title="API de Preços Arapiraca",
     description="Sistema completo para coleta e análise de preços de supermercados.",
-    version="1.6.0"
+    version="3.1.0"
 )
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] [%(levelname)s] %(message)s')
 
@@ -97,6 +97,8 @@ app.add_middleware(
 # --------------------------------------------------------------------------
 # --- 4. MODELOS DE DADOS (PYDANTIC) ---
 # --------------------------------------------------------------------------
+class Categoria(BaseModel):
+    id: Optional[int] = None; nome: str; palavras_chave: List[str]; regra_unidade: Optional[str] = None
 class UserCreate(BaseModel):
     email: str; password: str; full_name: str; role: str; allowed_pages: List[str] = []
 class UserUpdate(BaseModel):
@@ -113,8 +115,10 @@ class PruneByCollectionsRequest(BaseModel):
     cnpj: str; collection_ids: List[int]
 
 # --------------------------------------------------------------------------
-# --- 5. ENDPOINTS DA ÁREA DE ADMINISTRAÇÃO (PROTEGIDOS) ---
+# --- 5. ENDPOINTS DA APLICAÇÃO ---
 # --------------------------------------------------------------------------
+
+# --- Gerenciamento de Usuários ---
 @app.post("/api/users")
 async def create_user(user_data: UserCreate, admin_user: UserProfile = Depends(require_page_access('users'))):
     created_user_res = supabase_admin.auth.create_user({"email": user_data.email, "password": user_data.password, "email_confirm": True, "user_metadata": {'full_name': user_data.full_name}})
@@ -132,6 +136,7 @@ async def list_users(admin_user: UserProfile = Depends(require_page_access('user
     response = supabase.table('profiles').select('id, full_name, role, allowed_pages, avatar_url').execute()
     return response.data
 
+# --- Gerenciamento de Perfil Pessoal ---
 @app.get("/api/users/me")
 async def get_my_profile(current_user: UserProfile = Depends(get_current_user)):
     response = supabase.table('profiles').select('*').eq('id', current_user.id).single().execute()
@@ -142,7 +147,30 @@ async def update_my_profile(profile_data: ProfileUpdate, current_user: UserProfi
     update_data = profile_data.dict(exclude_unset=True)
     response = supabase.table('profiles').update(update_data).eq('id', current_user.id).execute()
     return response.data
+
+# --- Gerenciamento de Categorias ---
+@app.get("/api/categories", response_model=List[Categoria])
+async def list_categories(user: UserProfile = Depends(get_current_user)):
+    resp = supabase.table('categorias').select('*').order('nome').execute()
+    return resp.data
+
+@app.post("/api/categories", response_model=Categoria)
+async def create_category(categoria: Categoria, admin_user: UserProfile = Depends(require_page_access('users'))):
+    resp = supabase.table('categorias').insert(categoria.dict(exclude={'id'})).execute()
+    return resp.data[0]
+
+@app.put("/api/categories/{id}", response_model=Categoria)
+async def update_category(id: int, categoria: Categoria, admin_user: UserProfile = Depends(require_page_access('users'))):
+    resp = supabase.table('categorias').update(categoria.dict(exclude={'id', 'created_at'})).eq('id', id).execute()
+    if not resp.data: raise HTTPException(status_code=404, detail="Categoria não encontrada")
+    return resp.data[0]
+
+@app.delete("/api/categories/{id}", status_code=204)
+async def delete_category(id: int, admin_user: UserProfile = Depends(require_page_access('users'))):
+    supabase.table('categorias').delete().eq('id', id).execute()
+    return
     
+# --- Gerenciamento da Coleta ---
 @app.post("/api/trigger-collection")
 async def trigger_collection(background_tasks: BackgroundTasks, user: UserProfile = Depends(require_page_access('coleta'))):
     if collection_status["status"] == "RUNNING":
@@ -155,6 +183,7 @@ async def trigger_collection(background_tasks: BackgroundTasks, user: UserProfil
 async def get_collection_status(user: UserProfile = Depends(get_current_user)):
     return collection_status
 
+# --- Gerenciamento de Supermercados ---
 @app.get("/api/supermarkets", response_model=List[Supermercado])
 async def list_supermarkets_admin(user: UserProfile = Depends(get_current_user)):
     resp = supabase.table('supermercados').select('id, nome, cnpj').order('nome').execute()
@@ -175,6 +204,7 @@ async def update_supermarket(id: int, market: Supermercado, user: UserProfile = 
 async def delete_supermarket(id: int, user: UserProfile = Depends(require_page_access('markets'))):
     supabase.table('supermercados').delete().eq('id', id).execute(); return
 
+# --- Gerenciamento de Dados Históricos ---
 @app.get("/api/collections")
 async def list_collections(user: UserProfile = Depends(require_page_access('collections'))):
     response = supabase.table('coletas').select('*').order('iniciada_em', desc=True).execute(); return response.data
@@ -202,9 +232,7 @@ async def get_collections_by_market(cnpj: str, user: UserProfile = Depends(requi
     response = supabase.rpc('get_collections_for_market', {'market_cnpj': cnpj}).execute()
     return response.data
 
-# --------------------------------------------------------------------------
-# --- 6. ENDPOINTS PÚBLICOS E DE USUÁRIO LOGADO ---
-# --------------------------------------------------------------------------
+# --- Endpoints Públicos e de Usuário Logado ---
 @app.get("/api/supermarkets/public", response_model=List[Supermercado])
 async def list_supermarkets_public():
     resp = supabase.table('supermercados').select('id, nome, cnpj').order('nome').execute()
@@ -281,10 +309,10 @@ async def get_price_history(request: PriceHistoryRequest, user: UserProfile = De
         history_by_market[market_name] = [{'x': index.strftime('%Y-%m-%d'), 'y': round(value, 2)} for index, value in market_series.items()]
     return history_by_market
 
-# --- Endpoints do Dashboard ---
 @app.get("/api/dashboard/summary")
 async def get_dashboard_summary(start_date: date, end_date: date, cnpjs: Optional[List[str]] = Query(None), user: UserProfile = Depends(get_current_user)):
-    params = {'start_date': str(start_date), 'end_date': str(end_date), 'market_cnpjs': cnpjs}
+    params = {'start_date': str(start_date), 'end_date': str(end_date)}
+    if cnpjs: params['market_cnpjs'] = cnpjs
     response = supabase.rpc('get_dashboard_summary', params).execute()
     if not response.data:
         return {"total_mercados": 0, "total_produtos": 0, "total_coletas": 0, "ultima_coleta": None}
@@ -292,29 +320,31 @@ async def get_dashboard_summary(start_date: date, end_date: date, cnpjs: Optiona
 
 @app.get("/api/dashboard/stats")
 async def get_dashboard_stats(start_date: date, end_date: date, cnpjs: Optional[List[str]] = Query(None), user: UserProfile = Depends(require_page_access('dashboard'))):
-    params = {'start_date': str(start_date), 'end_date': str(end_date), 'market_cnpjs': cnpjs}
+    params = {'start_date': str(start_date), 'end_date': str(end_date)}
+    if cnpjs: params['market_cnpjs'] = cnpjs
     top_products_resp = supabase.rpc('get_top_products_by_filters', params).execute()
     top_markets_resp = supabase.rpc('get_top_markets_by_filters', params).execute()
     return {"top_products": top_products_resp.data or [], "top_markets": top_markets_resp.data or []}
 
-
 @app.get("/api/dashboard/bargains")
 async def get_dashboard_bargains(start_date: date, end_date: date, cnpjs: Optional[List[str]] = Query(None), category: Optional[str] = Query(None), user: UserProfile = Depends(require_page_access('dashboard'))):
-    params = {'start_date': str(start_date), 'end_date': str(end_date), 'market_cnpjs': cnpjs}
+    params = {'start_date': str(start_date), 'end_date': str(end_date)}
+    if cnpjs: params['market_cnpjs'] = cnpjs
     response = supabase.rpc('get_cheapest_products_by_barcode', params).execute()
     if not response.data: return []
-    if not category or category == 'todos': return response.data
+    if not category or category == 'Todos': return response.data
+    category_rules_resp = supabase.table('categorias').select('palavras_chave, regra_unidade').eq('nome', category).single().execute()
+    if not category_rules_resp.data: return []
+    category_rules = category_rules_resp.data
     df = pd.DataFrame(response.data)
-    keywords = CATEGORIES.get(category, {}).get('keywords', [])
+    keywords = category_rules.get('palavras_chave', [])
     if not keywords: return response.data
     regex_pattern = '|'.join(keywords)
-    if category == 'carnes':
-        filtered_df = df[df['nome_produto'].str.contains(regex_pattern, case=False) & (df['tipo_unidade'] == 'KG')]
+    if category_rules.get('regra_unidade') == 'KG':
+        filtered_df = df[df['nome_produto'].str.contains(regex_pattern, case=False, na=False) & (df['tipo_unidade'] == 'KG')]
     else:
-        filtered_df = df[df['nome_produto'].str.contains(regex_pattern, case=False)]
+        filtered_df = df[df['nome_produto'].str.contains(regex_pattern, case=False, na=False)]
     return filtered_df.to_dict(orient='records')
-    
-# --------------------------------------------------------------------------
-# --- 7. SERVIR O FRONTEND ---
-# --------------------------------------------------------------------------
+
+# --- Servir o Frontend ---
 app.mount("/", StaticFiles(directory="web", html=True), name="static")
