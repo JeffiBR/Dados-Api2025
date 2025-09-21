@@ -297,12 +297,6 @@ async def get_dashboard_stats(start_date: date, end_date: date, cnpjs: Optional[
     top_markets_resp = supabase.rpc('get_top_markets_by_filters', params).execute()
     return {"top_products": top_products_resp.data or [], "top_markets": top_markets_resp.data or []}
 
-CATEGORIES = {
-    'carnes': ['carne', 'picanha', 'alcatra', 'contra filé', 'frango', 'coxa', 'linguiça', 'bisteca', 'pernil', 'lombo', 'bovino', 'suino'],
-    'laticinios': ['leite', 'queijo', 'manteiga', 'margarina', 'iogurte', 'requeijão', 'creme de leite', 'leite condensado'],
-    'cereais': ['arroz', 'feijão', 'macarrão', 'farinha', 'fubá'], 'hortifruti': ['batata', 'cebola', 'tomate', 'banana', 'maçã', 'laranja', 'alface', 'cenoura', 'verdura', 'legume', 'ovo'],
-    'padaria': ['pão', 'bolo', 'biscoito', 'bolacha'], 'doces': ['doce', 'chocolate', 'açúcar'],
-}
 
 @app.get("/api/dashboard/bargains")
 async def get_dashboard_bargains(start_date: date, end_date: date, cnpjs: Optional[List[str]] = Query(None), category: Optional[str] = Query(None), user: UserProfile = Depends(require_page_access('dashboard'))):
@@ -319,23 +313,8 @@ async def get_dashboard_bargains(start_date: date, end_date: date, cnpjs: Option
     else:
         filtered_df = df[df['nome_produto'].str.contains(regex_pattern, case=False)]
     return filtered_df.to_dict(orient='records')
-
-# Adicione este novo endpoint para deletar usuários
-@app.delete("/api/users/{user_id}")
-async def delete_user(user_id: str, admin_user: UserProfile = Depends(require_page_access('users'))):
-    try:
-        # Primeiro deleta o perfil
-        supabase_admin.table('profiles').delete().eq('id', user_id).execute()
-        
-        # Depois deleta o usuário do Auth
-        supabase_admin.auth.admin.delete_user(user_id)
-        
-        return {"message": "Usuário deletado com sucesso"}
-    except Exception as e:
-        logging.error(f"Erro ao deletar usuário: {e}")
-        raise HTTPException(status_code=500, detail="Erro ao deletar usuário")
+    
 # --------------------------------------------------------------------------
 # --- 7. SERVIR O FRONTEND ---
 # --------------------------------------------------------------------------
 app.mount("/", StaticFiles(directory="web", html=True), name="static")
-
