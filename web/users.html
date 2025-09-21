@@ -4,383 +4,91 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerenciar Usuários - Preços AL</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth.js"></script>
-    <style>
-        /* Estilos específicos para a página de usuários */
-        .form-container {
-            position: relative;
-            overflow: hidden;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            transition: all 0.3s ease;
-        }
-        
-        .form-container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--primary), var(--accent));
-            opacity: 0.8;
-        }
-        
-        .form-group {
-            margin-bottom: 1.5rem;
-            position: relative;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: var(--muted-dark);
-            transition: var(--transition);
-        }
-        
-        body.light-mode .form-group label {
-            color: var(--muted-light);
-        }
-        
-        .form-group input, .form-group select {
-            width: 100%;
-            padding: 1rem 1.25rem;
-            border: 2px solid var(--border-dark);
-            border-radius: var(--radius);
-            font-size: 1rem;
-            transition: var(--transition);
-            background: var(--input-dark);
-            color: var(--text-dark);
-            font-family: inherit;
-        }
-        
-        body.light-mode .form-group input, 
-        body.light-mode .form-group select {
-            background: var(--input-light);
-            color: var(--text-light);
-            border: 2px solid var(--border-light);
-        }
-        
-        .form-group input:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(79,70,229,0.13);
-            transform: translateY(-2px);
-        }
-        
-        .form-group input:hover,
-        .form-group select:hover {
-            border-color: rgba(79,70,229,0.5);
-        }
-        
-        .full-width {
-            width: 100%;
-        }
-        
-        .supermarket-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 0.75rem;
-            margin-top: 0.5rem;
-        }
-        
-        .supermarket-list label {
-            display: flex;
-            align-items: center;
-            padding: 0.75rem;
-            background: var(--input-dark);
-            border-radius: var(--radius);
-            cursor: pointer;
-            transition: var(--transition);
-        }
-        
-        body.light-mode .supermarket-list label {
-            background: var(--input-light);
-        }
-        
-        .supermarket-list label:hover {
-            background: rgba(79, 70, 229, 0.1);
-        }
-        
-        .supermarket-list input {
-            margin-right: 0.75rem;
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-        }
-        
-        #saveUserBtn, #cancelButton {
-            margin-right: 1rem;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        #saveUserBtn::after, #cancelButton::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 5px;
-            height: 5px;
-            background: rgba(255, 255, 255, 0.5);
-            opacity: 0;
-            border-radius: 100%;
-            transform: scale(1, 1) translate(-50%);
-            transform-origin: 50% 50%;
-        }
-        
-        #saveUserBtn:hover::after, #cancelButton:hover::after {
-            animation: ripple 1s ease-out;
-        }
-        
-        @keyframes ripple {
-            0% {
-                transform: scale(0, 0);
-                opacity: 0.5;
-            }
-            100% {
-                transform: scale(30, 30);
-                opacity: 0;
-            }
-        }
-        
-        .table-container {
-            position: relative;
-            overflow: hidden;
-            border-radius: var(--radius);
-        }
-        
-        .table-container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--primary), var(--accent));
-            opacity: 0.8;
-        }
-        
-        #usersTable {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            margin: 1rem 0;
-        }
-        
-        #usersTable th {
-            background: rgba(79,70,229,0.1);
-            padding: 1rem;
-            text-align: left;
-            font-weight: 600;
-            color: var(--primary);
-            border-bottom: 2px solid var(--border-dark);
-        }
-        
-        body.light-mode #usersTable th {
-            border-bottom: 2px solid var(--border-light);
-        }
-        
-        #usersTable td {
-            padding: 1rem;
-            border-bottom: 1px solid var(--border-dark);
-            transition: var(--transition);
-        }
-        
-        body.light-mode #usersTable td {
-            border-bottom: 1px solid var(--border-light);
-        }
-        
-        #usersTable tr:last-child td {
-            border-bottom: none;
-        }
-        
-        #usersTable tr:hover td {
-            background: rgba(79,70,229,0.05);
-        }
-        
-        .actions {
-            display: flex;
-            gap: 0.5rem;
-        }
-        
-        .edit-btn, .delete-btn {
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: 6px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-family: inherit;
-            font-size: 0.9rem;
-        }
-        
-        .edit-btn {
-            background: linear-gradient(90deg, var(--warn), #f59e0b);
-            color: white;
-            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
-        }
-        
-        .edit-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
-        }
-        
-        .delete-btn {
-            background: linear-gradient(90deg, var(--error), #ef4444);
-            color: white;
-            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
-        }
-        
-        .delete-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
-        }
-        
-        @media (max-width: 768px) {
-            .actions {
-                flex-direction: column;
-            }
-            
-            .edit-btn, .delete-btn {
-                width: 100%;
-            }
-            
-            #usersTable {
-                display: block;
-                overflow-x: auto;
-            }
-            
-            .supermarket-list {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
 </head>
-<body>
-    <script>routeGuard(['admin']);</script>
+<body class="theme-dark">
+    <script>routeGuard('users');</script>
 
     <div class="app-container">
-        <div class="sidebar-overlay"></div>
-        <button class="mobile-menu-button"><i class="fas fa-bars"></i></button>
-        
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <i class="fas fa-bolt"></i>
-                <h1>Preços AL</h1>
-            </div>
-            <nav class="sidebar-nav">
-                <ul>
-                    <li class="nav-header">ANÁLISE</li>
-                    <li><a href="/search.html"><i class="fas fa-home"></i> Busca</a></li>
-                    <li data-permission="compare"><a href="/compare.html"><i class="fas fa-chart-bar"></i> Comparador</a></li>
-                    <li data-permission="dashboard"><a href="/dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
-                    
-                    <li class="nav-header">ADMINISTRAÇÃO</li>
-                    <li data-permission="coleta"><a href="/admin.html"><i class="fas fa-cog"></i> Coleta</a></li>
-                    <li data-permission="collections"><a href="/collections.html"><i class="fas fa-history"></i> Histórico de Coletas</a></li>
-                    <li data-permission="product_log"><a href="/product-log.html"><i class="fas fa-file-alt"></i> Log de Produtos</a></li>
-                    <li data-permission="prune"><a href="/prune.html"><i class="fas fa-trash"></i> Limpeza de Dados</a></li>
+        <aside class="sidebar" id="sidebar">
+            </aside>
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-                    <li class="nav-header">CONFIGURAÇÃO</li>
-                    <li data-permission="markets"><a href="/markets.html"><i class="fas fa-store"></i> Gerenciar Mercados</a></li>
-                    <li data-permission="users"><a href="/users.html" class="active"><i class="fas fa-users"></i> Gerenciar Usuários</a></li>
-                </ul>
-            </nav>
-            <div class="theme-switcher">
-                <span>Tema</span>
-                <button id="themeToggle"><i class="fas fa-moon"></i></button>
-            </div>
-        </aside>
-
-        <div class="content-wrapper">
+        <div class="main-content">
             <header class="top-bar">
-                <button class="mobile-menu-button"><i class="fas fa-bars"></i></button>
-                <div id="userProfileMenu" class="profile-menu">
-                    <button class="profile-button">
-                        <img src="https://via.placeholder.com/40" alt="Avatar" id="userAvatar">
-                        <span class="user-name" id="userName">Usuário</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                    <div class="profile-dropdown">
-                        <a href="/profile.html"><i class="fas fa-user"></i> Meu Perfil</a>
-                        <a href="#" id="logoutButton"><i class="fas fa-sign-out-alt"></i> Sair</a>
+                </header>
+            
+            <div class="page-content">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1><i class="fas fa-users-cog"></i>Gerenciar Usuários</h1>
+                        <p>Crie, edite e defina permissões para os usuários do sistema.</p>
                     </div>
                 </div>
-            </header>
 
-            <main class="main-content">
-                <div class="admin-panel">
-                    <div class="panel-header">
-                        <i class="fas fa-users"></i>
-                        <h2>Gerenciar Usuários</h2>
+                <div class="card form-container">
+                    <h3 id="formTitle">Criar Novo Usuário</h3>
+                    <input type="hidden" id="userId">
+                    <div class="form-group">
+                        <label for="fullName">Nome Completo</label>
+                        <input type="text" id="fullName" placeholder="Digite o nome completo">
                     </div>
-                    <p class="panel-description">Adicione, edite ou remova usuários do sistema.</p>
-                    
-                    <div class="form-container">
-                        <h3 id="formTitle">Criar Novo Usuário</h3>
-                        <input type="hidden" id="userId">
-                        <div class="form-group">
-                            <label for="fullName">Nome Completo</label>
-                            <input type="text" id="fullName" placeholder="Digite o nome completo">
-                        </div>
-                        <div class="form-group">
-                            <label for="email">Email</label>
-                            <input type="email" id="email" placeholder="Digite o email">
-                        </div>
-                        <div class="form-group">
-                            <label for="password">Senha</label>
-                            <input type="password" id="password" placeholder="Obrigatório para novos usuários">
-                        </div>
-                        <div class="form-group">
-                            <label for="role">Nível de Acesso</label>
-                            <select id="role">
-                                <option value="user">Usuário</option>
-                                <option value="admin">Admin Geral</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group full-width">
-                            <label>Permissões de Página (para nível 'Usuário')</label>
-                            <div id="permissions-container" class="supermarket-list">
-                                <label><input type="checkbox" value="compare"> Comparador</label>
-                                <label><input type="checkbox" value="dashboard"> Dashboard</label>
-                                <label><input type="checkbox" value="coleta"> Coleta</label>
-                                <label><input type="checkbox" value="markets"> Mercados</label>
-                                <label><input type="checkbox" value="collections"> Histórico</label>
-                                <label><input type="checkbox" value="prune"> Limpeza</label>
-                                <label><input type="checkbox" value="product_log"> Log de Produtos</label>
-                            </div>
-                        </div>
-                        <button id="saveUserBtn" class="btn full-width">Salvar</button>
-                        <button id="cancelButton" class="btn" style="display:none; background-color: #7f8c8d;">Cancelar Edição</button>
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" placeholder="Digite o email">
                     </div>
-                    
-                    <div class="table-container" style="margin-top: 2rem;">
-                        <h3>Usuários Cadastrados</h3>
-                        <table id="usersTable">
+                    <div class="form-group">
+                        <label for="password">Senha</label>
+                        <input type="password" id="password" placeholder="Obrigatório para novos usuários">
+                    </div>
+                    <div class="form-group">
+                        <label for="role">Nível de Acesso</label>
+                        <select id="role">
+                            <option value="user">Usuário</option>
+                            <option value="admin">Admin Geral</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Permissões de Página (para nível 'Usuário')</label>
+                        <div id="permissions-container" class="supermarket-list">
+                            <label><input type="checkbox" value="search"> Busca</label>
+                            <label><input type="checkbox" value="compare"> Comparador</label>
+                            <label><input type="checkbox" value="dashboard"> Dashboard</label>
+                            <label><input type="checkbox" value="coleta"> Coleta</label>
+                            <label><input type="checkbox" value="markets"> Mercados</label>
+                            <label><input type="checkbox" value="collections"> Histórico</label>
+                            <label><input type="checkbox" value="prune"> Limpeza</label>
+                            <label><input type="checkbox" value="product_log"> Log de Produtos</label>
+                            <label><input type="checkbox" value="users"> Gerenciar Usuários</label>
+                            <label><input type="checkbox" value="categories"> Gerenciar Categorias</label>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button id="saveUserBtn" class="btn btn-primary"><i class="fas fa-save"></i>Salvar</button>
+                        <button id="cancelButton" class="btn btn-secondary" style="display:none;">Cancelar Edição</button>
+                    </div>
+                </div>
+                
+                <div class="card table-container" style="margin-top: 2rem;">
+                    <div class="card-header"><h3>Usuários Cadastrados</h3></div>
+                    <div class="card-content">
+                        <table>
                             <thead>
                                 <tr>
                                     <th>Nome</th>
-                                    <th>Email</th>
                                     <th>Nível</th>
                                     <th>Permissões</th>
                                     <th>Ações</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <!-- Conteúdo dinâmico será inserido aqui -->
-                            </tbody>
+                            <tbody id="usersTableBody"></tbody>
                         </table>
                     </div>
                 </div>
-            </main>
+            </div>
         </div>
     </div>
     
