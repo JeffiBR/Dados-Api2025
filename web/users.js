@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } catch (error) {
             console.error('Erro ao carregar usuários:', error);
-            alert('Não foi possível carregar a lista de usuários.');
+            alert('Não foi possível carregar la lista de usuários.');
         }
     };
 
@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
         passwordInput.placeholder = 'Obrigatório para novos usuários';
         roleSelect.value = 'user';
         permissionCheckboxes.forEach(checkbox => checkbox.checked = false);
-        saveButton.textContent = 'Criar Usuário';
+        saveButton.innerHTML = '<i class="fas fa-save"></i> Criar Usuário';
         cancelButton.style.display = 'none';
     };
 
@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
         formTitle.textContent = `Editando Usuário: ${user.full_name}`;
         userIdInput.value = user.id;
         fullNameInput.value = user.full_name;
-        emailInput.value = '********'; // Email não pode ser alterado
+        emailInput.value = '(não pode ser alterado)';
         emailInput.disabled = true;
         passwordInput.value = '';
         passwordInput.placeholder = 'Deixe em branco para não alterar';
@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
             checkbox.checked = (user.allowed_pages || []).includes(checkbox.value);
         });
         
-        saveButton.textContent = 'Atualizar Usuário';
+        saveButton.innerHTML = '<i class="fas fa-save"></i> Atualizar Usuário';
         cancelButton.style.display = 'inline-flex';
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const isUpdating = !!id;
         
-        if (!isUpdating && (!email || !password)) {
+        if (!isUpdating && (!email || !password || email === '********')) {
             alert('Email e Senha são obrigatórios para novos usuários.');
             return;
         }
@@ -106,9 +106,11 @@ document.addEventListener('DOMContentLoaded', () => {
             body = JSON.stringify({ email, password, full_name, role, allowed_pages });
         }
 
+        const originalButtonText = saveButton.innerHTML;
+        saveButton.disabled = true;
+        saveButton.innerHTML = isUpdating ? 'Atualizando...' : 'Criando...';
+
         try {
-            saveButton.disabled = true;
-            saveButton.innerHTML = isUpdating ? 'Atualizando...' : 'Criando...';
             const response = await authenticatedFetch(url, { method, body });
             
             if (!response.ok) {
@@ -124,13 +126,25 @@ document.addEventListener('DOMContentLoaded', () => {
             alert(`Erro: ${error.message}`);
         } finally {
             saveButton.disabled = false;
+            saveButton.innerHTML = originalButtonText;
         }
     };
 
-    const deleteUser = async (id) => {
-        // Lógica para deletar usuário (requer um endpoint de deleção na API)
-        // Por segurança, vamos deixar desabilitado por enquanto até que o endpoint seja criado.
-        alert("Funcionalidade de exclusão de usuário a ser implementada na API.");
+    const deleteUser = async (id, userName) => {
+        if (!confirm(`Tem certeza que deseja excluir o usuário "${userName}"? Esta ação não pode ser desfeita.`)) return;
+
+        try {
+            const response = await authenticatedFetch(`/api/users/${id}`, { method: 'DELETE' });
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Falha ao excluir o usuário.');
+            }
+            alert('Usuário excluído com sucesso!');
+            loadUsers();
+        } catch (error) {
+            console.error('Erro ao excluir usuário:', error);
+            alert(error.message);
+        }
     };
 
     // --- EVENT LISTENERS ---
@@ -146,8 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (deleteButton) {
             const user = JSON.parse(deleteButton.closest('tr').dataset.user);
-            // deleteUser(user.id); // Descomente quando o endpoint de deleção estiver pronto
-            alert("A exclusão de usuários precisa ser implementada na API primeiro.");
+            deleteUser(user.id, user.full_name);
         }
     });
     
