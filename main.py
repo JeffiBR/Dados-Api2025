@@ -20,7 +20,7 @@ load_dotenv()
 app = FastAPI(
     title="API de Preços Arapiraca",
     description="Sistema completo para coleta e análise de preços de supermercados.",
-    version="3.1.0"
+    version="3.1.1"
 )
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] [%(levelname)s] %(message)s')
 
@@ -121,10 +121,34 @@ class PruneByCollectionsRequest(BaseModel):
 # --- Gerenciamento de Usuários ---
 @app.post("/api/users")
 async def create_user(user_data: UserCreate, admin_user: UserProfile = Depends(require_page_access('users'))):
-    created_user_res = supabase_admin.auth.create_user({"email": user_data.email, "password": user_data.password, "email_confirm": True, "user_metadata": {'full_name': user_data.full_name}})
-    user_id = created_user_res.user.id
-    supabase_admin.table('profiles').update({'role': user_data.role, 'allowed_pages': user_data.allowed_pages}).eq('id', user_id).execute()
-    return {"message": "Usuário criado com sucesso"}
+    try:
+        logging.info(f"Admin {admin_user.id} tentando criar usuário: {user_data.email}")
+        created_user_res = supabase_admin.auth.admin.create_user({
+            "email": user_data.email,
+            "password": user_data.password,
+            "email_confirm": True,
+            "user_metadata": {'full_name': user_data.full_name}
+        })
+        user_id = created_user_res.user.id
+        logging.info(f"Usuário criado no Auth com ID: {user_id}")
+        
+        profile_update_response = supabase_admin.table('profiles').update({
+            'role': user_data.role,
+            'allowed_pages': user_data.allowed_pages
+        }).eq('id', user_id).execute()
+        
+        if not profile_update_response.data:
+             logging.warning(f"Usuário {user_id} foi criado no Auth, mas o perfil não foi encontrado para atualizar.")
+             raise HTTPException(status_code=404, detail="Usuário criado, mas o perfil não foi encontrado para definir as permissões.")
+        
+        logging.info(f"Perfil do usuário {user_id} atualizado com a role: {user_data.role}")
+        return {"message": "Usuário criado com sucesso"}
+    except APIError as e:
+        logging.error(f"Erro da API do Supabase ao criar usuário: {e}")
+        raise HTTPException(status_code=400, detail=f"Erro do Supabase: {e.message}")
+    except Exception as e:
+        logging.error(f"Falha CRÍTICA ao criar usuário: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ocorreu um erro interno inesperado no servidor.")
 
 @app.put("/api/users/{user_id}")
 async def update_user(user_id: str, user_data: UserUpdate, admin_user: UserProfile = Depends(require_page_access('users'))):
@@ -345,6 +369,6 @@ async def get_dashboard_bargains(start_date: date, end_date: date, cnpjs: Option
     else:
         filtered_df = df[df['nome_produto'].str.contains(regex_pattern, case=False, na=False)]
     return filtered_df.to_dict(orient='records')
-
+    
 # --- Servir o Frontend ---
 app.mount("/", StaticFiles(directory="web", html=True), name="static")
