@@ -9,72 +9,114 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth.js"></script>
 </head>
-<body class="theme-dark">
+<body>
     <script>routeGuard('users');</script>
 
     <div class="app-container">
-        <aside class="sidebar" id="sidebar">
-            </aside>
         <div class="sidebar-overlay" id="sidebarOverlay"></div>
+        <button class="mobile-menu-button"><i class="fas fa-bars"></i></button>
+        
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-bolt"></i>
+                <h1>Preços AL</h1>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="nav-header">ANÁLISE</li>
+                    <li><a href="/search.html"><i class="fas fa-home"></i> Busca</a></li>
+                    <li data-permission="compare"><a href="/compare.html"><i class="fas fa-chart-bar"></i> Comparador</a></li>
+                    <li data-permission="dashboard"><a href="/dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+                    
+                    <li class="nav-header">ADMINISTRAÇÃO</li>
+                    <li data-permission="coleta"><a href="/admin.html"><i class="fas fa-cog"></i> Coleta</a></li>
+                    <li data-permission="collections"><a href="/collections.html"><i class="fas fa-history"></i> Histórico de Coletas</a></li>
+                    <li data-permission="product_log"><a href="/product-log.html"><i class="fas fa-file-alt"></i> Log de Produtos</a></li>
+                    <li data-permission="prune"><a href="/prune.html"><i class="fas fa-trash"></i> Limpeza de Dados</a></li>
 
-        <div class="main-content">
+                    <li class="nav-header">CONFIGURAÇÃO</li>
+                    <li data-permission="markets"><a href="/markets.html"><i class="fas fa-store"></i> Gerenciar Mercados</a></li>
+                    <li data-permission="users"><a href="/users.html" class="active"><i class="fas fa-users"></i> Gerenciar Usuários</a></li>
+                </ul>
+            </nav>
+            <div class="theme-switcher">
+                <span>Tema</span>
+                <button id="themeToggle"><i class="fas fa-moon"></i></button>
+            </div>
+        </aside>
+
+        <div class="content-wrapper">
             <header class="top-bar">
-                </header>
-            
-            <div class="page-content">
-                <div class="page-header">
-                    <div class="page-title">
-                        <h1><i class="fas fa-users-cog"></i>Gerenciar Usuários</h1>
-                        <p>Crie, edite e defina permissões para os usuários do sistema.</p>
+                <button class="mobile-menu-button"><i class="fas fa-bars"></i></button>
+                <div id="userProfileMenu" class="profile-menu">
+                    <button class="profile-button">
+                        <img src="https://via.placeholder.com/40" alt="Avatar" id="userAvatar">
+                        <span class="user-name" id="userName">Usuário</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="profile-dropdown">
+                        <a href="/profile.html"><i class="fas fa-user"></i> Meu Perfil</a>
+                        <a href="#" id="logoutButton"><i class="fas fa-sign-out-alt"></i> Sair</a>
                     </div>
                 </div>
+            </header>
 
-                <div class="card form-container">
-                    <h3 id="formTitle">Criar Novo Usuário</h3>
-                    <input type="hidden" id="userId">
-                    <div class="form-group">
-                        <label for="fullName">Nome Completo</label>
-                        <input type="text" id="fullName" placeholder="Digite o nome completo">
+            <main class="main-content">
+                <div class="admin-panel">
+                    <div class="panel-header">
+                        <i class="fas fa-users-cog"></i>
+                        <h2>Gerenciar Usuários</h2>
                     </div>
-                    <div class="form-group">
-                        <label for="email">Email</label>
-                        <input type="email" id="email" placeholder="Digite o email">
-                    </div>
-                    <div class="form-group">
-                        <label for="password">Senha</label>
-                        <input type="password" id="password" placeholder="Obrigatório para novos usuários">
-                    </div>
-                    <div class="form-group">
-                        <label for="role">Nível de Acesso</label>
-                        <select id="role">
-                            <option value="user">Usuário</option>
-                            <option value="admin">Admin Geral</option>
-                        </select>
-                    </div>
-                    <div class="form-group full-width">
-                        <label>Permissões de Página (para nível 'Usuário')</label>
-                        <div id="permissions-container" class="supermarket-list">
-                            <label><input type="checkbox" value="search"> Busca</label>
-                            <label><input type="checkbox" value="compare"> Comparador</label>
-                            <label><input type="checkbox" value="dashboard"> Dashboard</label>
-                            <label><input type="checkbox" value="coleta"> Coleta</label>
-                            <label><input type="checkbox" value="markets"> Mercados</label>
-                            <label><input type="checkbox" value="collections"> Histórico</label>
-                            <label><input type="checkbox" value="prune"> Limpeza</label>
-                            <label><input type="checkbox" value="product_log"> Log de Produtos</label>
-                            <label><input type="checkbox" value="users"> Gerenciar Usuários</label>
-                            <label><input type="checkbox" value="categories"> Gerenciar Categorias</label>
+                    <p class="panel-description">Crie, edite e defina permissões para os usuários do sistema.</p>
+                    
+                    <div class="form-container">
+                        <h3 id="formTitle">Criar Novo Usuário</h3>
+                        <input type="hidden" id="userId">
+                        <div class="form-group">
+                            <label for="fullName">Nome Completo</label>
+                            <input type="text" id="fullName" placeholder="Digite o nome completo">
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" placeholder="Digite o email">
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Senha</label>
+                            <input type="password" id="password" placeholder="Obrigatório para novos usuários">
+                        </div>
+                        <div class="form-group">
+                            <label for="role">Nível de Acesso</label>
+                            <select id="role">
+                                <option value="user">Usuário</option>
+                                <option value="admin">Admin Geral</option>
+                            </select>
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Permissões de Página (para nível 'Usuário')</label>
+                            <div id="permissions-container" class="supermarket-list">
+                                <label><input type="checkbox" value="search"> Busca</label>
+                                <label><input type="checkbox" value="compare"> Comparador</label>
+                                <label><input type="checkbox" value="dashboard"> Dashboard</label>
+                                <label><input type="checkbox" value="coleta"> Coleta</label>
+                                <label><input type="checkbox" value="markets"> Mercados</label>
+                                <label><input type="checkbox" value="collections"> Histórico</label>
+                                <label><input type="checkbox" value="prune"> Limpeza</label>
+                                <label><input type="checkbox" value="product_log"> Log de Produtos</label>
+                                <label><input type="checkbox" value="users"> Gerenciar Usuários</label>
+                                <label><input type="checkbox" value="categories"> Gerenciar Categorias</label>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button id="saveUserBtn" class="btn"><i class="fas fa-save"></i>Salvar</button>
+                            <button id="cancelButton" class="btn outline" style="display:none;">Cancelar Edição</button>
                         </div>
                     </div>
-                    <div class="form-actions">
-                        <button id="saveUserBtn" class="btn btn-primary"><i class="fas fa-save"></i>Salvar</button>
-                        <button id="cancelButton" class="btn btn-secondary" style="display:none;">Cancelar Edição</button>
-                    </div>
-                </div>
-                
-                <div class="card table-container" style="margin-top: 2rem;">
-                    <div class="card-header"><h3>Usuários Cadastrados</h3></div>
-                    <div class="card-content">
+                    
+                    <div class="table-container" style="margin-top: 2rem;">
+                        <div class="panel-header">
+                            <i class="fas fa-list"></i>
+                            <h3>Usuários Cadastrados</h3>
+                        </div>
                         <table>
                             <thead>
                                 <tr>
@@ -88,10 +130,75 @@
                         </table>
                     </div>
                 </div>
-            </div>
+            </main>
         </div>
     </div>
     
     <script src="users.js"></script>
+    <script>
+        // Script para funcionalidades comuns (tema, menu mobile, logout)
+        document.addEventListener('DOMContentLoaded', function() {
+            // Toggle do tema
+            const themeToggle = document.getElementById('themeToggle');
+            if (themeToggle) {
+                themeToggle.addEventListener('click', () => {
+                    document.body.classList.toggle('light-mode');
+                    const icon = themeToggle.querySelector('i');
+                    if (document.body.classList.contains('light-mode')) {
+                        icon.classList.remove('fa-moon');
+                        icon.classList.add('fa-sun');
+                    } else {
+                        icon.classList.remove('fa-sun');
+                        icon.classList.add('fa-moon');
+                    }
+                });
+            }
+
+            // Menu mobile
+            const mobileMenuButtons = document.querySelectorAll('.mobile-menu-button');
+            const sidebar = document.querySelector('.sidebar');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            
+            mobileMenuButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    sidebar.classList.toggle('open');
+                    sidebarOverlay.classList.toggle('show');
+                });
+            });
+            
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', () => {
+                    sidebar.classList.remove('open');
+                    sidebarOverlay.classList.remove('show');
+                });
+            }
+
+            // Menu de perfil
+            const profileMenu = document.getElementById('userProfileMenu');
+            if (profileMenu) {
+                const profileButton = profileMenu.querySelector('.profile-button');
+                const dropdown = profileMenu.querySelector('.profile-dropdown');
+                
+                profileButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    dropdown.classList.toggle('show');
+                });
+                
+                document.addEventListener('click', () => {
+                    dropdown.classList.remove('show');
+                });
+            }
+
+            // Botão de logout
+            const logoutButton = document.getElementById('logoutButton');
+            if (logoutButton) {
+                logoutButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    // Implementar lógica de logout aqui
+                    alert('Funcionalidade de logout a ser implementada');
+                });
+            }
+        });
+    </script>
 </body>
 </html>
