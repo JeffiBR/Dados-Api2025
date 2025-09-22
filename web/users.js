@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- ELEMENTOS DA UI (Mapeados para o novo design) ---
+    // --- ELEMENTOS DA UI ---
     const tableBody = document.getElementById('usersTableBody');
     const saveButton = document.getElementById('saveUserBtn');
     const cancelButton = document.getElementById('cancelButton');
@@ -9,52 +9,67 @@ document.addEventListener('DOMContentLoaded', () => {
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
     const roleSelect = document.getElementById('role');
-    const permissionsContainer = document.getElementById('permissions-container');
-    const permissionCheckboxes = permissionsContainer.querySelectorAll('input[type="checkbox"]');
-
-    const API_URL = '/api/users';
+    const permissionCards = document.querySelectorAll('.permission-card');
 
     // --- LÓGICA DE NEGÓCIO ---
 
+    // Função para obter as permissões selecionadas
+    const getSelectedPermissions = () => {
+        return Array.from(permissionCards)
+            .filter(card => card.classList.contains('selected'))
+            .map(card => card.dataset.permission);
+    };
+
+    // Função para definir as permissões selecionadas
+    const setSelectedPermissions = (permissions) => {
+        permissionCards.forEach(card => {
+            card.classList.toggle('selected', permissions.includes(card.dataset.permission));
+        });
+    };
+
+    // Adicionar event listeners para os cards de permissão
+    permissionCards.forEach(card => {
+        card.addEventListener('click', () => {
+            card.classList.toggle('selected');
+        });
+    });
+
     const loadUsers = async () => {
         try {
-            const users = await authenticatedFetch(API_URL).then(res => res.json());
-
-            tableBody.innerHTML = '';
-            if (users.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="5" class="no-data">Nenhum usuário cadastrado.</td></tr>`;
-                return;
+            const response = await authenticatedFetch('/api/users');
+            
+            if (!response.ok) {
+                throw new Error('Erro ao carregar usuários');
             }
-
+            
+            const users = await response.json();
+            
+            tableBody.innerHTML = '';
             users.forEach(user => {
                 const row = document.createElement('tr');
-                row.dataset.user = JSON.stringify(user); // Salva os dados no elemento
-
-                // Cria os badges de permissão de forma dinâmica
-                const permissionsHtml = (user.allowed_pages || [])
-                    .map(p => `<span class="permissions-badge">${p}</span>`)
-                    .join(' ');
+                // Salva os dados completos no elemento para fácil acesso ao editar
+                row.dataset.user = JSON.stringify(user);
 
                 row.innerHTML = `
                     <td>${user.full_name || 'N/A'}</td>
-                    <td>${user.email || '(email não disponível)'}</td>
+                    <td>${user.email || 'N/A'}</td>
                     <td>${user.role === 'admin' ? 'Admin Geral' : 'Usuário'}</td>
-                    <td>${permissionsHtml || 'Nenhuma'}</td>
-                    <td class="action-buttons">
-                        <button class="btn btn-sm btn-edit" title="Editar"><i class="fas fa-pencil-alt"></i></button>
-                        <button class="btn btn-sm btn-delete" title="Excluir"><i class="fas fa-trash-alt"></i></button>
+                    <td>${(user.allowed_pages || []).length} permissões</td>
+                    <td class="actions">
+                        <button class="btn-icon edit-btn" title="Editar"><i class="fas fa-pencil-alt"></i></button>
+                        <button class="btn-icon delete-btn" title="Excluir"><i class="fas fa-trash-alt"></i></button>
                     </td>
                 `;
                 tableBody.appendChild(row);
             });
         } catch (error) {
             console.error('Erro ao carregar usuários:', error);
-            tableBody.innerHTML = `<tr><td colspan="5" class="no-data error-text">Falha ao carregar usuários.</td></tr>`;
+            alert('Não foi possível carregar a lista de usuários.');
         }
     };
 
     const resetForm = () => {
-        formTitle.textContent = 'Criar Novo Usuário';
+        formTitle.textContent = 'Adicionar Novo Usuário';
         userIdInput.value = '';
         fullNameInput.value = '';
         emailInput.value = '';
@@ -63,8 +78,8 @@ document.addEventListener('DOMContentLoaded', () => {
         passwordInput.disabled = false;
         passwordInput.placeholder = 'Obrigatório para novos usuários';
         roleSelect.value = 'user';
-        permissionCheckboxes.forEach(checkbox => checkbox.checked = false);
-        saveButton.innerHTML = '<i class="fas fa-save"></i> Salvar Usuário';
+        setSelectedPermissions([]);
+        saveButton.innerHTML = '<i class="fas fa-save"></i> Salvar';
         cancelButton.style.display = 'none';
     };
 
@@ -72,18 +87,16 @@ document.addEventListener('DOMContentLoaded', () => {
         formTitle.textContent = `Editando Usuário: ${user.full_name}`;
         userIdInput.value = user.id;
         fullNameInput.value = user.full_name;
-        emailInput.value = user.email || '(não pode ser alterado)';
+        emailInput.value = user.email;
         emailInput.disabled = true;
         passwordInput.value = '';
         passwordInput.placeholder = 'Deixe em branco para não alterar';
-        passwordInput.disabled = true; // Senha não é editada aqui
+        passwordInput.disabled = true; // Senha não é editada aqui por segurança
         roleSelect.value = user.role;
         
-        permissionCheckboxes.forEach(checkbox => {
-            checkbox.checked = (user.allowed_pages || []).includes(checkbox.value);
-        });
+        setSelectedPermissions(user.allowed_pages || []);
         
-        saveButton.innerHTML = '<i class="fas fa-save"></i> Atualizar Usuário';
+        saveButton.innerHTML = '<i class="fas fa-save"></i> Atualizar';
         cancelButton.style.display = 'inline-flex';
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -94,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const email = emailInput.value.trim();
         const password = passwordInput.value;
         const role = roleSelect.value;
-        const allowed_pages = Array.from(permissionCheckboxes).filter(cb => cb.checked).map(cb => cb.value);
+        const allowed_pages = getSelectedPermissions();
 
         if (!full_name) {
             alert('Nome completo é obrigatório.');
@@ -103,12 +116,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const isUpdating = !!id;
         
-        if (!isUpdating && (!email || !password || email.includes('*'))) {
+        if (!isUpdating && (!email || !password)) {
             alert('Email e Senha são obrigatórios para novos usuários.');
             return;
         }
 
-        const url = isUpdating ? `${API_URL}/${id}` : API_URL;
+        const url = isUpdating ? `/api/users/${id}` : '/api/users';
         const method = isUpdating ? 'PUT' : 'POST';
         
         let body;
@@ -118,9 +131,9 @@ document.addEventListener('DOMContentLoaded', () => {
             body = JSON.stringify({ email, password, full_name, role, allowed_pages });
         }
 
-        const originalButtonHTML = saveButton.innerHTML;
+        const originalButtonText = saveButton.innerHTML;
         saveButton.disabled = true;
-        saveButton.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${isUpdating ? 'Atualizando...' : 'Criando...'}`;
+        saveButton.innerHTML = isUpdating ? 'Atualizando...' : 'Criando...';
 
         try {
             const response = await authenticatedFetch(url, { method, body });
@@ -130,15 +143,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(error.detail || 'Erro ao salvar usuário');
             }
             
-            showNotification(`Usuário ${isUpdating ? 'atualizado' : 'criado'} com sucesso!`, 'success');
+            alert(`Usuário ${isUpdating ? 'atualizado' : 'criado'} com sucesso!`);
             resetForm();
             loadUsers();
         } catch (error) {
             console.error('Erro ao salvar usuário:', error);
-            showNotification(`Erro: ${error.message}`, 'error');
+            alert(`Erro: ${error.message}`);
         } finally {
             saveButton.disabled = false;
-            saveButton.innerHTML = originalButtonHTML;
+            saveButton.innerHTML = originalButtonText;
         }
     };
 
@@ -151,19 +164,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 const error = await response.json();
                 throw new Error(error.detail || 'Falha ao excluir o usuário.');
             }
-            showNotification('Usuário excluído com sucesso!', 'success');
+            alert('Usuário excluído com sucesso!');
             loadUsers();
         } catch (error) {
             console.error('Erro ao excluir usuário:', error);
-            showNotification(error.message, 'error');
+            alert(error.message);
         }
     };
 
     // --- EVENT LISTENERS ---
     
     tableBody.addEventListener('click', (e) => {
-        const editButton = e.target.closest('.btn-edit');
-        const deleteButton = e.target.closest('.btn-delete');
+        const editButton = e.target.closest('.edit-btn');
+        const deleteButton = e.target.closest('.delete-btn');
         
         if (editButton) {
             const user = JSON.parse(editButton.closest('tr').dataset.user);
@@ -172,10 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (deleteButton) {
             const user = JSON.parse(deleteButton.closest('tr').dataset.user);
-            // Busca o email do usuário na API para exibir no alerta, já que não vem na lista
-            authenticatedFetch(`/api/users/${user.id}`).then(res => res.json()).then(fullUser => {
-                 deleteUser(user.id, fullUser.full_name || 'este usuário');
-            });
+            deleteUser(user.id, user.full_name);
         }
     });
     
@@ -184,4 +194,68 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Inicialização da página
     loadUsers();
+
+    // Menu mobile
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    
+    if (mobileMenuBtn) {
+        mobileMenuBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+            sidebarOverlay.classList.toggle('show');
+        });
+    }
+    
+    if (sidebarOverlay) {
+        sidebarOverlay.addEventListener('click', () => {
+            sidebar.classList.remove('open');
+            sidebarOverlay.classList.remove('show');
+        });
+    }
+
+    // Toggle do menu do usuário
+    const userMenuBtn = document.getElementById('userMenuBtn');
+    const userDropdown = document.getElementById('userDropdown');
+    
+    if (userMenuBtn) {
+        userMenuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            userDropdown.classList.toggle('show');
+        });
+        
+        // Fechar o dropdown ao clicar fora
+        document.addEventListener('click', () => {
+            userDropdown.classList.remove('show');
+        });
+    }
+
+    // Toggle do tema
+    const themeToggle = document.getElementById('themeToggle');
+    
+    if (themeToggle) {
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('light-mode');
+            const icon = themeToggle.querySelector('i');
+            if (document.body.classList.contains('light-mode')) {
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+            } else {
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+            }
+        });
+    }
+
+    // Logout
+    const logoutBtn = document.getElementById('logoutBtn');
+    
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            // Aqui você deve implementar a lógica de logout
+            alert('Logout realizado com sucesso!');
+            window.location.href = '/login.html';
+        });
+    }
 });
