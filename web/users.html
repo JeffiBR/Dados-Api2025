@@ -5,11 +5,291 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerenciar Usuários - Preços AL</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="auth.js"></script>
     <style>
-        /* Estilos adicionais para melhorar a experiência do formulário */
+        /* ====== VARIÁVEIS E ESTILOS GERAIS ====== */
+        :root {
+            /* Dark Theme */
+            --bg-dark: #0b1020;
+            --panel-dark: #0f1724;
+            --muted-dark: #9aa4b2;
+            --input-dark: #0b1220;
+            --border-dark: rgba(255,255,255,0.07);
+            --text-dark: #e6eef7;
+
+            /* Light Theme */
+            --bg-light: #f4f6fb;
+            --panel-light: #fff;
+            --muted-light: #4b5563;
+            --input-light: #f8fafc;
+            --border-light: #e6e9ef;
+            --text-light: #071028;
+
+            /* Common */
+            --primary: #4f46e5;
+            --accent: #7c3aed;
+            --success: #16a34a;
+            --warn: #f59e0b;
+            --error: #ef4444;
+
+            --radius: 14px;
+            --sidebar-width: 260px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial;
+            background: var(--bg-dark);
+            color: var(--text-dark);
+            min-height: 100vh;
+            transition: var(--transition);
+            display: flex;
+        }
+        body.light-mode {
+            background: var(--bg-light);
+            color: var(--text-light);
+        }
+
+        .app-container {
+            display: flex;
+            width: 100%;
+        }
+
+        /* ====== SIDEBAR ====== */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: linear-gradient(180deg, var(--panel-dark), #0a0f1a);
+            position: fixed; left: 0; top: 0; height: 100vh;
+            border-right: 1px solid var(--border-dark);
+            display: flex; flex-direction: column;
+            box-shadow: 0 0 30px rgba(79, 70, 229, 0.15), 0 20px 60px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+            z-index: 100;
+            transition: var(--transition);
+            overflow-y: auto;
+        }
+        body.light-mode .sidebar {
+            background: var(--panel-light);
+            border-right: 1px solid var(--border-light);
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+        }
+        .sidebar-header {
+            padding: 24px 20px;
+            display: flex; align-items: center; gap: 13px;
+            border-bottom: 1px solid var(--border-dark);
+        }
+        body.light-mode .sidebar-header { border-bottom: 1px solid var(--border-light);}
+        .sidebar-header h1 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--primary);
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            background-size: 300% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shimmer 3s infinite linear;
+        }
+        @keyframes shimmer {
+            0%,100%{background-position:0% 50%}50%{background-position:100% 50%}
+        }
+        
+        /* NAV */
+        .sidebar-nav {
+            flex-grow: 1;
+            padding: 10px 0;
+        }
+        .sidebar-nav ul { list-style: none; padding: 0 10px; }
+        .sidebar-nav .nav-header {
+            font-size: 0.72em;
+            color: var(--muted-dark);
+            font-weight: bold;
+            margin: 19px 0 7px 10px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        body.light-mode .sidebar-nav .nav-header { color: var(--muted-light);}
+        .sidebar-nav a {
+            display: flex; align-items: center; gap: 12px;
+            padding: 14px 20px; border-radius: 12px;
+            color: var(--muted-dark); font-weight: 500;
+            transition: var(--transition); position: relative; overflow: hidden;
+            text-decoration: none;
+        }
+        .sidebar-nav a.active, .sidebar-nav a:hover {
+            color: var(--primary);
+            background: rgba(79, 70, 229, 0.12);
+        }
+        .sidebar-nav a span, .sidebar-nav a i {
+            font-size: 20px; display: inline-block;
+            min-width: 28px; text-align: center;
+            filter: drop-shadow(0 0 6px rgba(79,70,229,0.08));
+            transition: var(--transition);
+        }
+        .sidebar-nav a.active span, .sidebar-nav a:hover span, .sidebar-nav a.active i, .sidebar-nav a:hover i {
+            color: var(--primary);
+            transform: scale(1.12) rotate(6deg);
+            filter: drop-shadow(0 0 10px rgba(79,70,229,0.15));
+        }
+        .theme-switcher {
+            margin-top: auto; padding: 18px 20px;
+            border-top: 1px solid var(--border-dark);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        body.light-mode .theme-switcher { border-top: 1px solid var(--border-light);}
+        #themeToggle {
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            color: #fff; border: none; border-radius: 50%;
+            width: 40px; height: 40px; display: grid; place-items: center; cursor: pointer;
+            font-size: 1.3rem;
+            box-shadow: 0 8px 25px rgba(79, 70, 229, 0.4);
+            transition: var(--transition);
+        }
+        #themeToggle:hover { transform: scale(1.1) rotate(15deg); }
+
+        /* ====== TOP BAR ====== */
+        .content-wrapper {
+            margin-left: var(--sidebar-width);
+            flex-grow: 1;
+            transition: var(--transition);
+        }
+
+        .top-bar {
+            background: linear-gradient(135deg, var(--panel-dark), #0a0f1a);
+            border-bottom: 1px solid var(--border-dark);
+            box-shadow: 0 0 30px rgba(79, 70, 229, 0.15), 0 20px 60px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+            padding: 10px 40px;
+            height: 72px;
+            position: sticky; top: 0; z-index: 900;
+            display: flex; align-items: center; justify-content: flex-end;
+        }
+        body.light-mode .top-bar {
+            background: var(--panel-light);
+            border-bottom: 1px solid var(--border-light);
+            box-shadow: 0 0 15px rgba(0,0,0,0.05);
+        }
+
+        .mobile-menu-button {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text-dark);
+            font-size: 1.5rem;
+            cursor: pointer;
+            margin-right: auto;
+            transition: var(--transition);
+        }
+        body.light-mode .mobile-menu-button {
+            color: var(--text-light);
+        }
+
+        /* Profile */
+        .profile-menu {
+            display: flex; gap: 10px; align-items: center; cursor: pointer; position: relative;
+        }
+        .profile-button {
+            background: none;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: var(--transition);
+        }
+        .profile-button:hover {
+            background: rgba(79, 70, 229, 0.1);
+        }
+        .profile-menu img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; }
+        .profile-menu .user-name {
+            color: var(--text-dark);
+            font-weight: 500;
+            transition: var(--transition);
+        }
+        body.light-mode .profile-menu .user-name {
+            color: var(--text-light);
+        }
+        .profile-menu .fa-chevron-down {
+            color: var(--muted-dark);
+            font-size: 0.8rem;
+            transition: var(--transition);
+        }
+        body.light-mode .profile-menu .fa-chevron-down {
+            color: var(--muted-light);
+        }
+
+        .profile-dropdown {
+            display: none; position: absolute; top: calc(100% + 10px); right: 0; min-width: 180px;
+            background: var(--panel-dark); color: var(--text-dark);
+            border: 1px solid var(--border-dark); border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.22);
+            z-index: 999;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .profile-dropdown.show {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+        body.light-mode .profile-dropdown { background: var(--panel-light); color: var(--text-light); border: 1px solid var(--border-light);}
+        .profile-dropdown a {
+            display: flex; align-items: center; gap: 10px; padding: 12px 18px; color: inherit; text-decoration: none;
+            border-bottom: 1px solid var(--border-dark); transition: var(--transition);
+        }
+        .profile-dropdown a:last-child { border-bottom: none; }
+        .profile-dropdown a:hover {
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            color: #fff;
+        }
+
+        /* ====== MAIN CONTENT ====== */
+        .main-content { padding: 32px; max-width: 1100px; margin: 0 auto; }
+
+        .admin-panel, .form-container, .table-container, .status-box, .summary-cards .card {
+            background: var(--panel-dark);
+            border-radius: var(--radius);
+            box-shadow: 0 5px 28px rgba(0,0,0,0.13);
+            border: 1px solid var(--border-dark);
+            margin-bottom: 2rem;
+            padding: 2.5rem 2rem;
+            transition: var(--transition);
+        }
+        body.light-mode .admin-panel, body.light-mode .form-container, body.light-mode .table-container, body.light-mode .summary-cards .card {
+            background: var(--panel-light); border: 1px solid var(--border-light);
+        }
+        .panel-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        .panel-header i {
+            font-size: 2rem;
+            color: var(--primary);
+            margin-right: 1rem;
+        }
+        .panel-header h2 {
+            color: var(--text-dark); font-weight: 700; font-size: 1.8rem;
+        }
+        body.light-mode .panel-header h2 {
+            color: var(--text-light);
+        }
+        .panel-header h3 {
+            color: var(--text-dark); font-weight: 700; font-size: 1.4rem;
+        }
+        body.light-mode .panel-header h3 {
+            color: var(--text-light);
+        }
+        .panel-description {
+            color: var(--muted-dark);
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+        body.light-mode .panel-description {
+            color: var(--muted-light);
+        }
+
+        /* ====== FORM STYLES ====== */
         .form-group {
             margin-bottom: 1.5rem;
             position: relative;
@@ -66,8 +346,180 @@
             gap: 1rem;
             margin-top: 1.5rem;
         }
-        
-        /* Estilização da tabela */
+
+        /* ====== PERMISSIONS GRID ====== */
+        .permissions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 1.2rem;
+            margin-top: 1rem;
+        }
+
+        .permission-card {
+            position: relative;
+            background: linear-gradient(145deg, #131d30, #0f1724);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: var(--transition);
+            cursor: pointer;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        body.light-mode .permission-card {
+            background: linear-gradient(145deg, #f0f4f9, #ffffff);
+            border: 1px solid var(--border-light);
+        }
+
+        .permission-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, rgba(79, 70, 229, 0.1), transparent);
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .permission-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(79, 70, 229, 0.3);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+        }
+
+        .permission-card:hover::before {
+            opacity: 1;
+        }
+
+        .permission-card input[type="checkbox"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .checkmark {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 22px;
+            height: 22px;
+            border: 2px solid var(--muted-dark);
+            border-radius: 6px;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .checkmark i {
+            opacity: 0;
+            transform: scale(0.8);
+            transition: var(--transition);
+            color: white;
+            font-size: 14px;
+        }
+
+        .permission-card input[type="checkbox"]:checked ~ .checkmark {
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            border-color: transparent;
+        }
+
+        .permission-card input[type="checkbox"]:checked ~ .checkmark i {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .permission-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            background: linear-gradient(145deg, rgba(79, 70, 229, 0.15), rgba(124, 58, 237, 0.1));
+            font-size: 1.8rem;
+            color: var(--primary);
+            transition: var(--transition);
+        }
+
+        .permission-card:hover .permission-icon {
+            background: linear-gradient(145deg, var(--primary), var(--accent));
+            color: white;
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .permission-name {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            transition: var(--transition);
+        }
+
+        .permission-card:hover .permission-name {
+            color: var(--primary);
+        }
+
+        .permission-desc {
+            font-size: 0.85rem;
+            color: var(--muted-dark);
+            transition: var(--transition);
+        }
+
+        .permission-card input[type="checkbox"]:checked ~ .permission-icon {
+            background: linear-gradient(145deg, var(--primary), var(--accent));
+            color: white;
+            box-shadow: 0 0 20px rgba(79, 70, 229, 0.4);
+        }
+
+        .permission-card input[type="checkbox"]:checked ~ .permission-name {
+            color: var(--primary);
+        }
+
+        .permission-card input[type="checkbox"]:checked ~ .permission-desc {
+            color: var(--text-dark);
+        }
+
+        body.light-mode .permission-card input[type="checkbox"]:checked ~ .permission-desc {
+            color: var(--text-light);
+        }
+
+        .selection-indicator {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease;
+        }
+
+        .permission-card input[type="checkbox"]:checked ~ .selection-indicator {
+            transform: scaleX(1);
+        }
+
+        /* Efeito de brilho ao selecionar */
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(79, 70, 229, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
+        }
+
+        .permission-card input[type="checkbox"]:checked ~ .permission-icon {
+            animation: pulse 1s;
+        }
+
+        /* ====== TABLE STYLES ====== */
         table {
             width: 100%;
             border-collapse: separate;
@@ -158,65 +610,119 @@
         body.light-mode .permissions-badge {
             background: rgba(79, 70, 229, 0.15);
         }
-        
-        /* Animações para os elementos do formulário */
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
+
+        /* ====== BUTTONS ====== */
+        .btn {
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            color: #fff; border: none; border-radius: 10px;
+            padding: 12px 24px; font-weight: 600; font-family: inherit;
+            box-shadow: 0 4px 15px rgba(79,70,229,0.15);
+            transition: var(--transition);
+            cursor: pointer;
+            display: inline-flex; align-items: center; gap: 8px;
+            position: relative; overflow: hidden;
+            text-decoration: none;
+        }
+        .btn:hover {
+            box-shadow: 0 8px 30px rgba(79,70,229,0.18);
+            transform: translateY(-2px) scale(1.02);
+        }
+        .btn i {
+            transition: transform 0.3s ease;
+        }
+        .btn:hover i {
+            transform: translateX(3px);
+        }
+
+        .btn.outline {
+            background: transparent;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+        .btn.outline:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* ====== RESPONSIVIDADE ====== */
+        /* Sidebar mobile overlay */
+        .sidebar-overlay {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 99;
+            display: none;
+        }
+        .sidebar-overlay.show {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                z-index: 101;
             }
-            to {
-                opacity: 1;
-                transform: translateY(0);
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .content-wrapper {
+                margin-left: 0;
+                width: 100%;
+            }
+            .top-bar {
+                padding: 10px 20px;
+                justify-content: space-between;
+            }
+            .mobile-menu-button {
+                display: block !important;
+            }
+            .profile-menu .user-name {
+                display: none;
+            }
+            .main-content {
+                padding: 20px;
+            }
+            .admin-panel {
+                padding: 1.5rem;
+            }
+            .permissions-grid {
+                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+                gap: 1rem;
+            }
+            .permission-card {
+                padding: 1.2rem;
+            }
+            .permission-icon {
+                width: 50px;
+                height: 50px;
+                font-size: 1.5rem;
             }
         }
-        
-        .form-container > * {
-            animation: slideIn 0.4s ease-out forwards;
-        }
-        
-        .form-container > *:nth-child(2) { animation-delay: 0.1s; }
-        .form-container > *:nth-child(3) { animation-delay: 0.2s; }
-        .form-container > *:nth-child(4) { animation-delay: 0.3s; }
-        .form-container > *:nth-child(5) { animation-delay: 0.4s; }
-        .form-container > *:nth-child(6) { animation-delay: 0.5s; }
-        .form-container > *:nth-child(7) { animation-delay: 0.6s; }
-        
-        /* Efeito de shimmer nos inputs quando validados */
-        .input-validated {
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .input-validated::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(
-                90deg,
-                transparent,
-                rgba(255, 255, 255, 0.2),
-                transparent
-            );
-            animation: shimmer 2s infinite;
-        }
-        
-        body.light-mode .input-validated::after {
-            background: linear-gradient(
-                90deg,
-                transparent,
-                rgba(79, 70, 229, 0.1),
-                transparent
-            );
+
+        @media (max-width: 480px) {
+            .top-bar {
+                padding: 10px 15px;
+            }
+            .main-content {
+                padding: 15px;
+            }
+            .admin-panel {
+                padding: 1.5rem;
+            }
+            .panel-header h2 {
+                font-size: 1.5rem;
+            }
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+            .permissions-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
-    <script>routeGuard('users');</script>
-
     <div class="app-container">
         <div class="sidebar-overlay" id="sidebarOverlay"></div>
         <button class="mobile-menu-button"><i class="fas fa-bars"></i></button>
@@ -298,16 +804,126 @@
                         </div>
                         <div class="form-group full-width">
                             <label><i class="fas fa-key"></i> Permissões de Página (para nível 'Usuário')</label>
-                            <div id="permissions-container" class="supermarket-list">
-                                <label><input type="checkbox" value="search"> <i class="fas fa-search"></i> Busca</label>
-                                <label><input type="checkbox" value="compare"> <i class="fas fa-chart-bar"></i> Comparador</label>
-                                <label><input type="checkbox" value="dashboard"> <i class="fas fa-chart-line"></i> Dashboard</label>
-                                <label><input type="checkbox" value="coleta"> <i class="fas fa-cog"></i> Coleta</label>
-                                <label><input type="checkbox" value="markets"> <i class="fas fa-store"></i> Mercados</label>
-                                <label><input type="checkbox" value="collections"> <i class="fas fa-history"></i> Histórico</label>
-                                <label><input type="checkbox" value="prune"> <i class="fas fa-trash"></i> Limpeza</label>
-                                <label><input type="checkbox" value="product_log"> <i class="fas fa-file-alt"></i> Log de Produtos</label>
-                                <label><input type="checkbox" value="users"> <i class="fas fa-users"></i> Gerenciar Usuários</label>
+                            <div class="permissions-grid">
+                                <!-- Busca -->
+                                <label class="permission-card">
+                                    <input type="checkbox" value="search">
+                                    <div class="checkmark"><i class="fas fa-check"></i></div>
+                                    <div class="permission-icon">
+                                        <i class="fas fa-search"></i>
+                                    </div>
+                                    <h3 class="permission-name">Busca</h3>
+                                    <p class="permission-desc">Acesso à funcionalidade de busca de produtos</p>
+                                    <div class="selection-indicator"></div>
+                                </label>
+                                
+                                <!-- Comparador -->
+                                <label class="permission-card">
+                                    <input type="checkbox" value="compare">
+                                    <div class="checkmark"><i class="fas fa-check"></i></div>
+                                    <div class="permission-icon">
+                                        <i class="fas fa-chart-bar"></i>
+                                    </div>
+                                    <h3 class="permission-name">Comparador</h3>
+                                    <p class="permission-desc">Acesso ao comparador de preços entre mercados</p>
+                                    <div class="selection-indicator"></div>
+                                </label>
+                                
+                                <!-- Dashboard -->
+                                <label class="permission-card">
+                                    <input type="checkbox" value="dashboard">
+                                    <div class="checkmark"><i class="fas fa-check"></i></div>
+                                    <div class="permission-icon">
+                                        <i class="fas fa-chart-line"></i>
+                                    </div>
+                                    <h3 class="permission-name">Dashboard</h3>
+                                    <p class="permission-desc">Acesso ao dashboard analítico do sistema</p>
+                                    <div class="selection-indicator"></div>
+                                </label>
+                                
+                                <!-- Coleta -->
+                                <label class="permission-card">
+                                    <input type="checkbox" value="coleta">
+                                    <div class="checkmark"><i class="fas fa-check"></i></div>
+                                    <div class="permission-icon">
+                                        <i class="fas fa-cog"></i>
+                                    </div>
+                                    <h3 class="permission-name">Coleta</h3>
+                                    <p class="permission-desc">Permissão para realizar coletas de preços</p>
+                                    <div class="selection-indicator"></div>
+                                </label>
+                                
+                                <!-- Mercados -->
+                                <label class="permission-card">
+                                    <input type="checkbox" value="markets">
+                                    <div class="checkmark"><i class="fas fa-check"></i></div>
+                                    <div class="permission-icon">
+                                        <i class="fas fa-store"></i>
+                                    </div>
+                                    <h3 class="permission-name">Mercados</h3>
+                                    <p class="permission-desc">Gerenciamento de mercados cadastrados</p>
+                                    <div class="selection-indicator"></div>
+                                </label>
+                                
+                                <!-- Histórico -->
+                                <label class="permission-card">
+                                    <input type="checkbox" value="collections">
+                                    <div class="checkmark"><i class="fas fa-check"></i></div>
+                                    <div class="permission-icon">
+                                        <i class="fas fa-history"></i>
+                                    </div>
+                                    <h3 class="permission-name">Histórico</h3>
+                                    <p class="permission-desc">Acesso ao histórico de coletas realizadas</p>
+                                    <div class="selection-indicator"></div>
+                                </label>
+                                
+                                <!-- Limpeza -->
+                                <label class="permission-card">
+                                    <input type="checkbox" value="prune">
+                                    <div class="checkmark"><i class="fas fa-check"></i></div>
+                                    <div class="permission-icon">
+                                        <i class="fas fa-trash"></i>
+                                    </div>
+                                    <h3 class="permission-name">Limpeza</h3>
+                                    <p class="permission-desc">Permissão para limpeza de dados antigos</p>
+                                    <div class="selection-indicator"></div>
+                                </label>
+                                
+                                <!-- Log de Produtos -->
+                                <label class="permission-card">
+                                    <input type="checkbox" value="product_log">
+                                    <div class="checkmark"><i class="fas fa-check"></i></div>
+                                    <div class="permission-icon">
+                                        <i class="fas fa-file-alt"></i>
+                                    </div>
+                                    <h3 class="permission-name">Log de Produtos</h3>
+                                    <p class="permission-desc">Acesso aos logs de alterações de produtos</p>
+                                    <div class="selection-indicator"></div>
+                                </label>
+                                
+                                <!-- Gerenciar Usuários -->
+                                <label class="permission-card">
+                                    <input type="checkbox" value="users">
+                                    <div class="checkmark"><i class="fas fa-check"></i></div>
+                                    <div class="permission-icon">
+                                        <i class="fas fa-users"></i>
+                                    </div>
+                                    <h3 class="permission-name">Gerenciar Usuários</h3>
+                                    <p class="permission-desc">Permissão para gerenciar outros usuários</p>
+                                    <div class="selection-indicator"></div>
+                                </label>
+                                
+                                <!-- Gerenciar Categorias -->
+                                <label class="permission-card">
+                                    <input type="checkbox" value="categories">
+                                    <div class="checkmark"><i class="fas fa-check"></i></div>
+                                    <div class="permission-icon">
+                                        <i class="fas fa-tags"></i>
+                                    </div>
+                                    <h3 class="permission-name">Gerenciar Categorias</h3>
+                                    <p class="permission-desc">Permissão para gerenciar categorias de produtos</p>
+                                    <div class="selection-indicator"></div>
+                                </label>
                             </div>
                         </div>
                         <div class="form-actions">
@@ -320,14 +936,6 @@
                         <div class="panel-header">
                             <i class="fas fa-list"></i>
                             <h3>Usuários Cadastrados</h3>
-                        </div>
-                        <div class="search-controls">
-                            <div class="search-input-group">
-                                <input type="text" id="userSearch" placeholder="Buscar usuários...">
-                                <button class="clear-search">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
                         </div>
                         <table>
                             <thead>
@@ -357,7 +965,6 @@
     
     <script src="users.js"></script>
     <script>
-        // Script para funcionalidades comuns (tema, menu mobile, logout)
         document.addEventListener('DOMContentLoaded', function() {
             // Toggle do tema
             const themeToggle = document.getElementById('themeToggle');
@@ -449,35 +1056,29 @@
                 });
             });
             
-            // Efeito de busca em tempo real
-            const userSearch = document.getElementById('userSearch');
-            if (userSearch) {
-                userSearch.addEventListener('input', function() {
-                    const searchTerm = this.value.toLowerCase();
-                    const rows = document.querySelectorAll('#usersTableBody tr');
-                    
-                    rows.forEach(row => {
-                        const userName = row.querySelector('td:first-child').textContent.toLowerCase();
-                        if (userName.includes(searchTerm)) {
-                            row.style.display = '';
-                        } else {
-                            row.style.display = 'none';
-                        }
-                    });
-                });
-            }
+            // Adicionar interatividade aos cartões de permissão
+            const permissionCards = document.querySelectorAll('.permission-card');
             
-            // Botão de limpar busca
-            const clearSearch = document.querySelector('.clear-search');
-            if (clearSearch && userSearch) {
-                clearSearch.addEventListener('click', () => {
-                    userSearch.value = '';
-                    const rows = document.querySelectorAll('#usersTableBody tr');
-                    rows.forEach(row => {
-                        row.style.display = '';
-                    });
+            permissionCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    const checkbox = this.querySelector('input[type="checkbox"]');
+                    checkbox.checked = !checkbox.checked;
+                    
+                    // Disparar evento change para atualizar estilos
+                    const event = new Event('change');
+                    checkbox.dispatchEvent(event);
                 });
-            }
+                
+                // Atualizar visual quando o estado do checkbox mudar
+                const checkbox = card.querySelector('input[type="checkbox"]');
+                checkbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        card.classList.add('selected');
+                    } else {
+                        card.classList.remove('selected');
+                    }
+                });
+            });
         });
     </script>
 </body>
