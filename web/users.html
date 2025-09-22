@@ -8,6 +8,211 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth.js"></script>
+    <style>
+        /* Estilos adicionais para melhorar a experiência do formulário */
+        .form-group {
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--muted-dark);
+            transition: var(--transition);
+        }
+        
+        body.light-mode .form-group label {
+            color: var(--muted-light);
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 1rem 1.25rem;
+            border: 2px solid var(--border-dark);
+            border-radius: var(--radius);
+            font-size: 1rem;
+            transition: var(--transition);
+            background: var(--input-dark);
+            color: var(--text-dark);
+            font-family: inherit;
+        }
+        
+        body.light-mode .form-group input, 
+        body.light-mode .form-group select {
+            background: var(--input-light);
+            color: var(--text-light);
+            border: 2px solid var(--border-light);
+        }
+        
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(79,70,229,0.13);
+            transform: translateY(-2px);
+        }
+        
+        .form-group input:hover, .form-group select:hover {
+            border-color: rgba(79, 70, 229, 0.5);
+        }
+        
+        .full-width {
+            grid-column: 1 / -1;
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        
+        /* Estilização da tabela */
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 1.5rem;
+        }
+        
+        thead {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+        }
+        
+        th {
+            padding: 1rem;
+            text-align: left;
+            color: white;
+            font-weight: 600;
+            border-radius: 0;
+        }
+        
+        th:first-child {
+            border-top-left-radius: var(--radius);
+        }
+        
+        th:last-child {
+            border-top-right-radius: var(--radius);
+        }
+        
+        tbody tr {
+            background: var(--input-dark);
+            transition: var(--transition);
+        }
+        
+        body.light-mode tbody tr {
+            background: var(--input-light);
+        }
+        
+        tbody tr:nth-child(even) {
+            background: rgba(79, 70, 229, 0.05);
+        }
+        
+        body.light-mode tbody tr:nth-child(even) {
+            background: rgba(79, 70, 229, 0.03);
+        }
+        
+        tbody tr:hover {
+            background: rgba(79, 70, 229, 0.1);
+            transform: translateX(5px);
+        }
+        
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-dark);
+        }
+        
+        body.light-mode td {
+            border-bottom: 1px solid var(--border-light);
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+        }
+        
+        .btn-edit {
+            background: linear-gradient(90deg, var(--warn), #f59e0b);
+        }
+        
+        .btn-delete {
+            background: linear-gradient(90deg, var(--error), #ef4444);
+        }
+        
+        .permissions-badge {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(79, 70, 229, 0.1);
+            color: var(--primary);
+            padding: 0.25rem 0.5rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            margin: 0.1rem;
+        }
+        
+        body.light-mode .permissions-badge {
+            background: rgba(79, 70, 229, 0.15);
+        }
+        
+        /* Animações para os elementos do formulário */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .form-container > * {
+            animation: slideIn 0.4s ease-out forwards;
+        }
+        
+        .form-container > *:nth-child(2) { animation-delay: 0.1s; }
+        .form-container > *:nth-child(3) { animation-delay: 0.2s; }
+        .form-container > *:nth-child(4) { animation-delay: 0.3s; }
+        .form-container > *:nth-child(5) { animation-delay: 0.4s; }
+        .form-container > *:nth-child(6) { animation-delay: 0.5s; }
+        .form-container > *:nth-child(7) { animation-delay: 0.6s; }
+        
+        /* Efeito de shimmer nos inputs quando validados */
+        .input-validated {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .input-validated::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.2),
+                transparent
+            );
+            animation: shimmer 2s infinite;
+        }
+        
+        body.light-mode .input-validated::after {
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(79, 70, 229, 0.1),
+                transparent
+            );
+        }
+    </style>
 </head>
 <body>
     <script>routeGuard('users');</script>
@@ -73,42 +278,41 @@
                         <h3 id="formTitle">Criar Novo Usuário</h3>
                         <input type="hidden" id="userId">
                         <div class="form-group">
-                            <label for="fullName">Nome Completo</label>
+                            <label for="fullName"><i class="fas fa-user"></i> Nome Completo</label>
                             <input type="text" id="fullName" placeholder="Digite o nome completo">
                         </div>
                         <div class="form-group">
-                            <label for="email">Email</label>
+                            <label for="email"><i class="fas fa-envelope"></i> Email</label>
                             <input type="email" id="email" placeholder="Digite o email">
                         </div>
                         <div class="form-group">
-                            <label for="password">Senha</label>
+                            <label for="password"><i class="fas fa-lock"></i> Senha</label>
                             <input type="password" id="password" placeholder="Obrigatório para novos usuários">
                         </div>
                         <div class="form-group">
-                            <label for="role">Nível de Acesso</label>
+                            <label for="role"><i class="fas fa-shield-alt"></i> Nível de Acesso</label>
                             <select id="role">
                                 <option value="user">Usuário</option>
                                 <option value="admin">Admin Geral</option>
                             </select>
                         </div>
                         <div class="form-group full-width">
-                            <label>Permissões de Página (para nível 'Usuário')</label>
+                            <label><i class="fas fa-key"></i> Permissões de Página (para nível 'Usuário')</label>
                             <div id="permissions-container" class="supermarket-list">
-                                <label><input type="checkbox" value="search"> Busca</label>
-                                <label><input type="checkbox" value="compare"> Comparador</label>
-                                <label><input type="checkbox" value="dashboard"> Dashboard</label>
-                                <label><input type="checkbox" value="coleta"> Coleta</label>
-                                <label><input type="checkbox" value="markets"> Mercados</label>
-                                <label><input type="checkbox" value="collections"> Histórico</label>
-                                <label><input type="checkbox" value="prune"> Limpeza</label>
-                                <label><input type="checkbox" value="product_log"> Log de Produtos</label>
-                                <label><input type="checkbox" value="users"> Gerenciar Usuários</label>
-                                <label><input type="checkbox" value="categories"> Gerenciar Categorias</label>
+                                <label><input type="checkbox" value="search"> <i class="fas fa-search"></i> Busca</label>
+                                <label><input type="checkbox" value="compare"> <i class="fas fa-chart-bar"></i> Comparador</label>
+                                <label><input type="checkbox" value="dashboard"> <i class="fas fa-chart-line"></i> Dashboard</label>
+                                <label><input type="checkbox" value="coleta"> <i class="fas fa-cog"></i> Coleta</label>
+                                <label><input type="checkbox" value="markets"> <i class="fas fa-store"></i> Mercados</label>
+                                <label><input type="checkbox" value="collections"> <i class="fas fa-history"></i> Histórico</label>
+                                <label><input type="checkbox" value="prune"> <i class="fas fa-trash"></i> Limpeza</label>
+                                <label><input type="checkbox" value="product_log"> <i class="fas fa-file-alt"></i> Log de Produtos</label>
+                                <label><input type="checkbox" value="users"> <i class="fas fa-users"></i> Gerenciar Usuários</label>
                             </div>
                         </div>
                         <div class="form-actions">
-                            <button id="saveUserBtn" class="btn"><i class="fas fa-save"></i>Salvar</button>
-                            <button id="cancelButton" class="btn outline" style="display:none;">Cancelar Edição</button>
+                            <button id="saveUserBtn" class="btn"><i class="fas fa-save"></i> Salvar Usuário</button>
+                            <button id="cancelButton" class="btn outline" style="display:none;"><i class="fas fa-times"></i> Cancelar Edição</button>
                         </div>
                     </div>
                     
@@ -117,16 +321,33 @@
                             <i class="fas fa-list"></i>
                             <h3>Usuários Cadastrados</h3>
                         </div>
+                        <div class="search-controls">
+                            <div class="search-input-group">
+                                <input type="text" id="userSearch" placeholder="Buscar usuários...">
+                                <button class="clear-search">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
                         <table>
                             <thead>
                                 <tr>
                                     <th>Nome</th>
+                                    <th>Email</th>
                                     <th>Nível</th>
                                     <th>Permissões</th>
                                     <th>Ações</th>
                                 </tr>
                             </thead>
-                            <tbody id="usersTableBody"></tbody>
+                            <tbody id="usersTableBody">
+                                <tr>
+                                    <td>Carregando...</td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                            </tbody>
                         </table>
                     </div>
                 </div>
@@ -141,15 +362,25 @@
             // Toggle do tema
             const themeToggle = document.getElementById('themeToggle');
             if (themeToggle) {
+                // Verificar se já existe preferência de tema
+                if (localStorage.getItem('theme') === 'light') {
+                    document.body.classList.add('light-mode');
+                    const icon = themeToggle.querySelector('i');
+                    icon.classList.remove('fa-moon');
+                    icon.classList.add('fa-sun');
+                }
+                
                 themeToggle.addEventListener('click', () => {
                     document.body.classList.toggle('light-mode');
                     const icon = themeToggle.querySelector('i');
                     if (document.body.classList.contains('light-mode')) {
                         icon.classList.remove('fa-moon');
                         icon.classList.add('fa-sun');
+                        localStorage.setItem('theme', 'light');
                     } else {
                         icon.classList.remove('fa-sun');
                         icon.classList.add('fa-moon');
+                        localStorage.setItem('theme', 'dark');
                     }
                 });
             }
@@ -196,6 +427,55 @@
                     e.preventDefault();
                     // Implementar lógica de logout aqui
                     alert('Funcionalidade de logout a ser implementada');
+                });
+            }
+            
+            // Efeitos nos campos de formulário
+            const formInputs = document.querySelectorAll('.form-group input, .form-group select');
+            formInputs.forEach(input => {
+                // Efeito de foco
+                input.addEventListener('focus', function() {
+                    this.parentElement.classList.add('focused');
+                });
+                
+                input.addEventListener('blur', function() {
+                    this.parentElement.classList.remove('focused');
+                    if (this.value) {
+                        this.classList.add('input-validated');
+                        setTimeout(() => {
+                            this.classList.remove('input-validated');
+                        }, 2000);
+                    }
+                });
+            });
+            
+            // Efeito de busca em tempo real
+            const userSearch = document.getElementById('userSearch');
+            if (userSearch) {
+                userSearch.addEventListener('input', function() {
+                    const searchTerm = this.value.toLowerCase();
+                    const rows = document.querySelectorAll('#usersTableBody tr');
+                    
+                    rows.forEach(row => {
+                        const userName = row.querySelector('td:first-child').textContent.toLowerCase();
+                        if (userName.includes(searchTerm)) {
+                            row.style.display = '';
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
+                });
+            }
+            
+            // Botão de limpar busca
+            const clearSearch = document.querySelector('.clear-search');
+            if (clearSearch && userSearch) {
+                clearSearch.addEventListener('click', () => {
+                    userSearch.value = '';
+                    const rows = document.querySelectorAll('#usersTableBody tr');
+                    rows.forEach(row => {
+                        row.style.display = '';
+                    });
                 });
             }
         });
