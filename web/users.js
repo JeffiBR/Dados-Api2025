@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- ELEMENTOS DA UI ---
+    // --- ELEMENTOS DA UI (Mapeados para o novo design) ---
     const tableBody = document.getElementById('usersTableBody');
     const saveButton = document.getElementById('saveUserBtn');
     const cancelButton = document.getElementById('cancelButton');
@@ -12,32 +12,44 @@ document.addEventListener('DOMContentLoaded', () => {
     const permissionsContainer = document.getElementById('permissions-container');
     const permissionCheckboxes = permissionsContainer.querySelectorAll('input[type="checkbox"]');
 
+    const API_URL = '/api/users';
+
     // --- LÓGICA DE NEGÓCIO ---
 
     const loadUsers = async () => {
         try {
-            const users = await authenticatedFetch('/api/users').then(res => res.json());
+            const users = await authenticatedFetch(API_URL).then(res => res.json());
 
             tableBody.innerHTML = '';
+            if (users.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="5" class="no-data">Nenhum usuário cadastrado.</td></tr>`;
+                return;
+            }
+
             users.forEach(user => {
                 const row = document.createElement('tr');
-                // Salva os dados completos no elemento para fácil acesso ao editar
-                row.dataset.user = JSON.stringify(user);
+                row.dataset.user = JSON.stringify(user); // Salva os dados no elemento
+
+                // Cria os badges de permissão de forma dinâmica
+                const permissionsHtml = (user.allowed_pages || [])
+                    .map(p => `<span class="permissions-badge">${p}</span>`)
+                    .join(' ');
 
                 row.innerHTML = `
                     <td>${user.full_name || 'N/A'}</td>
+                    <td>${user.email || '(email não disponível)'}</td>
                     <td>${user.role === 'admin' ? 'Admin Geral' : 'Usuário'}</td>
-                    <td>${(user.allowed_pages || []).length} permissões</td>
-                    <td class="actions">
-                        <button class="btn-icon edit-btn" title="Editar"><i class="fas fa-pencil-alt"></i></button>
-                        <button class="btn-icon delete-btn" title="Excluir"><i class="fas fa-trash-alt"></i></button>
+                    <td>${permissionsHtml || 'Nenhuma'}</td>
+                    <td class="action-buttons">
+                        <button class="btn btn-sm btn-edit" title="Editar"><i class="fas fa-pencil-alt"></i></button>
+                        <button class="btn btn-sm btn-delete" title="Excluir"><i class="fas fa-trash-alt"></i></button>
                     </td>
                 `;
                 tableBody.appendChild(row);
             });
         } catch (error) {
             console.error('Erro ao carregar usuários:', error);
-            alert('Não foi possível carregar la lista de usuários.');
+            tableBody.innerHTML = `<tr><td colspan="5" class="no-data error-text">Falha ao carregar usuários.</td></tr>`;
         }
     };
 
@@ -52,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
         passwordInput.placeholder = 'Obrigatório para novos usuários';
         roleSelect.value = 'user';
         permissionCheckboxes.forEach(checkbox => checkbox.checked = false);
-        saveButton.innerHTML = '<i class="fas fa-save"></i> Criar Usuário';
+        saveButton.innerHTML = '<i class="fas fa-save"></i> Salvar Usuário';
         cancelButton.style.display = 'none';
     };
 
@@ -60,11 +72,11 @@ document.addEventListener('DOMContentLoaded', () => {
         formTitle.textContent = `Editando Usuário: ${user.full_name}`;
         userIdInput.value = user.id;
         fullNameInput.value = user.full_name;
-        emailInput.value = '(não pode ser alterado)';
+        emailInput.value = user.email || '(não pode ser alterado)';
         emailInput.disabled = true;
         passwordInput.value = '';
         passwordInput.placeholder = 'Deixe em branco para não alterar';
-        passwordInput.disabled = true; // Senha não é editada aqui por segurança
+        passwordInput.disabled = true; // Senha não é editada aqui
         roleSelect.value = user.role;
         
         permissionCheckboxes.forEach(checkbox => {
@@ -91,12 +103,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const isUpdating = !!id;
         
-        if (!isUpdating && (!email || !password || email === '********')) {
+        if (!isUpdating && (!email || !password || email.includes('*'))) {
             alert('Email e Senha são obrigatórios para novos usuários.');
             return;
         }
 
-        const url = isUpdating ? `/api/users/${id}` : '/api/users';
+        const url = isUpdating ? `${API_URL}/${id}` : API_URL;
         const method = isUpdating ? 'PUT' : 'POST';
         
         let body;
@@ -106,9 +118,9 @@ document.addEventListener('DOMContentLoaded', () => {
             body = JSON.stringify({ email, password, full_name, role, allowed_pages });
         }
 
-        const originalButtonText = saveButton.innerHTML;
+        const originalButtonHTML = saveButton.innerHTML;
         saveButton.disabled = true;
-        saveButton.innerHTML = isUpdating ? 'Atualizando...' : 'Criando...';
+        saveButton.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${isUpdating ? 'Atualizando...' : 'Criando...'}`;
 
         try {
             const response = await authenticatedFetch(url, { method, body });
@@ -118,15 +130,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(error.detail || 'Erro ao salvar usuário');
             }
             
-            alert(`Usuário ${isUpdating ? 'atualizado' : 'criado'} com sucesso!`);
+            showNotification(`Usuário ${isUpdating ? 'atualizado' : 'criado'} com sucesso!`, 'success');
             resetForm();
             loadUsers();
         } catch (error) {
             console.error('Erro ao salvar usuário:', error);
-            alert(`Erro: ${error.message}`);
+            showNotification(`Erro: ${error.message}`, 'error');
         } finally {
             saveButton.disabled = false;
-            saveButton.innerHTML = originalButtonText;
+            saveButton.innerHTML = originalButtonHTML;
         }
     };
 
@@ -139,19 +151,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 const error = await response.json();
                 throw new Error(error.detail || 'Falha ao excluir o usuário.');
             }
-            alert('Usuário excluído com sucesso!');
+            showNotification('Usuário excluído com sucesso!', 'success');
             loadUsers();
         } catch (error) {
             console.error('Erro ao excluir usuário:', error);
-            alert(error.message);
+            showNotification(error.message, 'error');
         }
     };
 
     // --- EVENT LISTENERS ---
     
     tableBody.addEventListener('click', (e) => {
-        const editButton = e.target.closest('.edit-btn');
-        const deleteButton = e.target.closest('.delete-btn');
+        const editButton = e.target.closest('.btn-edit');
+        const deleteButton = e.target.closest('.btn-delete');
         
         if (editButton) {
             const user = JSON.parse(editButton.closest('tr').dataset.user);
@@ -160,7 +172,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (deleteButton) {
             const user = JSON.parse(deleteButton.closest('tr').dataset.user);
-            deleteUser(user.id, user.full_name);
+            // Busca o email do usuário na API para exibir no alerta, já que não vem na lista
+            authenticatedFetch(`/api/users/${user.id}`).then(res => res.json()).then(fullUser => {
+                 deleteUser(user.id, fullUser.full_name || 'este usuário');
+            });
         }
     });
     
