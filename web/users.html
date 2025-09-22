@@ -713,8 +713,8 @@
                 font-size: 1.5rem;
             }
             .btn {
-                width: 100%;
-                justify-content: center;
+            width: 100%;
+            justify-content: center;
             }
             .permissions-grid {
                 grid-template-columns: 1fr;
@@ -949,11 +949,10 @@
                             </thead>
                             <tbody id="usersTableBody">
                                 <tr>
-                                    <td>Carregando...</td>
-                                    <td></td>
-                                    <td></td>
-                                    <td></td>
-                                    <td></td>
+                                    <td colspan="5" style="text-align: center; padding: 2rem;">
+                                        <i class="fas fa-spinner fa-spin" style="margin-right: 10px;"></i>
+                                        Carregando usuários...
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
@@ -963,7 +962,6 @@
         </div>
     </div>
     
-    <script src="users.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Toggle do tema
@@ -1079,6 +1077,45 @@
                     }
                 });
             });
+            
+            // Carregar usuários da API
+            async function loadUsers() {
+                try {
+                    // Simulação de carregamento de dados da API
+                    // Em um cenário real, isso seria substituído por uma chamada fetch
+                    const usersTableBody = document.getElementById('usersTableBody');
+                    
+                    // Simular tempo de carregamento
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    
+                    // Aqui você faria a chamada para a API real
+                    // const response = await fetch('/api/users');
+                    // const users = await response.json();
+                    
+                    // Para demonstração, vamos deixar a tabela vazia inicialmente
+                    usersTableBody.innerHTML = `
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 2rem;">
+                                Nenhum usuário cadastrado. Use o formulário acima para adicionar um novo usuário.
+                            </td>
+                        </tr>
+                    `;
+                } catch (error) {
+                    console.error('Erro ao carregar usuários:', error);
+                    const usersTableBody = document.getElementById('usersTableBody');
+                    usersTableBody.innerHTML = `
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 2rem; color: var(--error);">
+                                <i class="fas fa-exclamation-triangle" style="margin-right: 10px;"></i>
+                                Erro ao carregar usuários. Tente recarregar a página.
+                            </td>
+                        </tr>
+                    `;
+                }
+            }
+            
+            // Inicializar carregamento de usuários
+            loadUsers();
         });
     </script>
 </body>
