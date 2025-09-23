@@ -13,21 +13,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const reportDuration = document.getElementById('report-duration');
     const reportTableBody = document.querySelector('#reportTable tbody');
 
-    // Elementos do tema
-    const mobileMenuButton = document.querySelector('.mobile-menu-button');
+    // Elementos do tema e navegação - CORRIGIDOS
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn'); // Corrigido: era .mobile-menu-button
     const sidebar = document.querySelector('.sidebar');
     const themeToggle = document.getElementById('themeToggle');
-    const profileButton = document.querySelector('.profile-button');
-    const profileDropdown = document.querySelector('.profile-dropdown');
-    const sidebarOverlay = document.querySelector('.sidebar-overlay');
+    const userMenuBtn = document.getElementById('userMenuBtn'); // Corrigido: era .profile-button
+    const userDropdown = document.getElementById('userDropdown'); // Corrigido: era .profile-dropdown
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    const logoutBtn = document.getElementById('logoutBtn');
 
     let pollingInterval;
 
     // Toggle do tema
     themeToggle.addEventListener('click', () => {
-        document.body.classList.toggle('light-mode');
+        document.body.classList.toggle('theme-light');
+        document.body.classList.toggle('theme-dark');
         const icon = themeToggle.querySelector('i');
-        if (document.body.classList.contains('light-mode')) {
+        if (document.body.classList.contains('theme-light')) {
             icon.classList.remove('fa-moon');
             icon.classList.add('fa-sun');
         } else {
@@ -36,30 +38,46 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Toggle do menu mobile
-    mobileMenuButton.addEventListener('click', () => {
-        sidebar.classList.toggle('open');
-        sidebarOverlay.classList.toggle('show');
-    });
+    // Toggle do menu mobile - CORRIGIDO
+    if (mobileMenuBtn) {
+        mobileMenuBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+            if (sidebarOverlay) sidebarOverlay.classList.toggle('show');
+        });
+    }
 
     // Fechar menu ao clicar no overlay
-    sidebarOverlay.addEventListener('click', () => {
-        sidebar.classList.remove('open');
-        sidebarOverlay.classList.remove('show');
-    });
+    if (sidebarOverlay) {
+        sidebarOverlay.addEventListener('click', () => {
+            sidebar.classList.remove('open');
+            sidebarOverlay.classList.remove('show');
+        });
+    }
 
-    // Toggle do dropdown do perfil
-    profileButton.addEventListener('click', (e) => {
-        e.stopPropagation();
-        profileDropdown.classList.toggle('show');
-    });
+    // Toggle do dropdown do usuário - CORRIGIDO
+    if (userMenuBtn && userDropdown) {
+        userMenuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            userDropdown.classList.toggle('show');
+        });
+    }
 
-    // Fechar dropdown ao clicar fora
+    // Fechar dropdown ao clicar fora - CORRIGIDO
     document.addEventListener('click', (e) => {
-        if (!profileButton.contains(e.target) && !profileDropdown.contains(e.target)) {
-            profileDropdown.classList.remove('show');
+        if (userDropdown && userMenuBtn && 
+            !userMenuBtn.contains(e.target) && 
+            !userDropdown.contains(e.target)) {
+            userDropdown.classList.remove('show');
         }
     });
+
+    // Logout functionality
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            logout();
+        });
+    }
 
     const formatSeconds = (secs) => {
         if (secs < 0 || secs === null || secs === undefined) return 'Calculando...';
@@ -123,21 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (pollingInterval) clearInterval(pollingInterval);
             
             // Mostrar notificação de erro
-            const notification = document.createElement('div');
-            notification.className = 'notification error';
-            notification.innerHTML = `<i class="fas fa-exclamation-circle"></i> Erro ao verificar status: ${error.message}`;
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                notification.classList.add('show');
-            }, 10);
-            
-            setTimeout(() => {
-                notification.classList.remove('show');
-                setTimeout(() => {
-                    document.body.removeChild(notification);
-                }, 300);
-            }, 5000);
+            showNotification(`Erro ao verificar status: ${error.message}`, 'error');
         }
     };
 
@@ -149,46 +153,40 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
             if (!response.ok) throw new Error(data.detail);
             
-            // Mostrar notificação de sucesso
-            const notification = document.createElement('div');
-            notification.className = 'notification success';
-            notification.innerHTML = `<i class="fas fa-check-circle"></i> ${data.message}`;
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                notification.classList.add('show');
-            }, 10);
-            
-            setTimeout(() => {
-                notification.classList.remove('show');
-                setTimeout(() => {
-                    document.body.removeChild(notification);
-                }, 300);
-            }, 3000);
-            
+            showNotification(data.message, 'success');
             checkStatus();
         } catch (error) {
-            // Mostrar notificação de erro
-            const notification = document.createElement('div');
-            notification.className = 'notification error';
-            notification.innerHTML = `<i class="fas fa-exclamation-circle"></i> Falha ao iniciar a coleta: ${error.message}`;
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                notification.classList.add('show');
-            }, 10);
-            
-            setTimeout(() => {
-                notification.classList.remove('show');
-                setTimeout(() => {
-                    document.body.removeChild(notification);
-                }, 300);
-            }, 5000);
-            
+            showNotification(`Falha ao iniciar a coleta: ${error.message}`, 'error');
             checkStatus();
         }
     };
 
-    startButton.addEventListener('click', startCollection);
+    // Função auxiliar para mostrar notificações
+    const showNotification = (message, type = 'info') => {
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        const icon = type === 'success' ? 'fa-check-circle' : 
+                    type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
+        notification.innerHTML = `<i class="fas ${icon}"></i> ${message}`;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.classList.add('show');
+        }, 10);
+        
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => {
+                if (document.body.contains(notification)) {
+                    document.body.removeChild(notification);
+                }
+            }, 300);
+        }, type === 'success' ? 3000 : 5000);
+    };
+
+    if (startButton) {
+        startButton.addEventListener('click', startCollection);
+    }
+    
     checkStatus();
 });
