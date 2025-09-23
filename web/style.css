@@ -148,13 +148,14 @@ body.light-mode .theme-switcher { border-top: 1px solid var(--border-light);}
 }
 
 .top-bar {
-    background: linear-gradient(135deg, var(--panel-dark), #0a0f1a);
-    border-bottom: 1px solid var(--border-dark);
-    box-shadow: 0 0 30px rgba(79, 70, 229, 0.15), 0 20px 60px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
-    padding: 10px 40px;
-    height: 72px;
-    position: sticky; top: 0; z-index: 900;
-    display: flex; align-items: center; justify-content: flex-end;
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    height: auto !important;
+    display: flex;
+    justify-content: flex-end;
+
 }
 body.light-mode .top-bar {
     background: var(--panel-light);
@@ -1268,6 +1269,8 @@ body.light-mode .mobile-menu-btn span {
     position: relative;
     display: flex;
     align-items: center;
+    margin-bottom: 25px; /* cria espaço embaixo do menu */
+    
 }
 
 .user-menu-btn {
