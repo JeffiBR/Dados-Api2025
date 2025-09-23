@@ -8,284 +8,61 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <style>
-        /* ====== ESTILO DO MENU DO USUÁRIO ====== */
-        .user-menu {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
-        
-        .user-menu-btn {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 0.5rem 1rem;
-            background: transparent;
-            border: 1px solid var(--border-dark);
-            border-radius: 12px;
-            color: var(--text-dark);
-            cursor: pointer;
-            transition: var(--transition);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        body.light-mode .user-menu-btn {
-            border: 1px solid var(--border-light);
-            color: var(--text-light);
-        }
-        
-        .user-menu-btn:hover {
-            background-color: rgba(79, 70, 229, 0.1);
-            border-color: var(--primary);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
-        }
-        
-        .user-menu-btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(79, 70, 229, 0.1), transparent);
-            transition: left 0.5s;
-        }
-        
-        .user-menu-btn:hover::before {
-            left: 100%;
-        }
-        
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            overflow: hidden;
-            border: 2px solid var(--primary);
-            transition: var(--transition);
-        }
-        
-        .user-menu-btn:hover .user-avatar {
-            border-color: var(--accent);
-            transform: scale(1.05);
-        }
-        
-        .user-avatar img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        
-        .user-info {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            text-align: left;
-        }
-        
-        .user-name {
-            font-weight: 600;
-            font-size: 0.95rem;
-            color: var(--text-dark);
-        }
-        
-        body.light-mode .user-name {
-            color: var(--text-light);
-        }
-        
-        .user-role {
-            font-size: 0.8rem;
-            color: var(--muted-dark);
-            font-weight: 500;
-        }
-        
-        body.light-mode .user-role {
-            color: var(--muted-light);
-        }
-        
-        .user-menu-btn i {
-            transition: var(--transition);
-            font-size: 0.9rem;
-            color: var(--muted-dark);
-        }
-        
-        body.light-mode .user-menu-btn i {
-            color: var(--muted-light);
-        }
-        
-        .user-menu-btn:hover i {
-            color: var(--primary);
-            transform: translateY(1px);
-        }
-        
-        .user-dropdown {
-            position: absolute;
-            top: 100%;
-            right: 0;
-            width: 220px;
-            background: var(--panel-dark);
-            border: 1px solid var(--border-dark);
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            padding: 0.5rem;
-            margin-top: 0.5rem;
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(-10px);
-            transition: var(--transition);
-            z-index: 1000;
-        }
-        
-        body.light-mode .user-dropdown {
-            background: var(--panel-light);
-            border: 1px solid var(--border-light);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        }
-        
-        .user-dropdown.active {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0);
-        }
-        
-        .dropdown-item {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 0.75rem 1rem;
-            color: var(--text-dark);
-            text-decoration: none;
-            border-radius: 8px;
-            transition: var(--transition);
-        }
-        
-        body.light-mode .dropdown-item {
-            color: var(--text-light);
-        }
-        
-        .dropdown-item:hover {
-            background-color: rgba(79, 70, 229, 0.1);
-            color: var(--primary);
-            transform: translateX(5px);
-        }
-        
-        .dropdown-item i {
-            width: 18px;
-            text-align: center;
-            color: var(--muted-dark);
-        }
-        
-        body.light-mode .dropdown-item i {
-            color: var(--muted-light);
-        }
-        
-        .dropdown-item:hover i {
-            color: var(--primary);
-        }
-        
-        .dropdown-divider {
-            height: 1px;
-            background-color: var(--border-dark);
-            margin: 0.5rem 0;
-        }
-        
-        body.light-mode .dropdown-divider {
-            background-color: var(--border-light);
-        }
-        
-        .logout-btn {
-            color: var(--error) !important;
-        }
-        
-        .logout-btn:hover {
-            background-color: rgba(239, 68, 68, 0.1) !important;
-            color: var(--error) !important;
-        }
-        
-        /* Animações */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .user-dropdown.active {
-            animation: fadeIn 0.3s ease forwards;
-        }
-        
-        /* Responsividade */
-        @media (max-width: 768px) {
-            .user-info {
-                display: none;
-            }
-            
-            .user-menu-btn {
-                padding: 0.5rem;
-            }
-            
-            .user-dropdown {
-                width: 200px;
-                right: 0;
-            }
-        }
-        
-        /* Efeito de clique no botão */
-        .user-menu-btn:active {
-            transform: translateY(0);
-        }
-    </style>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth.js"></script>
 </head>
-<body class="theme-dark">
+<body>
     <script>routeGuard('coleta');</script>
 
     <div class="app-container">
-       <aside class="sidebar">
-    <div class="sidebar-header">
-        <i class="fas fa-bolt"></i>
-        <h1>Preços AL</h1>
-    </div>
-    <nav class="sidebar-nav">
-        <ul>
-            <li class="nav-header">ANÁLISE</li>
-            <li><a href="/search.html"><i class="fas fa-search"></i> Busca</a></li>
-            <li data-permission="compare"><a href="/compare.html"><i class="fas fa-chart-bar"></i> Comparador</a></li>
-            <li data-permission="dashboard"><a href="/dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
-            
-            <li class="nav-header">ADMINISTRAÇÃO</li>
-            <li data-permission="coleta"><a href="/admin.html"><i class="fas fa-database"></i> Coleta</a></li>
-            <li data-permission="collections"><a href="/collections.html"><i class="fas fa-history"></i> Histórico de Coletas</a></li>
-            <li data-permission="product_log"><a href="/product-log.html"><i class="fas fa-file-alt"></i> Log de Produtos</a></li>
-            <li data-permission="prune"><a href="/prune.html"><i class="fas fa-broom"></i> Limpeza de Dados</a></li>
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-bolt"></i>
+                <h1>Preços AL</h1>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="nav-header">ANÁLISE</li>
+                    <li><a href="/search.html"><i class="fas fa-search"></i> Busca</a></li>
+                    <li data-permission="compare"><a href="/compare.html"><i class="fas fa-chart-bar"></i> Comparador</a></li>
+                    <li data-permission="dashboard"><a href="/dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+                    
+                    <li class="nav-header">ADMINISTRAÇÃO</li>
+                    <li data-permission="coleta"><a href="/admin.html" class="active"><i class="fas fa-database"></i> Coleta</a></li>
+                    <li data-permission="collections"><a href="/collections.html"><i class="fas fa-history"></i> Histórico de Coletas</a></li>
+                    <li data-permission="product_log"><a href="/product-log.html"><i class="fas fa-file-alt"></i> Log de Produtos</a></li>
+                    <li data-permission="prune"><a href="/prune.html"><i class="fas fa-broom"></i> Limpeza de Dados</a></li>
 
-            <li class="nav-header">CONFIGURAÇÃO</li>
-            <li data-permission="markets"><a href="/markets.html"><i class="fas fa-store"></i> Gerenciar Mercados</a></li>
-            <li data-permission="users"><a href="/users.html" class="active"><i class="fas fa-users"></i> Gerenciar Usuários</a></li>
-        </ul>
-    </nav>
-    <div class="theme-switcher">
-        <span>Tema</span>
-        <button id="themeToggle"><i class="fas fa-moon"></i></button>
-    </div>
-</aside>
+                    <li class="nav-header">CONFIGURAÇÃO</li>
+                    <li data-permission="markets"><a href="/markets.html"><i class="fas fa-store"></i> Gerenciar Mercados</a></li>
+                    <li data-permission="users"><a href="/users.html"><i class="fas fa-users"></i> Gerenciar Usuários</a></li>
+                </ul>
+            </nav>
+            <div class="theme-switcher">
+                <span>Tema</span>
+                <button id="themeToggle"><i class="fas fa-moon"></i></button>
+            </div>
+        </aside>
 
         <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
         <div class="main-content">
             <header class="top-bar">
-                <div class="top-bar-left"><button class="mobile-menu-btn" id="mobileMenuBtn"><span></span><span></span><span></span></button></div>
+                <div class="top-bar-left">
+                    <button class="mobile-menu-btn" id="mobileMenuBtn">
+                        <span></span><span></span><span></span>
+                    </button>
+                </div>
                 <div class="top-bar-right">
                     <div class="user-menu" id="userMenu">
                         <button class="user-menu-btn" id="userMenuBtn">
                             <div class="user-avatar">
-                                <img src="https://ui-avatars.com/api/?name=U&background=4361ee&color=fff" alt="User" id="userAvatar">
+                                <img src="https://ui-avatars.com/api/?name=U" alt="User" id="userAvatar">
                             </div>
                             <div class="user-info">
                                 <span class="user-name">Usuário</span>
-                                <span class="user-role">Administrador</span>
+                                <span class="user-role">...</span>
                             </div>
                             <i class="fas fa-chevron-down"></i>
                         </button>
@@ -303,13 +80,9 @@
                     </div>
                 </div>
             </header>
-            
-            <div class="page-content">
-                <div class="page-header">
-                    <div class="page-title"><h1><i class="fas fa-database"></i>Coleta de Dados</h1><p>Inicie a coleta de dados de todos os supermercados cadastrados no sistema.</p></div>
-                </div>
 
-                <div class="card admin-panel">
+            <main class="main-content">
+                <div class="admin-panel">
                     <div class="panel-header">
                         <i class="fas fa-database"></i>
                         <h2>Coleta de Dados</h2>
@@ -334,7 +107,7 @@
                         <p class="items-found"><i class="fas fa-box-open"></i> <strong>Itens Encontrados até agora:</strong> <span id="itemsFoundText">0</span></p>
                     </div>
 
-                    <div id="report-container" style="display: none; margin-top: 2rem;">
+                    <div id="report-container" class="admin-panel" style="display: none; margin-top: 2rem;">
                         <div class="panel-header">
                             <i class="fas fa-clipboard-list"></i>
                             <h3>Relatório da Última Coleta</h3>
@@ -368,41 +141,9 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </main>
         </div>
     </div>
-    
-    <script>
-        // JavaScript para funcionalidade do menu do usuário
-        document.addEventListener('DOMContentLoaded', function() {
-            const userMenuBtn = document.getElementById('userMenuBtn');
-            const userDropdown = document.getElementById('userDropdown');
-            
-            // Alternar o dropdown do usuário
-            userMenuBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                userDropdown.classList.toggle('active');
-            });
-            
-            // Fechar o dropdown ao clicar fora
-            document.addEventListener('click', function() {
-                userDropdown.classList.remove('active');
-            });
-            
-            // Prevenir que o dropdown feche ao clicar nele
-            userDropdown.addEventListener('click', function(e) {
-                e.stopPropagation();
-            });
-            
-            // Logout
-            const logoutBtn = document.getElementById('logoutBtn');
-            logoutBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                // Aqui você implementaria a lógica de logout
-                alert('Funcionalidade de logout será implementada aqui');
-            });
-        });
-    </script>
     
     <script src="admin.js"></script>
 </body>
