@@ -16,40 +16,34 @@
     <script>routeGuard('users');</script>
 
     <div class="app-container">
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <div class="logo-container">
-                    <div class="logo-icon"><i class="fas fa-bolt"></i></div>
-                    <div class="logo-text"><h1>Preços AL</h1><span class="logo-subtitle">Analytics</span></div>
-                </div>
-            </div>
-            <nav class="sidebar-nav">
-                <div class="nav-section"><h3 class="nav-section-title"><span>Análise</span></h3>
-                    <ul class="nav-list">
-                        <li><a href="/search.html" class="nav-link" data-permission="search"><div class="nav-icon"><i class="fas fa-search"></i></div><span class="nav-text">Busca</span></a></li>
-                        <li data-permission="compare"><a href="/compare.html" class="nav-link"><div class="nav-icon"><i class="fas fa-chart-bar"></i></div><span class="nav-text">Comparador</span></a></li>
-                        <li data-permission="dashboard"><a href="/dashboard.html" class="nav-link"><div class="nav-icon"><i class="fas fa-chart-line"></i></div><span class="nav-text">Dashboard</span></a></li>
-                    </ul>
-                </div>
-                <div class="nav-section"><h3 class="nav-section-title"><span>Administração</span></h3>
-                    <ul class="nav-list">
-                        <li data-permission="coleta"><a href="/admin.html" class="nav-link"><div class="nav-icon"><i class="fas fa-database"></i></div><span class="nav-text">Coleta</span></a></li>
-                        <li data-permission="collections"><a href="/collections.html" class="nav-link"><div class="nav-icon"><i class="fas fa-history"></i></div><span class="nav-text">Histórico</span></a></li>
-                        <li data-permission="product_log"><a href="/product-log.html" class="nav-link"><div class="nav-icon"><i class="fas fa-clipboard-list"></i></div><span class="nav-text">Log de Produtos</span></a></li>
-                        <li data-permission="prune"><a href="/prune.html" class="nav-link"><div class="nav-icon"><i class="fas fa-broom"></i></div><span class="nav-text">Limpeza</span></a></li>
-                    </ul>
-                </div>
-                <div class="nav-section"><h3 class="nav-section-title"><span>Configuração</span></h3>
-                    <ul class="nav-list">
-                        <li data-permission="markets"><a href="/markets.html" class="nav-link"><div class="nav-icon"><i class="fas fa-store"></i></div><span class="nav-text">Mercados</span></a></li>
-                        <li data-permission="users"><a href="/users.html" class="nav-link active"><div class="nav-icon"><i class="fas fa-users"></i></div><span class="nav-text">Usuários</span></a></li>
-                    </ul>
-                </div>
-            </nav>
-            <div class="sidebar-footer">
-                <div class="theme-switcher"><div class="theme-label"><span>Tema</span></div><button class="theme-toggle" id="themeToggle"><div class="theme-toggle-track"><div class="theme-toggle-thumb"><i class="fas fa-moon"></i></div></div></button></div>
-            </div>
-        </aside>
+        <aside class="sidebar">
+    <div class="sidebar-header">
+        <i class="fas fa-bolt"></i>
+        <h1>Preços AL</h1>
+    </div>
+    <nav class="sidebar-nav">
+        <ul>
+            <li class="nav-header">ANÁLISE</li>
+            <li><a href="/search.html"><i class="fas fa-search"></i> Busca</a></li>
+            <li data-permission="compare"><a href="/compare.html"><i class="fas fa-chart-bar"></i> Comparador</a></li>
+            <li data-permission="dashboard"><a href="/dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+            
+            <li class="nav-header">ADMINISTRAÇÃO</li>
+            <li data-permission="coleta"><a href="/admin.html"><i class="fas fa-database"></i> Coleta</a></li>
+            <li data-permission="collections"><a href="/collections.html"><i class="fas fa-history"></i> Histórico de Coletas</a></li>
+            <li data-permission="product_log"><a href="/product-log.html"><i class="fas fa-file-alt"></i> Log de Produtos</a></li>
+            <li data-permission="prune"><a href="/prune.html"><i class="fas fa-broom"></i> Limpeza de Dados</a></li>
+
+            <li class="nav-header">CONFIGURAÇÃO</li>
+            <li data-permission="markets"><a href="/markets.html"><i class="fas fa-store"></i> Gerenciar Mercados</a></li>
+            <li data-permission="users"><a href="/users.html" class="active"><i class="fas fa-users"></i> Gerenciar Usuários</a></li>
+        </ul>
+    </nav>
+    <div class="theme-switcher">
+        <span>Tema</span>
+        <button id="themeToggle"><i class="fas fa-moon"></i></button>
+    </div>
+</aside>
 
         <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
