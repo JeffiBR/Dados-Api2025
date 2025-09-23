@@ -1262,3 +1262,229 @@ body.light-mode .mobile-menu-btn span {
 
 /* ÍCONES (Font Awesome) */
 .fa, .fas, .far, .fal, .fab { font-family: "Font Awesome 5 Free"; font-weight: 900; }
+
+/* ====== MENU DO PERFIL DO USUÁRIO ====== */
+.user-menu {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.user-menu-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: 1px solid var(--border-dark);
+    border-radius: 12px;
+    color: var(--text-dark);
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+}
+
+body.light-mode .user-menu-btn {
+    border: 1px solid var(--border-light);
+    color: var(--text-light);
+}
+
+.user-menu-btn:hover {
+    background-color: rgba(79, 70, 229, 0.1);
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+}
+
+.user-menu-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(79, 70, 229, 0.1), transparent);
+    transition: left 0.5s;
+}
+
+.user-menu-btn:hover::before {
+    left: 100%;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid var(--primary);
+    transition: var(--transition);
+}
+
+.user-menu-btn:hover .user-avatar {
+    border-color: var(--accent);
+    transform: scale(1.05);
+}
+
+.user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+}
+
+.user-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-dark);
+}
+
+body.light-mode .user-name {
+    color: var(--text-light);
+}
+
+.user-role {
+    font-size: 0.8rem;
+    color: var(--muted-dark);
+    font-weight: 500;
+}
+
+body.light-mode .user-role {
+    color: var(--muted-light);
+}
+
+.user-menu-btn i {
+    transition: var(--transition);
+    font-size: 0.9rem;
+    color: var(--muted-dark);
+}
+
+body.light-mode .user-menu-btn i {
+    color: var(--muted-light);
+}
+
+.user-menu-btn:hover i {
+    color: var(--primary);
+    transform: translateY(1px);
+}
+
+.user-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    width: 220px;
+    background: var(--panel-dark);
+    border: 1px solid var(--border-dark);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: var(--transition);
+    z-index: 1000;
+}
+
+body.light-mode .user-dropdown {
+    background: var(--panel-light);
+    border: 1px solid var(--border-light);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.user-dropdown.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    color: var(--text-dark);
+    text-decoration: none;
+    border-radius: 8px;
+    transition: var(--transition);
+}
+
+body.light-mode .dropdown-item {
+    color: var(--text-light);
+}
+
+.dropdown-item:hover {
+    background-color: rgba(79, 70, 229, 0.1);
+    color: var(--primary);
+    transform: translateX(5px);
+}
+
+.dropdown-item i {
+    width: 18px;
+    text-align: center;
+    color: var(--muted-dark);
+}
+
+body.light-mode .dropdown-item i {
+    color: var(--muted-light);
+}
+
+.dropdown-item:hover i {
+    color: var(--primary);
+}
+
+.dropdown-divider {
+    height: 1px;
+    background-color: var(--border-dark);
+    margin: 0.5rem 0;
+}
+
+body.light-mode .dropdown-divider {
+    background-color: var(--border-light);
+}
+
+.logout-btn {
+    color: var(--error) !important;
+}
+
+.logout-btn:hover {
+    background-color: rgba(239, 68, 68, 0.1) !important;
+    color: var(--error) !important;
+}
+
+/* Animações para o menu do usuário */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.user-dropdown.active {
+    animation: fadeIn 0.3s ease forwards;
+}
+
+/* Responsividade do menu do usuário */
+@media (max-width: 768px) {
+    .user-info {
+        display: none;
+    }
+    
+    .user-menu-btn {
+        padding: 0.5rem;
+    }
+    
+    .user-dropdown {
+        width: 200px;
+        right: 0;
+    }
+}
+
+/* Efeito de clique no botão */
+.user-menu-btn:active {
+    transform: translateY(0);
+}
