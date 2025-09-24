@@ -764,22 +764,20 @@ body.light-mode .market-card {
     box-shadow: 0 8px 30px rgba(79, 70, 229, 0.2);
 }
 
-.market-card::before,
-.market-card.selected::after {
-    top: 50%;              /* 👉 centraliza verticalmente */
-    right: 12px;           /* 👉 ajusta horizontal */
-    transform: translateY(-50%); /* 👉 garante que fique no meio certinho */
-}
-
+/* Bola de seleção (sempre visível) */
 .market-card::before {
     content: '';
     position: absolute;
+    top: 50%;
+    right: 12px;
+    transform: translateY(-50%);
     width: 22px;
     height: 22px;
     border: 2px solid var(--border-dark);
     border-radius: 50%;
     transition: all 0.3s ease;
     background: var(--panel-dark);
+    z-index: 1;
 }
 
 body.light-mode .market-card::before {
@@ -787,12 +785,13 @@ body.light-mode .market-card::before {
     background: var(--panel-light);
 }
 
-/* Estado selecionado do card */
+/* Estado selecionado - bola fica verde */
 .market-card.selected::before {
     background: var(--success);   /* fundo verde */
     border-color: var(--success); /* borda verde */
 }
 
+/* Ícone de check - aparece SOBRE a bola verde quando selecionado */
 .market-card.selected::after {
     content: '\f00c';
     font-family: 'Font Awesome 5 Free';
@@ -808,7 +807,7 @@ body.light-mode .market-card::before {
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 2;
+    z-index: 2;                   /* fica acima da bola verde */
 }
 
 
@@ -872,24 +871,7 @@ body.light-mode .supermarket-grid:empty::before {
     animation: slideDown 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Efeito de onda no clique */
-.market-card::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    border-radius: 50%;
-    background: rgba(79, 70, 229, 0.3);
-    transform: translate(-50%, -50%);
-    transition: width 0.6s, height 0.6s;
-}
-
-.market-card:active::after {
-    width: 100px;
-    height: 100px;
-}
+/* Efeito de onda no clique - removido para evitar conflito com ícone de seleção */
 
 /* Responsividade */
 @media (max-width: 768px) {
