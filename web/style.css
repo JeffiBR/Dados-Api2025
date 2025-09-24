@@ -504,44 +504,545 @@ body.light-mode .search-input-group input {
     color: var(--primary);
 }
 
-/* Filters */
-#filters-details {
-    margin-top: 1rem;
+/* ====== MELHORIAS PARA A SEÇÃO DE FILTROS DE SUPERMERCADO ====== */
+
+.market-filters {
+    border: 1px solid var(--border-dark);
+    border-radius: 16px;
+    margin-top: 1.5rem;
+    background: var(--panel-dark);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
-#filters-details summary {
-    cursor: pointer;
-    padding: 0.75rem 1rem;
-    background: var(--input-dark);
-    border-radius: var(--radius);
-    font-weight: 600;
+body.light-mode .market-filters {
+    border: 1px solid var(--border-light);
+    background: var(--panel-light);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.market-filters[open] {
+    border-color: var(--primary);
+    box-shadow: 0 8px 40px rgba(79, 70, 229, 0.15);
+}
+
+.market-filters summary {
     list-style: none;
+    padding: 1.5rem 2rem;
+    cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    justify-content: space-between;
+    font-weight: 600;
+    color: var(--text-dark);
+    transition: all 0.3s ease;
+    position: relative;
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.03), transparent);
 }
-body.light-mode #filters-details summary {
-    background: var(--input-light);
+
+body.light-mode .market-filters summary {
+    color: var(--text-light);
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.02), transparent);
 }
-#filters-details summary::before {
-    content: "►";
-    font-size: 0.8rem;
-    transition: transform 0.3s ease;
+
+.market-filters summary:hover {
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), transparent);
 }
-#filters-details[open] summary::before {
-    transform: rotate(90deg);
+
+.market-filters summary::-webkit-details-marker {
+    display: none;
+}
+
+.market-filters summary::after {
+    content: '\f078';
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    font-size: 0.9em;
+    color: var(--primary);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.market-filters[open] summary::after {
+    transform: rotate(180deg);
+    color: var(--accent);
+}
+
+.summary-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+}
+
+.summary-content i {
+    font-size: 1.2rem;
+    color: var(--primary);
+    width: 24px;
+    text-align: center;
+}
+
+.selection-count {
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: white;
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    font-size: 0.85em;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
 }
 
 .filters-container {
-    padding: 1.5rem 0 0 0;
+    padding: 0 2rem 2rem;
+    border-top: 1px solid var(--border-dark);
 }
 
-.supermarket-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+body.light-mode .filters-container {
+    border-top: 1px solid var(--border-light);
+}
+
+.market-search-controls {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.search-box {
+    position: relative;
+    flex: 1;
+    min-width: 300px;
+}
+
+.search-box i {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted-dark);
+    z-index: 2;
+}
+
+body.light-mode .search-box i {
+    color: var(--muted-light);
+}
+
+.search-box input {
+    width: 100%;
+    padding: 1rem 1rem 1rem 3rem;
+    border: 2px solid var(--border-dark);
+    border-radius: 12px;
+    background: var(--input-dark);
+    color: var(--text-dark);
+    font-size: 0.95em;
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 1;
+}
+
+body.light-mode .search-box input {
+    background: var(--input-light);
+    color: var(--text-light);
+    border: 2px solid var(--border-light);
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+    transform: translateY(-1px);
+}
+
+.clear-btn {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(79, 70, 229, 0.1);
+    border: none;
+    color: var(--primary);
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    z-index: 2;
+}
+
+.clear-btn:hover {
+    background: var(--primary);
+    color: white;
+    transform: translateY(-50%) scale(1.1);
+}
+
+.selection-actions {
+    display: flex;
     gap: 0.75rem;
 }
 
+.btn.small {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.85em;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.supermarket-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 0.5rem;
+    margin: 0 -0.5rem;
+}
+
+/* Scrollbar personalizada */
+.supermarket-grid::-webkit-scrollbar {
+    width: 8px;
+}
+
+.supermarket-grid::-webkit-scrollbar-track {
+    background: var(--border-dark);
+    border-radius: 4px;
+}
+
+.supermarket-grid::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    border-radius: 4px;
+}
+
+body.light-mode .supermarket-grid::-webkit-scrollbar-track {
+    background: var(--border-light);
+}
+
+.market-card {
+    border: 2px solid var(--border-dark);
+    border-radius: 12px;
+    padding: 1.25rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: var(--input-dark);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    position: relative;
+    overflow: hidden;
+}
+
+body.light-mode .market-card {
+    border: 2px solid var(--border-light);
+    background: var(--input-light);
+}
+
+.market-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(79, 70, 229, 0.15);
+}
+
+.market-card.selected {
+    border-color: var(--primary);
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.15), rgba(124, 58, 237, 0.1));
+    box-shadow: 0 8px 30px rgba(79, 70, 229, 0.2);
+}
+
+.market-card::before {
+    content: '';
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border-dark);
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    background: var(--panel-dark);
+}
+
+body.light-mode .market-card::before {
+    border: 2px solid var(--border-light);
+    background: var(--panel-light);
+}
+
+.market-card.selected::before {
+    background: var(--primary);
+    border-color: var(--primary);
+}
+
+.market-card.selected::after {
+    content: '\f00c';
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    color: white;
+    font-size: 0.7em;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+
+.market-info {
+    flex: 1;
+}
+
+.market-name {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text-dark);
+    font-size: 1.05em;
+}
+
+body.light-mode .market-name {
+    color: var(--text-light);
+}
+
+.market-cnpj {
+    font-size: 0.85em;
+    color: var(--muted-dark);
+    font-family: 'Courier New', monospace;
+    background: rgba(0, 0, 0, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+body.light-mode .market-cnpj {
+    color: var(--muted-light);
+    background: rgba(0, 0, 0, 0.05);
+}
+
+/* Estados vazios */
+.supermarket-grid:empty::before {
+    content: 'Nenhum supermercado encontrado';
+    text-align: center;
+    color: var(--muted-dark);
+    padding: 3rem;
+    grid-column: 1 / -1;
+    font-style: italic;
+}
+
+body.light-mode .supermarket-grid:empty::before {
+    color: var(--muted-light);
+}
+
+/* Animações */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.market-filters[open] .filters-container {
+    animation: slideDown 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Efeito de onda no clique */
+.market-card::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(79, 70, 229, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.market-card:active::after {
+    width: 100px;
+    height: 100px;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .market-search-controls {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .search-box {
+        min-width: 100%;
+    }
+    
+    .selection-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .supermarket-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .market-filters summary {
+        padding: 1.25rem 1.5rem;
+    }
+    
+    .filters-container {
+        padding: 0 1.5rem 1.5rem;
+    }
+    
+    .summary-content {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .selection-count {
+        font-size: 0.8em;
+        padding: 0.3rem 0.8rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .market-filters summary {
+        padding: 1rem 1.25rem;
+    }
+    
+    .filters-container {
+        padding: 0 1.25rem 1.25rem;
+    }
+    
+    .market-card {
+        padding: 1rem;
+        flex-direction: column;
+        text-align: center;
+        gap: 0.75rem;
+    }
+    
+    .market-info {
+        width: 100%;
+    }
+}
+
+/* Melhorias para os filtros de resultados */
+#resultsFilters {
+    margin-top: 2rem;
+    border-radius: 16px;
+    padding: 2rem;
+}
+
+#resultsFilters .panel-header {
+    margin-bottom: 1.5rem;
+}
+
+#resultsFilters .panel-header i {
+    font-size: 1.8rem;
+}
+
+#resultsFilters .panel-header h3 {
+    font-size: 1.4rem;
+}
+
+.filter-controls {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-width: 220px;
+}
+
+.filter-group label {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--muted-dark);
+}
+
+body.light-mode .filter-group label {
+    color: var(--muted-light);
+}
+
+.filter-group select {
+    padding: 0.85rem 1rem;
+    border: 2px solid var(--border-dark);
+    border-radius: 10px;
+    font-size: 0.95rem;
+    background: var(--input-dark);
+    color: var(--text-dark);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+body.light-mode .filter-group select {
+    background: var(--input-light);
+    color: var(--text-light);
+    border: 2px solid var(--border-light);
+}
+
+.filter-group select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+#clearFiltersButton {
+    margin-left: auto;
+}
+
+/* Melhorias no grid de resultados */
+.results-summary {
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.1), transparent);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border: 1px solid var(--border-dark);
+}
+
+body.light-mode .results-summary {
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.05), transparent);
+    border: 1px solid var(--border-light);
+}
+
+.summary-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+.stat {
+    text-align: center;
+    padding: 1rem;
+}
+
+.stat-value {
+    display: block;
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--primary);
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: var(--muted-dark);
+    font-weight: 600;
+}
+
+body.light-mode .stat-label {
+    color: var(--muted-light);
+}
 .supermarket-list label {
     display: flex;
     align-items: center;
@@ -1794,792 +2295,4 @@ body.light-mode .page-collections .empty-table {
     .page-collections .actions {
         justify-content: flex-end;
     }
-}
-/* ====== NOVOS ESTILOS PARA BUSCA AVANÇADA ====== */
-
-/* Market Filters Modernizados */
-.market-filters {
-    margin-top: 1.5rem;
-}
-
-.market-filters details {
-    border: 1px solid var(--border-dark);
-    border-radius: var(--radius);
-    background: var(--panel-dark);
-    overflow: hidden;
-    transition: var(--transition);
-}
-
-body.light-mode .market-filters details {
-    border: 1px solid var(--border-light);
-    background: var(--panel-light);
-}
-
-.market-filters summary {
-    padding: 1.25rem 1.5rem;
-    cursor: pointer;
-    list-style: none;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-weight: 600;
-    color: var(--text-dark);
-    transition: var(--transition);
-    position: relative;
-}
-
-body.light-mode .market-filters summary {
-    color: var(--text-light);
-}
-
-.market-filters summary:hover {
-    background: rgba(79, 70, 229, 0.05);
-}
-
-.market-filters summary::-webkit-details-marker {
-    display: none;
-}
-
-.market-filters summary i {
-    margin-right: 0.75rem;
-    color: var(--primary);
-    font-size: 1.1rem;
-}
-
-.selection-count {
-    background: linear-gradient(90deg, var(--primary), var(--accent));
-    color: white;
-    padding: 0.35rem 0.85rem;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
-}
-
-.filters-container {
-    padding: 1.5rem;
-    border-top: 1px solid var(--border-dark);
-}
-
-body.light-mode .filters-container {
-    border-top: 1px solid var(--border-light);
-}
-
-/* Controles de Busca de Mercados */
-.market-search-controls {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-    flex-wrap: wrap;
-    align-items: center;
-}
-
-.search-box {
-    flex: 1;
-    position: relative;
-    display: flex;
-    align-items: center;
-    min-width: 300px;
-}
-
-.search-box i {
-    position: absolute;
-    left: 1rem;
-    color: var(--muted-dark);
-    z-index: 2;
-}
-
-body.light-mode .search-box i {
-    color: var(--muted-light);
-}
-
-.search-box input {
-    width: 100%;
-    padding: 0.85rem 3rem 0.85rem 2.8rem;
-    border: 2px solid var(--border-dark);
-    border-radius: var(--radius);
-    background: var(--input-dark);
-    color: var(--text-dark);
-    font-size: 0.95rem;
-    transition: var(--transition);
-}
-
-body.light-mode .search-box input {
-    background: var(--input-light);
-    color: var(--text-light);
-    border: 2px solid var(--border-light);
-}
-
-.search-box input:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.13);
-}
-
-.clear-btn {
-    position: absolute;
-    right: 0.85rem;
-    background: none;
-    border: none;
-    color: var(--muted-dark);
-    cursor: pointer;
-    padding: 0.35rem;
-    border-radius: 50%;
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: var(--transition);
-    z-index: 2;
-}
-
-.clear-btn:hover {
-    background: rgba(79, 70, 229, 0.1);
-    color: var(--primary);
-}
-
-.selection-actions {
-    display: flex;
-    gap: 0.75rem;
-}
-
-/* Grade de Supermercados */
-.supermarket-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1rem;
-    max-height: 400px;
-    overflow-y: auto;
-    padding: 0.5rem;
-}
-
-.market-card {
-    background: var(--input-dark);
-    border: 2px solid var(--border-dark);
-    border-radius: var(--radius);
-    padding: 1.25rem;
-    cursor: pointer;
-    transition: var(--transition);
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    position: relative;
-    overflow: hidden;
-}
-
-body.light-mode .market-card {
-    background: var(--input-light);
-    border: 2px solid var(--border-light);
-}
-
-.market-card:hover {
-    border-color: var(--primary);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(79, 70, 229, 0.15);
-}
-
-.market-card.selected {
-    border-color: var(--primary);
-    background: rgba(79, 70, 229, 0.08);
-    box-shadow: 0 5px 20px rgba(79, 70, 229, 0.2);
-}
-
-.market-card input {
-    position: absolute;
-    opacity: 0;
-}
-
-.market-info {
-    flex: 1;
-}
-
-.market-name {
-    font-weight: 600;
-    margin-bottom: 0.35rem;
-    color: var(--text-dark);
-}
-
-body.light-mode .market-name {
-    color: var(--text-light);
-}
-
-.market-cnpj {
-    font-size: 0.8rem;
-    color: var(--muted-dark);
-}
-
-body.light-mode .market-cnpj {
-    color: var(--muted-light);
-}
-
-/* Indicador de seleção */
-.market-card::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 0;
-    height: 0;
-    border-style: solid;
-    border-width: 0 30px 30px 0;
-    border-color: transparent var(--primary) transparent transparent;
-    opacity: 0;
-    transition: var(--transition);
-}
-
-.market-card.selected::after {
-    opacity: 1;
-}
-
-.market-card.selected::before {
-    content: '✓';
-    position: absolute;
-    top: 2px;
-    right: 5px;
-    color: white;
-    font-size: 0.7rem;
-    font-weight: bold;
-    z-index: 2;
-}
-
-/* Results Grid Melhorado */
-.results-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 1.5rem;
-    margin-top: 2rem;
-}
-
-.product-card {
-    background: var(--panel-dark);
-    border-radius: var(--radius);
-    padding: 1.75rem;
-    box-shadow: 0 5px 28px rgba(0,0,0,0.13);
-    border: 1px solid var(--border-dark);
-    position: relative;
-    overflow: hidden;
-    transition: var(--transition);
-}
-
-body.light-mode .product-card {
-    background: var(--panel-light);
-    border: 1px solid var(--border-light);
-}
-
-.product-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
-    border-color: var(--primary);
-}
-
-.card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 1.25rem;
-    gap: 1rem;
-}
-
-.product-name {
-    font-weight: 700;
-    font-size: 1.2rem;
-    color: var(--text-dark);
-    flex: 1;
-    line-height: 1.4;
-    margin-bottom: 0.5rem;
-}
-
-body.light-mode .product-name {
-    color: var(--text-light);
-}
-
-.price-badge {
-    padding: 0.4rem 0.8rem;
-    border-radius: 8px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    white-space: nowrap;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.price-badge.cheapest {
-    background: linear-gradient(90deg, var(--success), #22c55e);
-    color: white;
-    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
-}
-
-.price-badge.expensive {
-    background: linear-gradient(90deg, var(--error), #f87171);
-    color: white;
-    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
-}
-
-.price-section {
-    margin-bottom: 1.25rem;
-}
-
-.product-price {
-    font-size: 1.75rem;
-    font-weight: 800;
-    color: var(--primary);
-    margin-bottom: 0.5rem;
-    background: linear-gradient(90deg, var(--primary), var(--accent));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.avg-indicator {
-    font-size: 0.85rem;
-    padding: 0.35rem 0.8rem;
-    border-radius: 6px;
-    font-weight: 600;
-    display: inline-block;
-}
-
-.avg-indicator.below {
-    background: rgba(34, 197, 94, 0.15);
-    color: var(--success);
-    border: 1px solid rgba(34, 197, 94, 0.2);
-}
-
-.avg-indicator.above {
-    background: rgba(239, 68, 68, 0.15);
-    color: var(--error);
-    border: 1px solid rgba(239, 68, 68, 0.2);
-}
-
-.product-details {
-    list-style: none;
-    padding: 0;
-    margin: 0 0 1.5rem 0;
-}
-
-.product-details li {
-    display: flex;
-    align-items: center;
-    margin-bottom: 0.75rem;
-    font-size: 0.95rem;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid var(--border-dark);
-}
-
-body.light-mode .product-details li {
-    border-bottom: 1px solid var(--border-light);
-}
-
-.product-details li:last-child {
-    border-bottom: none;
-}
-
-.detail-icon {
-    margin-right: 0.85rem;
-    width: 24px;
-    text-align: center;
-    font-size: 1.1rem;
-    color: var(--primary);
-}
-
-.supermarket-name {
-    font-weight: 600;
-    color: var(--primary);
-}
-
-.sale-date {
-    color: var(--muted-dark);
-}
-
-body.light-mode .sale-date {
-    color: var(--muted-light);
-}
-
-.card-actions {
-    display: flex;
-    gap: 0.75rem;
-    justify-content: flex-end;
-    padding-top: 1rem;
-    border-top: 1px solid var(--border-dark);
-}
-
-body.light-mode .card-actions {
-    border-top: 1px solid var(--border-light);
-}
-
-.action-btn {
-    background: var(--input-dark);
-    border: 1px solid var(--border-dark);
-    border-radius: 8px;
-    padding: 0.6rem 1rem;
-    cursor: pointer;
-    transition: var(--transition);
-    color: var(--text-dark);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.85rem;
-    font-weight: 500;
-}
-
-body.light-mode .action-btn {
-    background: var(--input-light);
-    border: 1px solid var(--border-light);
-    color: var(--text-light);
-}
-
-.action-btn:hover {
-    background: linear-gradient(90deg, var(--primary), var(--accent));
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
-}
-
-/* Results Summary */
-.results-summary {
-    grid-column: 1 / -1;
-    background: var(--panel-dark);
-    border-radius: var(--radius);
-    padding: 2rem;
-    margin-bottom: 1.5rem;
-    border: 1px solid var(--border-dark);
-    box-shadow: 0 5px 28px rgba(0,0,0,0.13);
-}
-
-body.light-mode .results-summary {
-    background: var(--panel-light);
-    border: 1px solid var(--border-light);
-}
-
-.summary-stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 1.5rem;
-}
-
-.stat {
-    text-align: center;
-    padding: 1.5rem 1rem;
-    background: var(--input-dark);
-    border-radius: var(--radius);
-    border: 1px solid var(--border-dark);
-    transition: var(--transition);
-}
-
-body.light-mode .stat {
-    background: var(--input-light);
-    border: 1px solid var(--border-light);
-}
-
-.stat:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-    border-color: var(--primary);
-}
-
-.stat-value {
-    display: block;
-    font-size: 2rem;
-    font-weight: 800;
-    color: var(--primary);
-    margin-bottom: 0.5rem;
-    background: linear-gradient(90deg, var(--primary), var(--accent));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.stat-label {
-    display: block;
-    font-size: 0.9rem;
-    color: var(--muted-dark);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-body.light-mode .stat-label {
-    color: var(--muted-light);
-}
-
-/* Filter Controls para Resultados */
-.filter-controls {
-    display: flex;
-    gap: 2rem;
-    align-items: flex-end;
-    flex-wrap: wrap;
-    margin-bottom: 1.5rem;
-}
-
-.filter-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    min-width: 200px;
-}
-
-.filter-group label {
-    font-weight: 600;
-    color: var(--muted-dark);
-    font-size: 0.95rem;
-}
-
-body.light-mode .filter-group label {
-    color: var(--muted-light);
-}
-
-.filter-group select {
-    padding: 0.85rem 1rem;
-    border: 2px solid var(--border-dark);
-    border-radius: var(--radius);
-    background: var(--input-dark);
-    color: var(--text-dark);
-    font-size: 0.95rem;
-    cursor: pointer;
-    transition: var(--transition);
-}
-
-body.light-mode .filter-group select {
-    background: var(--input-light);
-    color: var(--text-light);
-    border: 2px solid var(--border-light);
-}
-
-.filter-group select:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.13);
-}
-
-/* Loader Específico para Busca */
-.loader-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 4rem 2rem;
-    text-align: center;
-}
-
-.loader-container p {
-    margin-top: 1rem;
-    color: var(--muted-dark);
-    font-weight: 500;
-}
-
-body.light-mode .loader-container p {
-    color: var(--muted-light);
-}
-
-/* Empty State Melhorado */
-.empty-state {
-    grid-column: 1 / -1;
-    text-align: center;
-    padding: 4rem 2rem;
-    color: var(--muted-dark);
-}
-
-body.light-mode .empty-state {
-    color: var(--muted-light);
-}
-
-.empty-state h3 {
-    font-size: 1.5rem;
-    margin-bottom: 1rem;
-    color: var(--text-dark);
-    font-weight: 600;
-}
-
-body.light-mode .empty-state h3 {
-    color: var(--text-light);
-}
-
-.empty-state p {
-    margin-bottom: 2rem;
-    font-size: 1.1rem;
-}
-
-.empty-state i {
-    font-size: 4rem;
-    margin-bottom: 1.5rem;
-    opacity: 0.3;
-}
-
-/* Animações Específicas */
-@keyframes cardSlideIn {
-    from {
-        opacity: 0;
-        transform: translateY(30px) scale(0.95);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-}
-
-.product-card {
-    animation: cardSlideIn 0.6s ease forwards;
-}
-
-.product-card:nth-child(odd) {
-    animation-delay: 0.1s;
-}
-
-.product-card:nth-child(even) {
-    animation-delay: 0.2s;
-}
-
-/* Efeito de Destaque para Melhor Preço */
-.product-card:has(.price-badge.cheapest) {
-    border: 2px solid var(--success);
-    box-shadow: 0 0 0 1px var(--success), 0 10px 30px rgba(34, 197, 94, 0.2);
-}
-
-.product-card:has(.price-badge.cheapest)::before {
-    content: '🌟 MELHOR PREÇO';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    background: linear-gradient(90deg, var(--success), #22c55e);
-    color: white;
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-align: center;
-    padding: 0.3rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-}
-
-/* Responsividade para os Novos Componentes */
-@media (max-width: 768px) {
-    .market-search-controls {
-        flex-direction: column;
-    }
-    
-    .search-box {
-        min-width: 100%;
-    }
-    
-    .selection-actions {
-        width: 100%;
-        justify-content: stretch;
-    }
-    
-    .selection-actions .btn {
-        flex: 1;
-        justify-content: center;
-    }
-    
-    .supermarket-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .results-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .filter-controls {
-        flex-direction: column;
-        gap: 1rem;
-    }
-    
-    .filter-group {
-        min-width: 100%;
-    }
-    
-    .summary-stats {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .card-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.75rem;
-    }
-    
-    .card-actions {
-        justify-content: stretch;
-    }
-    
-    .action-btn {
-        flex: 1;
-        justify-content: center;
-    }
-}
-
-@media (max-width: 480px) {
-    .summary-stats {
-        grid-template-columns: 1fr;
-    }
-    
-    .market-filters summary {
-        flex-direction: column;
-        gap: 0.75rem;
-        text-align: center;
-    }
-    
-    .product-card {
-        padding: 1.25rem;
-    }
-    
-    .product-price {
-        font-size: 1.5rem;
-    }
-}
-
-/* Scrollbar Personalizado para Listas de Mercados */
-.supermarket-grid::-webkit-scrollbar {
-    width: 6px;
-}
-
-.supermarket-grid::-webkit-scrollbar-track {
-    background: var(--input-dark);
-    border-radius: 3px;
-}
-
-body.light-mode .supermarket-grid::-webkit-scrollbar-track {
-    background: var(--input-light);
-}
-
-.supermarket-grid::-webkit-scrollbar-thumb {
-    background: var(--primary);
-    border-radius: 3px;
-}
-
-.supermarket-grid::-webkit-scrollbar-thumb:hover {
-    background: var(--accent);
-}
-
-/* Estados de Carregamento */
-.loading .product-card {
-    opacity: 0.6;
-    pointer-events: none;
-}
-
-.loading .product-card::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-    animation: loadingShimmer 1.5s infinite;
-}
-
-@keyframes loadingShimmer {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
-}
-
-/* Modo de Comparação */
-.comparing .product-card:not(.comparison-target) {
-    opacity: 0.5;
-}
-
-.product-card.comparison-target {
-    border: 2px solid var(--primary);
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
-    transform: scale(1.02);
 }
