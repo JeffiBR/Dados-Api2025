@@ -91,17 +91,34 @@
                     
                     <div class="search-controls">
                         <div class="search-input-group">
-                            <input type="text" id="searchInput" placeholder="Digite o nome do produto...">
+                            <input type="text" id="searchInput" placeholder="Digite o nome do produto ou código de barras...">
                             <button id="clearSearchButton" class="clear-search"><i class="fas fa-times"></i></button>
                         </div>
                         <div class="search-buttons">
                             <button id="searchButton" class="btn"><i class="fas fa-database"></i> Buscar no Banco</button>
                             <button id="realtimeSearchButton" class="btn"><i class="fas fa-bolt"></i> Buscar em Tempo Real</button>
                         </div>
-                        <details id="filters-details">
-                            <summary id="filters-toggle"><i class="fas fa-filter"></i> Filtrar por Supermercado</summary>
+                        
+                        <!-- Filtros de Supermercado Melhorados -->
+                        <details id="filters-details" class="market-filters">
+                            <summary id="filters-toggle">
+                                <i class="fas fa-store"></i> 
+                                <span>Selecionar Supermercados</span>
+                                <span class="selection-count">0 selecionados</span>
+                            </summary>
                             <div class="filters-container">
-                                <div id="supermarketFilters" class="supermarket-list"></div>
+                                <div class="market-search-controls">
+                                    <div class="search-box">
+                                        <i class="fas fa-search"></i>
+                                        <input type="text" id="marketSearchInput" placeholder="Pesquisar mercado por nome...">
+                                        <button id="clearMarketSearch" class="clear-btn"><i class="fas fa-times"></i></button>
+                                    </div>
+                                    <div class="selection-actions">
+                                        <button id="selectAllMarkets" class="btn small">Selecionar Todos</button>
+                                        <button id="deselectAllMarkets" class="btn small outline">Limpar Seleção</button>
+                                    </div>
+                                </div>
+                                <div id="supermarketFilters" class="supermarket-grid"></div>
                             </div>
                         </details>
                     </div>
@@ -112,7 +129,7 @@
                     </div>
                     
                     <!-- Área para os filtros de resultados -->
-                    <div id="resultsFilters" class="admin-panel" style="display: none;">
+                    <div id="resultsFilters" class="admin-panel" style="display: none; margin-top: 2rem;">
                         <div class="panel-header">
                             <i class="fas fa-sliders-h"></i>
                             <h3>Filtrar resultados</h3>
@@ -130,6 +147,7 @@
                                     <option value="recent">Mais recentes</option>
                                     <option value="cheap">Preço: mais barato</option>
                                     <option value="expensive">Preço: mais caro</option>
+                                    <option value="name">Nome do produto (A-Z)</option>
                                 </select>
                             </div>
                             <button id="clearFiltersButton" class="btn outline"><i class="fas fa-times"></i> Limpar Filtros</button>
