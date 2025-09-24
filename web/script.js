@@ -270,16 +270,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${avgIndicator}
             </div>
             <ul class="product-details">
-                <li><span class="detail-icon">🛒</span> 
+                <li><span class="detail-icon"></span> 
                     <span class="supermarket-name">${item.nome_supermercado}</span>
                 </li>
-                <li><span class="detail-icon">⚖️</span> 
+                <li><span class="detail-icon"></span> 
                     ${item.tipo_unidade || 'UN'} (${item.unidade_medida || 'N/A'})
                 </li>
-                <li><span class="detail-icon">📅</span> 
+                <li><span class="detail-icon"></span> 
                     <span class="sale-date">Visto em: ${date}</span>
                 </li>
-                <li><span class="detail-icon">🔳</span> 
+                <li><span class="detail-icon"></span> 
                     ${item.codigo_barras || 'Sem código'}
                 </li>
             </ul>
@@ -551,3 +551,4 @@ document.addEventListener('DOMContentLoaded', () => {
     loadSupermarkets();
     loadUserInfo();
 });
+
