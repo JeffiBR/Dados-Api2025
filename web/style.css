@@ -764,13 +764,18 @@ body.light-mode .market-card {
     box-shadow: 0 8px 30px rgba(79, 70, 229, 0.2);
 }
 
+.market-card::before,
+.market-card.selected::after {
+    top: 50%;              /* 👉 centraliza verticalmente */
+    right: 12px;           /* 👉 ajusta horizontal */
+    transform: translateY(-50%); /* 👉 garante que fique no meio certinho */
+}
+
 .market-card::before {
     content: '';
     position: absolute;
-    top: 10px;
-    right: 10px;
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     border: 2px solid var(--border-dark);
     border-radius: 50%;
     transition: all 0.3s ease;
@@ -782,9 +787,10 @@ body.light-mode .market-card::before {
     background: var(--panel-light);
 }
 
+/* Estado selecionado do card */
 .market-card.selected::before {
-    background: var(--primary);
-    border-color: var(--primary);
+    background: var(--success);   /* fundo verde */
+    border-color: var(--success); /* borda verde */
 }
 
 .market-card.selected::after {
@@ -792,17 +798,19 @@ body.light-mode .market-card::before {
     font-family: 'Font Awesome 5 Free';
     font-weight: 900;
     position: absolute;
-    top: 10px;
-    right: 10px;
-    color: white;
-    font-size: 0.7em;
-    width: 20px;
-    height: 20px;
+    top: 50%;
+    right: 12px;
+    transform: translateY(-50%);
+    color: #fff;                  /* check branco */
+    font-size: 0.8em;
+    width: 22px;
+    height: 22px;
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 2;
 }
+
 
 .market-info {
     flex: 1;
