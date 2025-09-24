@@ -100,25 +100,33 @@
                         </div>
                         
                         <!-- Filtros de Supermercado Melhorados -->
-                        <details id="filters-details" class="market-filters">
-                            <summary id="filters-toggle">
-                                <i class="fas fa-store"></i> 
-                                <span>Selecionar Supermercados</span>
-                                <span class="selection-count">0 selecionados</span>
+                        <details id="filters-details" class="market-filters" role="group" aria-labelledby="filters-toggle">
+                            <summary id="filters-toggle" role="button" aria-expanded="false" aria-controls="filters-container">
+                                <div class="summary-content">
+                                    <i class="fas fa-store" aria-hidden="true"></i> 
+                                    <span>Selecionar Supermercados</span>
+                                    <span class="selection-count" aria-live="polite">0 selecionados</span>
+                                </div>
                             </summary>
-                            <div class="filters-container">
+                            <div class="filters-container" id="filters-container">
                                 <div class="market-search-controls">
                                     <div class="search-box">
-                                        <i class="fas fa-search"></i>
-                                        <input type="text" id="marketSearchInput" placeholder="Pesquisar mercado por nome...">
-                                        <button id="clearMarketSearch" class="clear-btn"><i class="fas fa-times"></i></button>
+                                        <i class="fas fa-search" aria-hidden="true"></i>
+                                        <input type="text" id="marketSearchInput" placeholder="Pesquisar mercado por nome ou CNPJ..." aria-label="Pesquisar supermercados">
+                                        <button id="clearMarketSearch" class="clear-btn" aria-label="Limpar pesquisa">
+                                            <i class="fas fa-times" aria-hidden="true"></i>
+                                        </button>
                                     </div>
                                     <div class="selection-actions">
-                                        <button id="selectAllMarkets" class="btn small">Selecionar Todos</button>
-                                        <button id="deselectAllMarkets" class="btn small outline">Limpar Seleção</button>
+                                        <button id="selectAllMarkets" class="btn small" aria-label="Selecionar todos os supermercados">
+                                            <i class="fas fa-check-double" aria-hidden="true"></i> Selecionar Todos
+                                        </button>
+                                        <button id="deselectAllMarkets" class="btn small outline" aria-label="Desmarcar todos os supermercados">
+                                            <i class="fas fa-times-circle" aria-hidden="true"></i> Limpar Seleção
+                                        </button>
                                     </div>
                                 </div>
-                                <div id="supermarketFilters" class="supermarket-grid"></div>
+                                <div id="supermarketFilters" class="supermarket-grid" role="list" aria-label="Lista de supermercados"></div>
                             </div>
                         </details>
                     </div>
