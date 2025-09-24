@@ -3017,4 +3017,26 @@ body.light-mode .search-input-group input {
     background: var(--primary);
     color: white;
 }
+/* Cores para os preços: menor -> verde, maior -> vermelho, demais -> branco */
+.product-price {
+    color: #ffffff; /* padrão: branco */
+    font-weight: 700;
+}
+
+/* menor preço */
+.product-price.price-min {
+    color: #16a34a; /* verde (Tailwind green-600) */
+}
+
+/* maior preço */
+.product-price.price-max {
+    color: #ef4444; /* vermelho (Tailwind red-500) */
+}
+
+/* Se usar modo claro, garanta legibilidade (opcional) */
+body.light-mode .product-price {
+    color: #111827; /* quase preto em light-mode */
+}
+
+
 
