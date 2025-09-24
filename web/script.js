@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sortFilter = document.getElementById('sortFilter');
     const clearFiltersButton = document.getElementById('clearFiltersButton');
     
-    // Elementos do menu (igual ao admin.html)
+    // Elementos do menu
     const mobileMenuBtn = document.getElementById('mobileMenuBtn');
     const sidebar = document.querySelector('.sidebar');
     const sidebarOverlay = document.getElementById('sidebarOverlay');
@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Menu mobile (igual ao admin.html)
+    // Menu mobile
     if (mobileMenuBtn) {
         mobileMenuBtn.addEventListener('click', () => {
             sidebar.classList.toggle('active');
@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Dropdown do usuário (igual ao admin.html)
+    // Dropdown do usuário
     if (userMenuBtn) {
         userMenuBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -78,12 +78,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Fechar dropdown ao clicar fora (igual ao admin.html)
+    // Fechar dropdown ao clicar fora
     document.addEventListener('click', () => {
         userDropdown.classList.remove('show');
     });
 
-    // Logout (igual ao admin.html)
+    // Logout
     if (logoutBtn) {
         logoutBtn.addEventListener('click', (e) => {
             e.preventDefault();
@@ -92,7 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Toggle do tema (igual ao admin.html)
+    // Toggle do tema
     if (themeToggle) {
         themeToggle.addEventListener('click', () => {
             document.body.classList.toggle('light-mode');
@@ -110,18 +110,33 @@ document.addEventListener('DOMContentLoaded', () => {
     // Utilitários
     const showLoader = (show) => loader.style.display = show ? 'flex' : 'none';
     
-    const showMessage = (msg, color = 'red') => {
+    const showMessage = (msg, type = 'info') => {
+        let icon = 'fas fa-info-circle';
+        let color = 'var(--muted-dark)';
+        
+        if (type === 'error') {
+            icon = 'fas fa-exclamation-triangle';
+            color = 'var(--error)';
+        } else if (type === 'success') {
+            icon = 'fas fa-check-circle';
+            color = 'var(--success)';
+        }
+        
         resultsGrid.innerHTML = `
-            <div class="empty-state">
-                <h3>${msg}</h3>
-                <p>Tente ajustar os termos da busca ou filtros</p>
+            <div class="empty-state" style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+                <i class="${icon}" style="font-size: 3rem; color: ${color}; margin-bottom: 1rem;"></i>
+                <h3 style="color: ${color}; margin-bottom: 0.5rem;">${msg}</h3>
+                <p style="color: var(--muted-dark);">Tente ajustar os termos da busca ou filtros</p>
             </div>`;
     };
 
     const showNotification = (message, type = 'success') => {
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
-        notification.textContent = message;
+        notification.innerHTML = `
+            <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation-triangle' : 'info-circle'}"></i>
+            ${message}
+        `;
         document.body.appendChild(notification);
         
         setTimeout(() => {
@@ -131,7 +146,9 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             notification.classList.remove('show');
             setTimeout(() => {
-                document.body.removeChild(notification);
+                if (notification.parentNode) {
+                    document.body.removeChild(notification);
+                }
             }, 300);
         }, 3000);
     };
@@ -140,11 +157,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const updateSelectionCount = () => {
         const selected = document.querySelectorAll('.market-card.selected').length;
         selectionCount.textContent = `${selected} selecionados`;
+        selectionCount.style.display = selected > 0 ? 'inline-block' : 'none';
     };
 
     // Filtrar mercados na pesquisa
     const filterMarkets = (searchText) => {
         const marketCards = document.querySelectorAll('.market-card');
+        let visibleCount = 0;
+        
         marketCards.forEach(card => {
             const marketName = card.querySelector('.market-name').textContent.toLowerCase();
             const marketCnpj = card.querySelector('.market-cnpj').textContent.toLowerCase();
@@ -152,10 +172,29 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (marketName.includes(searchLower) || marketCnpj.includes(searchLower)) {
                 card.style.display = 'flex';
+                visibleCount++;
             } else {
                 card.style.display = 'none';
             }
         });
+        
+        // Mostrar mensagem se nenhum mercado for encontrado
+        const emptyMessage = supermarketFiltersContainer.querySelector('.no-markets-message');
+        if (visibleCount === 0 && searchText) {
+            if (!emptyMessage) {
+                const message = document.createElement('div');
+                message.className = 'no-markets-message';
+                message.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: var(--muted-dark);">
+                        <i class="fas fa-search" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                        <p>Nenhum supermercado encontrado para "${searchText}"</p>
+                    </div>
+                `;
+                supermarketFiltersContainer.appendChild(message);
+            }
+        } else if (emptyMessage) {
+            emptyMessage.remove();
+        }
     };
 
     // Renderização de cards de mercado
@@ -176,6 +215,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 checkbox.checked = !checkbox.checked;
                 card.classList.toggle('selected', checkbox.checked);
                 updateSelectionCount();
+                
+                // Efeito de feedback visual
+                card.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    card.style.transform = '';
+                }, 150);
             }
         });
         
@@ -186,10 +231,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const buildSupermarketFilters = (markets) => {
         allMarkets = markets;
         const frag = document.createDocumentFragment();
+        
+        if (markets.length === 0) {
+            supermarketFiltersContainer.innerHTML = `
+                <div style="text-align: center; padding: 2rem; color: var(--muted-dark);">
+                    <i class="fas fa-store-slash" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                    <p>Nenhum supermercado disponível</p>
+                </div>
+            `;
+            return;
+        }
+        
         markets.forEach(market => {
             const card = buildMarketCard(market);
             frag.appendChild(card);
         });
+        
         supermarketFiltersContainer.innerHTML = '';
         supermarketFiltersContainer.appendChild(frag);
         updateSelectionCount();
@@ -198,10 +255,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Selecionar/Deselecionar todos os mercados
     selectAllMarkets.addEventListener('click', () => {
         document.querySelectorAll('.market-card').forEach(card => {
-            card.classList.add('selected');
-            card.querySelector('input').checked = true;
+            if (card.style.display !== 'none') {
+                card.classList.add('selected');
+                card.querySelector('input').checked = true;
+            }
         });
         updateSelectionCount();
+        showNotification('Todos os supermercados selecionados', 'success');
     });
 
     deselectAllMarkets.addEventListener('click', () => {
@@ -210,20 +270,26 @@ document.addEventListener('DOMContentLoaded', () => {
             card.querySelector('input').checked = false;
         });
         updateSelectionCount();
+        showNotification('Seleção limpa', 'info');
     });
 
     // Limpar pesquisa de mercados
     clearMarketSearch.addEventListener('click', () => {
         marketSearchInput.value = '';
         filterMarkets('');
+        marketSearchInput.focus();
     });
 
     // Pesquisa em tempo real nos mercados
+    let searchTimeout;
     marketSearchInput.addEventListener('input', (e) => {
-        filterMarkets(e.target.value);
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            filterMarkets(e.target.value);
+        }, 300);
     });
 
-    // Renderização de cards de produto
+    // Renderização de cards de produto (ATUALIZADA)
     const buildProductCard = (item, index, allResults) => {
         const price = typeof item.preco_produto === 'number' ? 
             `R$ ${item.preco_produto.toFixed(2).replace('.', ',')}` : 'N/A';
@@ -239,8 +305,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Determinar se é o mais barato ou mais caro
         let priceBadge = '';
+        let isCheapest = false;
         if (prices.length > 1 && item.preco_produto === minPrice) {
             priceBadge = '<span class="price-badge cheapest"><i class="fas fa-tag"></i> Mais barato</span>';
+            isCheapest = true;
         } else if (prices.length > 1 && item.preco_produto === maxPrice) {
             priceBadge = '<span class="price-badge expensive"><i class="fas fa-exclamation-circle"></i> Mais caro</span>';
         }
@@ -250,14 +318,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (prices.length > 1 && typeof item.preco_produto === 'number' && avgPrice > 0) {
             const diffFromAvg = ((item.preco_produto - avgPrice) / avgPrice * 100).toFixed(1);
             if (item.preco_produto < avgPrice) {
-                avgIndicator = `<span class="avg-indicator below">${Math.abs(diffFromAvg)}% abaixo da média</span>`;
+                avgIndicator = `<span class="avg-indicator below"><i class="fas fa-arrow-down"></i> ${Math.abs(diffFromAvg)}% abaixo da média</span>`;
             } else if (item.preco_produto > avgPrice) {
-                avgIndicator = `<span class="avg-indicator above">${diffFromAvg}% acima da média</span>`;
+                avgIndicator = `<span class="avg-indicator above"><i class="fas fa-arrow-up"></i> ${diffFromAvg}% acima da média</span>`;
             }
         }
 
         return `
-        <div class="product-card" data-price="${item.preco_produto || 0}">
+        <div class="product-card" data-price="${item.preco_produto || 0}" ${isCheapest ? 'data-cheapest="true"' : ''}>
             <div class="card-header">
                 <div class="product-name">${item.nome_produto || 'Produto sem nome'}</div>
                 ${priceBadge}
@@ -267,24 +335,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${avgIndicator}
             </div>
             <ul class="product-details">
-                <li><span class="detail-icon">🛒</span> 
+                <li><span class="detail-icon"></span> 
                     <span class="supermarket-name">${item.nome_supermercado}</span>
                 </li>
-                <li><span class="detail-icon">⚖️</span> 
+                <li><span class="detail-icon"></span> 
                     ${item.tipo_unidade || 'UN'} (${item.unidade_medida || 'N/A'})
                 </li>
-                <li><span class="detail-icon">📅</span> 
+                <li><span class="detail-icon"></span> 
                     <span class="sale-date">Visto em: ${date}</span>
                 </li>
-                <li><span class="detail-icon">🔳</span> 
+                <li><span class="detail-icon"></span> 
                     ${item.codigo_barras || 'Sem código'}
                 </li>
             </ul>
             <div class="card-actions">
-                <button class="action-btn compare-btn" title="Comparar preço">
+                <button class="action-btn compare-btn" title="Comparar preço" data-product='${JSON.stringify(item).replace(/'/g, "&#39;")}'>
                     <i class="fas fa-balance-scale"></i>
                 </button>
-                <button class="action-btn favorite-btn" title="Favoritar">
+                <button class="action-btn favorite-btn" title="Favoritar" data-product-id="${item.id || index}">
                     <i class="far fa-heart"></i>
                 </button>
             </div>
@@ -333,7 +401,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const displayFilteredResults = (results) => {
         if (results.length === 0) {
             resultsGrid.innerHTML = `
-                <div class="empty-state">
+                <div class="empty-state" style="grid-column: 1 / -1;">
+                    <i class="fas fa-search" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
                     <h3>Nenhum resultado encontrado</h3>
                     <p>Tente ajustar os filtros aplicados</p>
                 </div>`;
@@ -381,6 +450,52 @@ document.addEventListener('DOMContentLoaded', () => {
         
         resultsGrid.innerHTML = '';
         resultsGrid.appendChild(frag);
+        
+        // Adicionar event listeners aos botões dos cards
+        addCardEventListeners();
+    };
+
+    // Adicionar event listeners aos botões dos cards
+    const addCardEventListeners = () => {
+        // Botão de comparar
+        document.querySelectorAll('.compare-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const productData = JSON.parse(e.target.closest('.compare-btn').dataset.product.replace(/&#39;/g, "'"));
+                showNotification(`Produto "${productData.nome_produto}" adicionado à comparação`, 'success');
+                // Aqui você pode adicionar a lógica para adicionar à comparação
+            });
+        });
+        
+        // Botão de favoritar
+        document.querySelectorAll('.favorite-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const productId = e.target.closest('.favorite-btn').dataset.productId;
+                const icon = e.target.closest('.favorite-btn').querySelector('i');
+                
+                if (icon.classList.contains('far')) {
+                    icon.classList.remove('far');
+                    icon.classList.add('fas');
+                    icon.style.color = 'var(--error)';
+                    showNotification('Produto adicionado aos favoritos', 'success');
+                } else {
+                    icon.classList.remove('fas');
+                    icon.classList.add('far');
+                    icon.style.color = '';
+                    showNotification('Produto removido dos favoritos', 'info');
+                }
+            });
+        });
+        
+        // Click no card (expande detalhes)
+        document.querySelectorAll('.product-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                if (!e.target.closest('.action-btn')) {
+                    card.classList.toggle('expanded');
+                }
+            });
+        });
     };
 
     // Atualizar filtro de mercados com base nos resultados
@@ -410,13 +525,23 @@ document.addEventListener('DOMContentLoaded', () => {
     // Carregar supermercados
     const loadSupermarkets = async () => {
         try {
+            showLoader(true);
             const response = await fetch(`/api/supermarkets/public`);
             if (!response.ok) throw new Error('Falha ao carregar mercados.');
             const data = await response.json();
             buildSupermarketFilters(data);
         } catch (error) {
-            console.error(error);
-            supermarketFiltersContainer.innerHTML = '<p style="color: red;">Não foi possível carregar os filtros.</p>';
+            console.error('Erro ao carregar supermercados:', error);
+            supermarketFiltersContainer.innerHTML = `
+                <div style="color: var(--error); text-align: center; padding: 2rem;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                    <p>Não foi possível carregar os supermercados.</p>
+                    <button class="btn small" onclick="loadSupermarkets()" style="margin-top: 1rem;">
+                        <i class="fas fa-redo"></i> Tentar novamente
+                    </button>
+                </div>`;
+        } finally {
+            showLoader(false);
         }
     };
 
@@ -424,13 +549,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const performSearch = async (isRealtime = false) => {
         const query = searchInput.value.trim();
         if (query.length < 3) {
-            showMessage('Digite pelo menos 3 caracteres.');
+            showMessage('Digite pelo menos 3 caracteres para buscar.', 'info');
             return;
         }
         
         const selectedCnpjs = Array.from(document.querySelectorAll('input[name="supermarket"]:checked')).map(cb => cb.value);
         if (isRealtime && selectedCnpjs.length === 0) {
-            showMessage('Selecione ao menos um supermercado para busca em tempo real.');
+            showMessage('Selecione ao menos um supermercado para busca em tempo real.', 'info');
             return;
         }
 
@@ -444,7 +569,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isRealtime) {
                 session = await getSession();
                 if (!session) {
-                    showMessage('Sua sessão expirou. Faça login novamente.');
+                    showMessage('Sua sessão expirou. Faça login novamente.', 'error');
                     setTimeout(() => window.location.href = '/login.html', 1200);
                     return;
                 }
@@ -468,7 +593,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(url, options);
             
             if (response.status === 401) {
-                showMessage('Sua sessão expirou. Faça login novamente.');
+                showMessage('Sua sessão expirou. Faça login novamente.', 'error');
                 setTimeout(() => window.location.href = '/login.html', 1200);
                 return;
             }
@@ -483,11 +608,11 @@ document.addEventListener('DOMContentLoaded', () => {
             currentQuery = query;
             
             displayResults(currentResults, query);
-            showNotification(`Encontramos ${currentResults.length} resultado(s) para "${query}"`);
+            showNotification(`Encontramos ${currentResults.length} resultado(s) para "${query}"`, 'success');
 
         } catch (error) {
-            console.error(error);
-            showMessage(`Erro na busca: ${error.message}`);
+            console.error('Erro na busca:', error);
+            showMessage(`Erro na busca: ${error.message}`, 'error');
             showNotification('Erro ao realizar a busca', 'error');
         } finally {
             showLoader(false);
@@ -497,7 +622,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Exibir resultados
     const displayResults = (results, query) => {
         if (!results || results.length === 0) {
-            showMessage(`Nenhum resultado para "${query}".`, 'gray');
+            showMessage(`Nenhum resultado encontrado para "${query}".`, 'info');
             resultsFilters.style.display = 'none';
             return;
         }
@@ -512,6 +637,7 @@ document.addEventListener('DOMContentLoaded', () => {
         marketFilter.value = 'all';
         sortFilter.value = 'recent';
         applyFilters();
+        showNotification('Filtros limpos', 'info');
     };
 
     // Limpar busca
@@ -520,6 +646,7 @@ document.addEventListener('DOMContentLoaded', () => {
         resultsGrid.innerHTML = '';
         resultsFilters.style.display = 'none';
         searchInput.focus();
+        showNotification('Busca limpa', 'info');
     };
 
     // Eventos
@@ -536,23 +663,50 @@ document.addEventListener('DOMContentLoaded', () => {
     marketFilter.addEventListener('change', applyFilters);
     sortFilter.addEventListener('change', applyFilters);
 
-    // Carregar informações do usuário (igual ao admin.html)
+    // Carregar informações do usuário
     const loadUserInfo = async () => {
         try {
             const session = await getSession();
             if (session && session.user) {
-                const userName = document.getElementById('userName');
+                const userName = document.querySelector('.user-name');
+                const userRole = document.querySelector('.user-role');
                 const userAvatar = document.getElementById('userAvatar');
                 
                 if (userName) userName.textContent = session.user.email || 'Usuário';
-                if (userAvatar) userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(session.user.email || 'U')}&background=3b82f6&color=fff`;
+                if (userRole) userRole.textContent = session.user.role || 'Usuário';
+                if (userAvatar) {
+                    userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(session.user.email || 'U')}&background=4f46e5&color=fff&bold=true`;
+                }
             }
         } catch (error) {
             console.error('Erro ao carregar informações do usuário:', error);
         }
     };
 
+    // Detectar mudanças no tema para atualizar ícones
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.attributeName === 'class') {
+                // Atualizar ícones baseados no tema
+                const isLightMode = document.body.classList.contains('light-mode');
+                // Aqui você pode adicionar lógica para ajustar ícones baseados no tema
+            }
+        });
+    });
+    observer.observe(document.body, { attributes: true });
+
     // Inicialização
     loadSupermarkets();
     loadUserInfo();
+
+    // Focar no campo de busca ao carregar a página
+    setTimeout(() => {
+        searchInput.focus();
+    }, 500);
 });
+
+// Função global para recarregar supermercados (usada no error handling)
+window.loadSupermarkets = () => {
+    const event = new Event('DOMContentLoaded');
+    document.dispatchEvent(event);
+};
