@@ -604,6 +604,7 @@ body.light-mode .filters-container {
 .market-search-controls {
     display: flex;
     gap: 1.5rem;
+    margin-top: 1.2rem;   /* 👉 desce a barra em relação ao summary */
     margin-bottom: 2rem;
     align-items: flex-end;
     flex-wrap: wrap;
@@ -613,7 +614,9 @@ body.light-mode .filters-container {
     position: relative;
     flex: 1;
     min-width: 300px;
+    margin-top: 0.5rem;   /* 👉 espaço extra só pro input */
 }
+
 
 .search-box i {
     position: absolute;
@@ -656,23 +659,32 @@ body.light-mode .search-box input {
 
 .clear-btn {
     position: absolute;
-    right: 0.75rem;
+    right: 1rem;
     top: 50%;
     transform: translateY(-50%);
-    background: rgba(79, 70, 229, 0.1);
+    background: rgba(79, 70, 229, 0.15);
     border: none;
     color: var(--primary);
     cursor: pointer;
-    padding: 0.5rem;
+    padding: 0.6rem;
     border-radius: 50%;
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.3s ease;
-    z-index: 2;
+    font-size: 1.1rem;
+    backdrop-filter: blur(6px);
 }
+
+.clear-btn:hover {
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: #fff;
+    transform: translateY(-50%) scale(1.15);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+}
+
 
 .clear-btn:hover {
     background: var(--primary);
