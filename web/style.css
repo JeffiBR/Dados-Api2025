@@ -2146,7 +2146,7 @@ body.light-mode .page-collections #collectionsTable td {
     background: var(--input-dark);
 }
 
-body.light-mode .page-collections .details-row {
+body.light-mode .details-row {
     background: var(--input-light);
 }
 
@@ -2358,31 +2358,6 @@ body.light-mode .product-name {
     color: var(--text-light);
 }
 
-.price-badge {
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 0.35rem 0.65rem;
-    border-radius: 20px;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    white-space: nowrap;
-}
-
-.price-badge.cheapest {
-    background: rgba(22, 163, 74, 0.15);
-    color: var(--success);
-}
-
-.price-badge.expensive {
-    background: rgba(239, 68, 68, 0.15);
-    color: var(--error);
-}
-
-.price-badge i {
-    font-size: 0.7rem;
-}
-
 /* Seção de preço */
 .price-section {
     padding: 0 1.5rem 0.75rem;
@@ -2391,11 +2366,33 @@ body.light-mode .product-name {
     gap: 0.5rem;
 }
 
+/* ESTILOS PARA OS PREÇOS */
 .product-price {
     font-size: 1.5rem;
     font-weight: 800;
-    color: var(--primary);
     line-height: 1;
+    transition: all 0.3s ease;
+}
+
+/* Preço normal (branco) */
+.product-price.normal-price {
+    color: var(--text-dark);
+}
+
+body.light-mode .product-price.normal-price {
+    color: var(--text-light);
+}
+
+/* Preço mais barato (verde) */
+.product-price.cheapest-price {
+    color: var(--success);
+    text-shadow: 0 0 10px rgba(22, 163, 74, 0.3);
+}
+
+/* Preço mais caro (vermelho) */
+.product-price.expensive-price {
+    color: var(--error);
+    text-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
 }
 
 .avg-indicator {
@@ -2468,48 +2465,7 @@ body.light-mode .supermarket-name {
     font-size: 0.85rem;
 }
 
-/* Ações do card */
-.card-actions {
-    padding: 0.75rem 1.5rem 1.25rem;
-    display: flex;
-    gap: 0.75rem;
-    border-top: 1px solid var(--border-dark);
-    margin-top: auto;
-}
-
-body.light-mode .card-actions {
-    border-top: 1px solid var(--border-light);
-}
-
-.action-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border: 1px solid var(--border-dark);
-    border-radius: 10px;
-    background: transparent;
-    color: var(--muted-dark);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 0.9rem;
-}
-
-body.light-mode .action-btn {
-    border: 1px solid var(--border-light);
-}
-
-.action-btn:hover {
-    background: rgba(79, 70, 229, 0.1);
-    color: var(--primary);
-    border-color: var(--primary);
-    transform: scale(1.05);
-}
-
-.action-btn.favorited i {
-    color: var(--error);
-}
+/* REMOVIDO: Seção de ações do card (botões de comparar e favoritar) */
 
 /* Efeito de destaque para o card mais barato */
 .product-card[data-cheapest="true"] {
@@ -2729,10 +2685,6 @@ body.light-mode .loader {
         padding: 0.5rem 1.25rem 1rem;
     }
     
-    .card-actions {
-        padding: 0.5rem 1.25rem 1rem;
-    }
-    
     .product-price {
         font-size: 1.3rem;
     }
@@ -2766,10 +2718,6 @@ body.light-mode .loader {
     .product-card .card-header {
         flex-direction: column;
         gap: 0.5rem;
-    }
-    
-    .price-badge {
-        align-self: flex-start;
     }
 }
 
