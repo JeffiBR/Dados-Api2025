@@ -223,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
         filterMarkets(e.target.value);
     });
 
-    // Renderização de cards de produto
+    // Renderização de cards de produto - MODIFICADA
     const buildProductCard = (item, index, allResults) => {
         const price = typeof item.preco_produto === 'number' ? 
             `R$ ${item.preco_produto.toFixed(2).replace('.', ',')}` : 'N/A';
@@ -236,7 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
         const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
         
-        // Determinar classe de preço
+        // Determinar classe de preço - MODIFICADA
         let priceClass = 'normal-price';
         if (prices.length > 1) {
             if (item.preco_produto === minPrice) {
@@ -277,7 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${item.tipo_unidade || 'UN'} (${item.unidade_medida || 'N/A'})
                 </li>
                 <li><span class="detail-icon"></span> 
-                    <span class="sale-date">Visto em: ${date}</span>
+                    <span class="sale-date">Última Venda: ${date}</span>
                 </li>
                 <li><span class="detail-icon"></span> 
                     ${item.codigo_barras || 'Sem código'}
@@ -286,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>`;
     };
 
-    // Função para aplicar filtros aos resultados
+    // Função para aplicar filtros aos resultados - MODIFICADA
     const applyFilters = () => {
         if (currentResults.length === 0) return;
         
@@ -298,33 +298,18 @@ document.addEventListener('DOMContentLoaded', () => {
             filteredResults = filteredResults.filter(item => item.cnpj_supermercado === selectedMarket);
         }
         
-        // Ordenar resultados
-        const sortBy = sortFilter.value;
-        switch(sortBy) {
-            case 'cheap':
-                filteredResults.sort((a, b) => (a.preco_produto || 0) - (b.preco_produto || 0));
-                break;
-            case 'expensive':
-                filteredResults.sort((a, b) => (b.preco_produto || 0) - (a.preco_produto || 0));
-                break;
-            case 'name':
-                filteredResults.sort((a, b) => (a.nome_produto || '').localeCompare(b.nome_produto || ''));
-                break;
-            case 'recent':
-            default:
-                filteredResults.sort((a, b) => {
-                    const dateA = a.data_ultima_venda ? new Date(a.data_ultima_venda) : new Date(0);
-                    const dateB = b.data_ultima_venda ? new Date(b.data_ultima_venda) : new Date(0);
-                    return dateB - dateA;
-                });
-                break;
-        }
+        // Ordenar resultados - SEMPRE por preço crescente (MODIFICADO)
+        filteredResults.sort((a, b) => {
+            const priceA = a.preco_produto || 0;
+            const priceB = b.preco_produto || 0;
+            return priceA - priceB; // Ordem crescente
+        });
         
         // Exibir resultados filtrados
         displayFilteredResults(filteredResults);
     };
 
-    // Exibir resultados filtrados
+    // Exibir resultados filtrados - MODIFICADA para usar ordenação por preço
     const displayFilteredResults = (results) => {
         if (results.length === 0) {
             resultsGrid.innerHTML = `
@@ -367,7 +352,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         frag.appendChild(resultsCount);
         
-        // Adicionar cards de produtos
+        // Adicionar cards de produtos (já ordenados por preço crescente)
         results.forEach((item, index) => {
             const div = document.createElement('div');
             div.innerHTML = buildProductCard(item, index, results);
@@ -551,4 +536,3 @@ document.addEventListener('DOMContentLoaded', () => {
     loadSupermarkets();
     loadUserInfo();
 });
-
