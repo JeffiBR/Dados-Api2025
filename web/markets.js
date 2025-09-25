@@ -1,214 +1,219 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- ELEMENTOS DA UI (Mapeados para o seu novo HTML) ---
-    const searchInput = document.getElementById('searchInput');
-    const searchButton = document.getElementById('searchButton');
-    const realtimeSearchButton = document.getElementById('realtimeSearchButton');
-    const clearSearchButton = document.getElementById('clearSearchButton');
-    const resultsGrid = document.getElementById('resultsGrid');
-    const loader = document.getElementById('loader');
+    const API_URL = '/api/supermarkets';
+    const tableBody = document.querySelector('#marketsTable tbody');
+    const saveButton = document.getElementById('saveButton');
+    const cancelButton = document.getElementById('cancelButton');
+    const formTitle = document.getElementById('formTitle');
+    const marketIdInput = document.getElementById('marketId');
+    const marketNameInput = document.getElementById('marketName');
+    const marketCnpjInput = document.getElementById('marketCnpj');
 
-    // Filtros de Supermercado
-    const supermarketFiltersContainer = document.getElementById('supermarketFilters');
-    const marketSearchInput = document.getElementById('marketSearchInput');
-    const clearMarketSearch = document.getElementById('clearMarketSearch');
-    const selectAllMarkets = document.getElementById('selectAllMarkets');
-    const deselectAllMarkets = document.getElementById('deselectAllMarkets');
-    const selectionCount = document.querySelector('.selection-count');
-    
-    // Filtros de Resultados
-    const resultsFilters = document.getElementById('resultsFilters');
-    const marketFilter = document.getElementById('marketFilter');
-    const sortFilter = document.getElementById('sortFilter');
-    const clearFiltersButton = document.getElementById('clearFiltersButton');
-
-    // --- ESTADO DA APLICAÇÃO ---
-    let currentResults = [];
-    let allMarkets = [];
-
-    // --- FUNÇÕES DE UI E RENDERIZAÇÃO ---
-    const showLoader = (show) => loader.style.display = show ? 'flex' : 'none';
-    
-    const showMessage = (msg, isError = false) => {
-        resultsGrid.innerHTML = `
-            <div class="empty-state" style="grid-column: 1 / -1">
-                <h3 style="${isError ? 'color: var(--error);' : ''}">${msg}</h3>
-                <p>Tente ajustar os termos da busca ou filtros.</p>
-            </div>`;
-    };
-
-    const updateSelectionCount = () => {
-        const selected = document.querySelectorAll('.market-card.selected').length;
-        if (selectionCount) selectionCount.textContent = `${selected} selecionados`;
-    };
-
-    const buildProductCard = (item, allItemsInResult) => {
-        const price = typeof item.preco_produto === 'number' ? `R$ ${item.preco_produto.toFixed(2).replace('.', ',')}` : 'N/A';
-        const date = item.data_ultima_venda ? new Date(item.data_ultima_venda).toLocaleDateString('pt-BR') : 'N/A';
-        const prices = allItemsInResult.map(r => r.preco_produto).filter(p => typeof p === 'number');
-        const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
-        let priceClass = '';
-        if (prices.length > 1 && item.preco_produto === minPrice) priceClass = 'cheapest-price';
-        return `<div class="product-card ${priceClass}" data-price="${item.preco_produto || 0}"><div class="card-header"><div class="product-name">${item.nome_produto || 'Produto sem nome'}</div></div><div class="price-section"><div class="product-price">${price}</div></div><ul class="product-details"><li><i class="fas fa-store"></i> <span class="supermarket-name">${item.nome_supermercado}</span></li><li><i class="fas fa-weight-hanging"></i> ${item.tipo_unidade || 'UN'} (${item.unidade_medida || 'N/A'})</li><li><i class="fas fa-calendar-alt"></i> <span class="sale-date">Última Venda: ${date}</span></li><li><i class="fas fa-barcode"></i> ${item.codigo_barras || 'Sem código'}</li></ul></div>`;
-    };
-
-    const applyFilters = () => {
-        if (currentResults.length === 0) return;
-        let filteredResults = [...currentResults];
-        const selectedMarket = marketFilter.value;
-        if (selectedMarket !== 'all') {
-            filteredResults = filteredResults.filter(item => item.cnpj_supermercado === selectedMarket);
+    // Função para obter a sessão do usuário
+    const getSession = async () => {
+        try {
+            const { data: { session }, error } = await window.supabase.auth.getSession();
+            if (error) throw error;
+            return session;
+        } catch (error) {
+            console.error('Erro ao obter sessão:', error);
+            return null;
         }
-        const sortBy = sortFilter.value;
-        switch(sortBy) {
-            case 'cheap': filteredResults.sort((a, b) => (a.preco_produto || Infinity) - (b.preco_produto || Infinity)); break;
-            case 'expensive': filteredResults.sort((a, b) => (b.preco_produto || 0) - (a.preco_produto || 0)); break;
-            case 'name': filteredResults.sort((a, b) => (a.nome_produto || '').localeCompare(b.nome_produto || '')); break;
-            case 'recent': default: filteredResults.sort((a, b) => new Date(b.data_ultima_venda) - new Date(a.data_ultima_venda)); break;
-        }
-        displayFilteredResults(filteredResults);
     };
 
-    const displayFilteredResults = (results) => {
-        if (results.length === 0) {
-            resultsGrid.innerHTML = `<div class="empty-state"><h3>Nenhum resultado encontrado</h3><p>Tente ajustar os filtros aplicados</p></div>`;
+    const loadMarkets = async () => {
+        try {
+            console.log('Carregando mercados...');
+            const response = await fetch(API_URL + "/public");
+            
+            if (!response.ok) {
+                throw new Error(`Erro HTTP: ${response.status}`);
+            }
+            
+            const markets = await response.json();
+            console.log('Mercados carregados:', markets);
+            
+            tableBody.innerHTML = '';
+            
+            if (markets.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Nenhum mercado cadastrado</td></tr>';
+                return;
+            }
+            
+            markets.forEach(market => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${market.nome || 'N/A'}</td>
+                    <td>${market.cnpj || 'N/A'}</td>
+                    <td class="actions">
+                        <button class="edit-btn" data-id="${market.id}" data-nome="${market.nome}" data-cnpj="${market.cnpj}">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                        <button class="delete-btn" data-id="${market.id}">
+                            <i class="fas fa-trash"></i> Excluir
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        } catch (error) {
+            console.error('Erro ao carregar mercados:', error);
+            tableBody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: red;">Erro ao carregar dados</td></tr>';
+        }
+    };
+
+    const resetForm = () => {
+        formTitle.textContent = 'Adicionar Novo Mercado';
+        marketIdInput.value = '';
+        marketNameInput.value = '';
+        marketCnpjInput.value = '';
+        saveButton.textContent = 'Salvar';
+        saveButton.innerHTML = '<i class="fas fa-save"></i> Salvar';
+        cancelButton.style.display = 'none';
+    };
+
+    const saveMarket = async () => {
+        const id = marketIdInput.value;
+        const nome = marketNameInput.value.trim();
+        const cnpj = marketCnpjInput.value.trim().replace(/\D/g, '');
+        
+        if (!nome) {
+            alert('Nome do mercado é obrigatório.');
+            marketNameInput.focus();
             return;
         }
-        resultsGrid.innerHTML = results.map((item) => buildProductCard(item, results)).join('');
-    };
-
-    const updateMarketFilter = (results) => {
-        while (marketFilter.options.length > 1) marketFilter.remove(1);
-        const markets = {};
-        results.forEach(item => {
-            if (item.cnpj_supermercado && item.nome_supermercado) markets[item.cnpj_supermercado] = item.nome_supermercado;
-        });
-        Object.entries(markets).forEach(([cnpj, nome]) => {
-            const option = document.createElement('option');
-            option.value = cnpj; option.textContent = nome;
-            marketFilter.appendChild(option);
-        });
-    };
-
-    // --- LÓGICA DE BUSCA E INICIALIZAÇÃO ---
-    const loadSupermarkets = async () => {
-        try {
-            const response = await fetch(`/api/supermarkets/public`);
-            if (!response.ok) throw new Error('Falha ao carregar mercados.');
-            allMarkets = await response.json();
-            renderMarketFilters(allMarkets);
-        } catch (error) {
-            console.error(error);
-            supermarketFiltersContainer.innerHTML = '<p style="color: red;">Não foi possível carregar os filtros.</p>';
+        
+        if (!cnpj || cnpj.length !== 14) {
+            alert('CNPJ deve conter 14 dígitos.');
+            marketCnpjInput.focus();
+            return;
         }
-    };
-    
-    const renderMarketFilters = (marketsToRender) => {
-        supermarketFiltersContainer.innerHTML = '';
-        marketsToRender.forEach(market => {
-            const card = document.createElement('div');
-            card.className = 'market-card';
-            card.innerHTML = `<input type="checkbox" name="supermarket" value="${market.cnpj}" style="display: none;"><div class="market-info"><div class="market-name">${market.nome}</div><div class="market-cnpj">${market.cnpj}</div></div>`;
-            card.addEventListener('click', (e) => {
-                const checkbox = card.querySelector('input');
-                checkbox.checked = !checkbox.checked;
-                card.classList.toggle('selected', checkbox.checked);
-                updateSelectionCount();
+
+        const session = await getSession();
+        if (!session) {
+            alert("Sua sessão expirou. Por favor, faça login novamente.");
+            window.location.href = '/login.html';
+            return;
+        }
+
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `${API_URL}/${id}` : API_URL;
+
+        try {
+            saveButton.disabled = true;
+            saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+
+            const response = await fetch(url, {
+                method: method,
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`
+                },
+                body: JSON.stringify({ nome, cnpj })
             });
-            supermarketFiltersContainer.appendChild(card);
-        });
-        updateSelectionCount();
-    };
 
-    const performSearch = async (isRealtime = false) => {
-        const query = searchInput.value.trim();
-        if (query.length < 3) { showMessage('Digite pelo menos 3 caracteres.'); return; }
-        const selectedCnpjs = Array.from(document.querySelectorAll('input[name="supermarket"]:checked')).map(cb => cb.value);
-        if (isRealtime && selectedCnpjs.length === 0) { showMessage('Selecione ao menos um supermercado para busca em tempo real.'); return; }
-
-        showLoader(true);
-        resultsGrid.innerHTML = '';
-        currentResults = [];
-        resultsFilters.style.display = 'none';
-
-        try {
-            let response;
-            // AQUI ESTÁ A CORREÇÃO: Usamos a função `authenticatedFetch` do auth.js
-            // para TODAS as buscas, garantindo que o token seja enviado e o logout não ocorra.
-            if (isRealtime) {
-                response = await authenticatedFetch('/api/realtime-search', { 
-                    method: 'POST', 
-                    body: JSON.stringify({ produto: query, cnpjs: selectedCnpjs }) 
-                });
-            } else {
-                let url = `/api/search?q=${encodeURIComponent(query)}`;
-                if (selectedCnpjs.length > 0) url += `&${selectedCnpjs.map(cnpj => `cnpjs=${cnpj}`).join('&')}`;
-                response = await authenticatedFetch(url);
-            }
-
-            if (!response.ok) { 
-                const err = await response.json();
-                throw new Error(err.detail || `Erro ${response.status} na API.`);
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || errorData.message || `Erro ${response.status}`);
             }
             
-            const data = await response.json();
-            currentResults = data.results || [];
-            
-            if (currentResults.length === 0) {
-                showMessage(`Nenhum resultado encontrado para "${query}".`);
-            } else {
-                resultsFilters.style.display = 'block';
-                updateMarketFilter(currentResults);
-                applyFilters();
-            }
+            alert(id ? 'Mercado atualizado com sucesso!' : 'Mercado cadastrado com sucesso!');
+            resetForm();
+            await loadMarkets();
+
         } catch (error) {
-            // A authenticatedFetch já lida com o alerta de sessão, então aqui pegamos outros erros
-            if (error.message !== "Sessão não encontrada.") {
-                console.error('Erro na busca:', error);
-                showMessage(`Erro na busca: ${error.message}`, true);
-            }
+            console.error('Erro ao salvar mercado:', error);
+            alert(`Erro: ${error.message}`);
         } finally {
-            showLoader(false);
+            saveButton.disabled = false;
+            saveButton.innerHTML = id ? '<i class="fas fa-save"></i> Atualizar' : '<i class="fas fa-save"></i> Salvar';
         }
     };
 
-    // --- EVENTOS ---
-    searchButton.addEventListener('click', () => performSearch(false));
-    realtimeSearchButton.addEventListener('click', () => performSearch(true));
-    searchInput.addEventListener('keypress', (event) => { if (event.key === 'Enter') performSearch(false); });
-    
-    clearSearchButton.addEventListener('click', () => {
-        searchInput.value = '';
-        resultsGrid.innerHTML = '';
-        resultsFilters.style.display = 'none';
-        searchInput.focus();
-    });
-    
-    marketFilter.addEventListener('change', applyFilters);
-    sortFilter.addEventListener('change', applyFilters);
-    clearFiltersButton.addEventListener('click', () => {
-        marketFilter.value = 'all';
-        sortFilter.value = 'recent';
-        applyFilters();
-    });
-    
-    marketSearchInput.addEventListener('input', (e) => {
-        const searchTerm = e.target.value.toLowerCase();
-        const filteredMarkets = allMarkets.filter(market => 
-            market.nome.toLowerCase().includes(searchTerm) || market.cnpj.includes(searchTerm)
-        );
-        renderMarketFilters(filteredMarkets);
+    // Evento para editar mercado
+    tableBody.addEventListener('click', async (e) => {
+        if (e.target.classList.contains('edit-btn') || e.target.closest('.edit-btn')) {
+            const button = e.target.classList.contains('edit-btn') ? e.target : e.target.closest('.edit-btn');
+            const id = button.dataset.id;
+            const nome = button.dataset.nome;
+            const cnpj = button.dataset.cnpj;
+
+            formTitle.textContent = 'Editar Mercado';
+            marketIdInput.value = id;
+            marketNameInput.value = nome;
+            marketCnpjInput.value = cnpj;
+            saveButton.textContent = 'Atualizar';
+            saveButton.innerHTML = '<i class="fas fa-save"></i> Atualizar';
+            cancelButton.style.display = 'inline-block';
+            
+            marketNameInput.focus();
+        }
+        
+        if (e.target.classList.contains('delete-btn') || e.target.closest('.delete-btn')) {
+            if (!confirm('Tem certeza que deseja excluir este mercado?\nEsta ação não pode ser desfeita.')) return;
+            
+            const button = e.target.classList.contains('delete-btn') ? e.target : e.target.closest('.delete-btn');
+            const id = button.dataset.id;
+
+            const session = await getSession();
+            if (!session) {
+                alert("Sua sessão expirou. Por favor, faça login novamente.");
+                return;
+            }
+
+            try {
+                button.disabled = true;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Excluindo...';
+
+                const response = await fetch(`${API_URL}/${id}`, { 
+                    method: 'DELETE',
+                    headers: { 
+                        'Authorization': `Bearer ${session.access_token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    alert('Mercado excluído com sucesso!');
+                    await loadMarkets();
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || errorData.message || 'Falha ao excluir mercado');
+                }
+            } catch (error) {
+                console.error('Erro ao excluir mercado:', error);
+                alert(`Erro: ${error.message}`);
+            } finally {
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-trash"></i> Excluir';
+            }
+        }
     });
 
-    selectAllMarkets.addEventListener('click', () => {
-        document.querySelectorAll('.market-card input').forEach(cb => { cb.checked = true; cb.parentElement.classList.add('selected'); });
-        updateSelectionCount();
+    // Evento para formatar CNPJ durante a digitação
+    marketCnpjInput.addEventListener('input', (e) => {
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.length > 14) value = value.substring(0, 14);
+        
+        if (value.length > 11) {
+            value = value.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+        } else if (value.length > 8) {
+            value = value.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})/, '$1.$2.$3/$4');
+        } else if (value.length > 5) {
+            value = value.replace(/^(\d{2})(\d{3})(\d{3})/, '$1.$2.$3');
+        } else if (value.length > 2) {
+            value = value.replace(/^(\d{2})(\d{3})/, '$1.$2');
+        }
+        
+        e.target.value = value;
     });
 
-    deselectAllMarkets.addEventListener('click', () => {
-        document.querySelectorAll('.market-card input').forEach(cb => { cb.checked = false; cb.parentElement.classList.remove('selected'); });
-        updateSelectionCount();
-    });
+    saveButton.addEventListener('click', saveMarket);
+    cancelButton.addEventListener('click', resetForm);
 
-    // Inicialização
-    loadSupermarkets();
+    // Adicionar ícones aos botões
+    saveButton.innerHTML = '<i class="fas fa-save"></i> Salvar';
+    cancelButton.innerHTML = '<i class="fas fa-times"></i> Cancelar Edição';
+
+    // Carregar dados iniciais
+    loadMarkets();
 });
