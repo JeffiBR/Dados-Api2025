@@ -11,14 +11,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const supermarketFiltersContainer = document.getElementById('supermarketFilters');
     const marketSearchInput = document.getElementById('marketSearchInput');
     const clearMarketSearch = document.getElementById('clearMarketSearch');
-    const selectAllMarkets = document.getElementById('selectAllMarkets');
-    const deselectAllMarkets = document.getElementById('deselectAllMarkets');
-    const selectionCount = document.querySelector('.selection-count');
-    
+    const selectAllMarketsBtn = document.getElementById('selectAllMarkets');
+    const deselectAllMarketsBtn = document.getElementById('deselectAllMarkets');
+    const selectionCountSpan = document.querySelector('.selection-count');
+
     // Filtros de Resultados
-    const resultsFilters = document.getElementById('resultsFilters');
-    const marketFilter = document.getElementById('marketFilter');
-    const sortFilter = document.getElementById('sortFilter');
+    const resultsFiltersPanel = document.getElementById('resultsFilters');
+    const marketFilterDropdown = document.getElementById('marketFilter');
+    const sortFilterDropdown = document.getElementById('sortFilter');
     const clearFiltersButton = document.getElementById('clearFiltersButton');
 
     // --- ESTADO DA APLICAÇÃO ---
@@ -46,48 +46,13 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => notification.classList.add('show'), 10);
         setTimeout(() => {
             notification.classList.remove('show');
-            setTimeout(() => {
-                if(document.body.contains(notification)){
-                    document.body.removeChild(notification);
-                }
-            }, 300);
+            setTimeout(() => notification.remove(), 300);
         }, 3000);
     };
 
     const updateSelectionCount = () => {
         const selected = document.querySelectorAll('.market-card.selected').length;
-        if (selectionCount) selectionCount.textContent = `${selected} selecionados`;
-    };
-
-    const filterMarkets = (searchText) => {
-        const searchLower = searchText.toLowerCase();
-        document.querySelectorAll('.market-card').forEach(card => {
-            const marketName = card.querySelector('.market-name').textContent.toLowerCase();
-            const marketCnpj = card.querySelector('.market-cnpj').textContent.toLowerCase();
-            card.style.display = (marketName.includes(searchLower) || marketCnpj.includes(searchLower)) ? 'flex' : 'none';
-        });
-    };
-    
-    const buildMarketCard = (market) => {
-        const card = document.createElement('div');
-        card.className = 'market-card';
-        card.innerHTML = `<input type="checkbox" name="supermarket" value="${market.cnpj}" style="display: none;"><div class="market-info"><div class="market-name">${market.nome}</div><div class="market-cnpj">${market.cnpj}</div></div>`;
-        card.addEventListener('click', (e) => {
-            const checkbox = card.querySelector('input');
-            checkbox.checked = !checkbox.checked;
-            card.classList.toggle('selected', checkbox.checked);
-            updateSelectionCount();
-        });
-        return card;
-    };
-
-    const buildSupermarketFilters = (markets) => {
-        allMarkets = markets;
-        const frag = document.createDocumentFragment();
-        markets.forEach(market => frag.appendChild(buildMarketCard(market)));
-        supermarketFiltersContainer.innerHTML = '';
-        supermarketFiltersContainer.appendChild(frag);
-        updateSelectionCount();
+        if (selectionCountSpan) selectionCountSpan.textContent = `${selected} selecionados`;
     };
 
     const buildProductCard = (item, allItemsInResult) => {
@@ -96,18 +61,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const prices = allItemsInResult.map(r => r.preco_produto).filter(p => typeof p === 'number');
         const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
         let priceClass = '';
-        if (prices.length > 1 && item.preco_produto === minPrice) priceClass = 'cheapest-price';
+        if (prices.length > 1 && item.preco_produto === minPrice) {
+            priceClass = 'cheapest-price';
+        }
         return `<div class="product-card ${priceClass}" data-price="${item.preco_produto || 0}"><div class="card-header"><div class="product-name">${item.nome_produto || 'Produto sem nome'}</div></div><div class="price-section"><div class="product-price">${price}</div></div><ul class="product-details"><li><i class="fas fa-store"></i> <span class="supermarket-name">${item.nome_supermercado}</span></li><li><i class="fas fa-weight-hanging"></i> ${item.tipo_unidade || 'UN'} (${item.unidade_medida || 'N/A'})</li><li><i class="fas fa-calendar-alt"></i> <span class="sale-date">Última Venda: ${date}</span></li><li><i class="fas fa-barcode"></i> ${item.codigo_barras || 'Sem código'}</li></ul></div>`;
     };
 
     const applyFilters = () => {
         if (currentResults.length === 0) return;
         let filteredResults = [...currentResults];
-        const selectedMarket = marketFilter.value;
+        const selectedMarket = marketFilterDropdown.value;
         if (selectedMarket !== 'all') {
             filteredResults = filteredResults.filter(item => item.cnpj_supermercado === selectedMarket);
         }
-        const sortBy = sortFilter.value;
+        const sortBy = sortFilterDropdown.value;
         switch(sortBy) {
             case 'cheap': filteredResults.sort((a, b) => (a.preco_produto || Infinity) - (b.preco_produto || Infinity)); break;
             case 'expensive': filteredResults.sort((a, b) => (b.preco_produto || 0) - (a.preco_produto || 0)); break;
@@ -122,19 +89,29 @@ document.addEventListener('DOMContentLoaded', () => {
             resultsGrid.innerHTML = `<div class="empty-state"><h3>Nenhum resultado encontrado</h3><p>Tente ajustar os filtros aplicados</p></div>`;
             return;
         }
-        resultsGrid.innerHTML = results.map((item) => buildProductCard(item, results)).join('');
+        const frag = document.createDocumentFragment();
+        results.forEach((item) => {
+            const div = document.createElement('div');
+            div.innerHTML = buildProductCard(item, results);
+            frag.appendChild(div.firstElementChild);
+        });
+        resultsGrid.innerHTML = '';
+        resultsGrid.appendChild(frag);
     };
 
     const updateMarketFilter = (results) => {
-        marketFilter.innerHTML = '<option value="all">Todos os mercados</option>';
+        marketFilterDropdown.innerHTML = '<option value="all">Todos os mercados</option>';
         const markets = {};
         results.forEach(item => {
-            if (item.cnpj_supermercado && item.nome_supermercado) markets[item.cnpj_supermercado] = item.nome_supermercado;
+            if (item.cnpj_supermercado && item.nome_supermercado) {
+                markets[item.cnpj_supermercado] = item.nome_supermercado;
+            }
         });
         Object.entries(markets).forEach(([cnpj, nome]) => {
             const option = document.createElement('option');
-            option.value = cnpj; option.textContent = nome;
-            marketFilter.appendChild(option);
+            option.value = cnpj;
+            option.textContent = nome;
+            marketFilterDropdown.appendChild(option);
         });
     };
 
@@ -150,12 +127,33 @@ document.addEventListener('DOMContentLoaded', () => {
             supermarketFiltersContainer.innerHTML = '<p style="color: red;">Não foi possível carregar os filtros.</p>';
         }
     };
+    
+    const renderMarketFilters = (marketsToRender) => {
+        supermarketFiltersContainer.innerHTML = '';
+        marketsToRender.forEach(market => {
+            const card = document.createElement('div');
+            card.className = 'market-card';
+            card.innerHTML = `<input type="checkbox" name="supermarket" value="${market.cnpj}" style="display: none;"><div class="market-info"><div class="market-name">${market.nome}</div><div class="market-cnpj">${market.cnpj}</div></div>`;
+            card.addEventListener('click', (e) => {
+                const checkbox = card.querySelector('input');
+                checkbox.checked = !checkbox.checked;
+                card.classList.toggle('selected', checkbox.checked);
+                updateSelectionCount();
+            });
+            supermarketFiltersContainer.appendChild(card);
+        });
+        updateSelectionCount();
+    };
 
     const performSearch = async (isRealtime = false) => {
         const query = searchInput.value.trim();
-        if (query.length < 3) { showMessage('Digite pelo menos 3 caracteres.'); return; }
+        if (query.length < 3) {
+            showMessage('Digite pelo menos 3 caracteres.'); return;
+        }
         const selectedCnpjs = Array.from(document.querySelectorAll('input[name="supermarket"]:checked')).map(cb => cb.value);
-        if (isRealtime && selectedCnpjs.length === 0) { showMessage('Selecione ao menos um supermercado para busca em tempo real.'); return; }
+        if (isRealtime && selectedCnpjs.length === 0) {
+            showMessage('Selecione ao menos um supermercado para busca em tempo real.'); return;
+        }
 
         showLoader(true);
         resultsGrid.innerHTML = '';
@@ -193,11 +191,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 applyFilters();
             }
         } catch (error) {
-            // A authenticatedFetch já lida com o alerta de sessão, então aqui pegamos outros erros.
-            if (error.message !== "Sessão não encontrada.") {
-                console.error('Erro na busca:', error);
-                showMessage(`Erro na busca: ${error.message}`, true);
-            }
+            console.error(error);
+            showMessage(`Erro na busca: ${error.message}`, true);
         } finally {
             showLoader(false);
         }
