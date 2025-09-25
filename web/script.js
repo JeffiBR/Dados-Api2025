@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutBtn = document.getElementById('logoutBtn');
     const themeToggle = document.getElementById('themeToggle');
 
-    // Novos elementos para filtros de mercado
+    // Elementos para filtros de mercado
     const marketSearchInput = document.getElementById('marketSearchInput');
     const clearMarketSearch = document.getElementById('clearMarketSearch');
     const selectAllMarkets = document.getElementById('selectAllMarkets');
@@ -107,14 +107,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Utilitários
-    const showLoader = (show) => loader.style.display = show ? 'flex' : 'none';
+    // Utilitários - Versão simplificada do código enviado
+    const showLoader = (show) => {
+        if(loader) loader.style.display = show ? 'flex' : 'none';
+    };
     
-    const showMessage = (msg, color = 'red') => {
+    const showMessage = (msg, isError = false) => {
         resultsGrid.innerHTML = `
-            <div class="empty-state">
-                <h3>${msg}</h3>
-                <p>Tente ajustar os termos da busca ou filtros</p>
+            <div class="empty-state" style="grid-column: 1 / -1">
+                <h3 style="${isError ? 'color: var(--error);' : ''}">${msg}</h3>
+                <p>Tente ajustar os termos da busca ou filtros.</p>
             </div>`;
     };
 
@@ -136,29 +138,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
     };
 
-    // Atualizar contador de seleção
+    // Atualizar contador de seleção - Versão simplificada
     const updateSelectionCount = () => {
         const selected = document.querySelectorAll('.market-card.selected').length;
-        selectionCount.textContent = `${selected} selecionados`;
+        if (selectionCount) selectionCount.textContent = `${selected} selecionados`;
     };
 
-    // Filtrar mercados na pesquisa
+    // Filtrar mercados na pesquisa - Versão melhorada do código enviado
     const filterMarkets = (searchText) => {
-        const marketCards = document.querySelectorAll('.market-card');
-        marketCards.forEach(card => {
-            const marketName = card.querySelector('.market-name').textContent.toLowerCase();
-            const marketCnpj = card.querySelector('.market-cnpj').textContent.toLowerCase();
-            const searchLower = searchText.toLowerCase();
-            
-            if (marketName.includes(searchLower) || marketCnpj.includes(searchLower)) {
-                card.style.display = 'flex';
-            } else {
-                card.style.display = 'none';
-            }
-        });
+        const searchTerm = searchText.toLowerCase();
+        const filteredMarkets = allMarkets.filter(market => 
+            market.nome.toLowerCase().includes(searchTerm) || market.cnpj.includes(searchTerm)
+        );
+        renderMarketFilters(filteredMarkets);
     };
 
-    // Renderização de cards de mercado
+    // Renderização de cards de mercado - Versão do código enviado
     const buildMarketCard = (market) => {
         const card = document.createElement('div');
         card.className = 'market-card';
@@ -182,32 +177,29 @@ document.addEventListener('DOMContentLoaded', () => {
         return card;
     };
 
-    // Renderização eficiente de filtros de mercado
-    const buildSupermarketFilters = (markets) => {
-        allMarkets = markets;
-        const frag = document.createDocumentFragment();
-        markets.forEach(market => {
-            const card = buildMarketCard(market);
-            frag.appendChild(card);
-        });
+    // Renderização eficiente de filtros de mercado - Versão do código enviado
+    const renderMarketFilters = (marketsToRender) => {
         supermarketFiltersContainer.innerHTML = '';
-        supermarketFiltersContainer.appendChild(frag);
+        marketsToRender.forEach(market => {
+            const card = buildMarketCard(market);
+            supermarketFiltersContainer.appendChild(card);
+        });
         updateSelectionCount();
     };
 
-    // Selecionar/Deselecionar todos os mercados
+    // Selecionar/Deselecionar todos os mercados - Versão do código enviado
     selectAllMarkets.addEventListener('click', () => {
-        document.querySelectorAll('.market-card').forEach(card => {
-            card.classList.add('selected');
-            card.querySelector('input').checked = true;
+        document.querySelectorAll('.market-card input').forEach(cb => {
+            cb.checked = true;
+            cb.parentElement.classList.add('selected');
         });
         updateSelectionCount();
     });
 
     deselectAllMarkets.addEventListener('click', () => {
-        document.querySelectorAll('.market-card').forEach(card => {
-            card.classList.remove('selected');
-            card.querySelector('input').checked = false;
+        document.querySelectorAll('.market-card input').forEach(cb => {
+            cb.checked = false;
+            cb.parentElement.classList.remove('selected');
         });
         updateSelectionCount();
     });
@@ -215,29 +207,29 @@ document.addEventListener('DOMContentLoaded', () => {
     // Limpar pesquisa de mercados
     clearMarketSearch.addEventListener('click', () => {
         marketSearchInput.value = '';
-        filterMarkets('');
+        renderMarketFilters(allMarkets);
     });
 
-    // Pesquisa em tempo real nos mercados
+    // Pesquisa em tempo real nos mercados - Versão do código enviado
     marketSearchInput.addEventListener('input', (e) => {
         filterMarkets(e.target.value);
     });
 
-    // Renderização de cards de produto
-    const buildProductCard = (item, index, allResults) => {
+    // Renderização de cards de produto - Combinação das duas versões
+    const buildProductCard = (item, allItemsInResult) => {
         const price = typeof item.preco_produto === 'number' ? 
             `R$ ${item.preco_produto.toFixed(2).replace('.', ',')}` : 'N/A';
         
         const date = item.data_ultima_venda ? 
             new Date(item.data_ultima_venda).toLocaleDateString('pt-BR') : 'N/A';
         
-        // Calcular estatísticas de preço
-        const prices = allResults.map(r => r.preco_produto).filter(p => typeof p === 'number');
+        // Calcular estatísticas de preço (do script original)
+        const prices = allItemsInResult.map(r => r.preco_produto).filter(p => typeof p === 'number');
         const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
         const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
         
-        // Determinar classe de preço
-        let priceClass = 'normal-price';
+        // Determinar classe de preço (combinação)
+        let priceClass = '';
         if (prices.length > 1) {
             if (item.preco_produto === minPrice) {
                 priceClass = 'cheapest-price';
@@ -246,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
-        // Calcular diferença da média
+        // Calcular diferença da média (do script original)
         let avgIndicator = '';
         if (prices.length > 1 && typeof item.preco_produto === 'number') {
             const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
@@ -261,32 +253,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         return `
-        <div class="product-card" data-price="${item.preco_produto || 0}">
+        <div class="product-card ${priceClass}" data-price="${item.preco_produto || 0}">
             <div class="card-header">
                 <div class="product-name">${item.nome_produto || 'Produto sem nome'}</div>
             </div>
             <div class="price-section">
-                <div class="product-price ${priceClass}">${price}</div>
+                <div class="product-price">${price}</div>
                 ${avgIndicator}
             </div>
             <ul class="product-details">
-                <li><span class="detail-icon"></span> 
+                <li><i class="fas fa-store"></i> 
                     <span class="supermarket-name">${item.nome_supermercado}</span>
                 </li>
-                <li><span class="detail-icon"></span> 
+                <li><i class="fas fa-weight-hanging"></i> 
                     ${item.tipo_unidade || 'UN'} (${item.unidade_medida || 'N/A'})
                 </li>
-                <li><span class="detail-icon"></span> 
+                <li><i class="fas fa-calendar-alt"></i> 
                     <span class="sale-date">Última Venda: ${date}</span>
                 </li>
-                <li><span class="detail-icon"></span> 
+                <li><i class="fas fa-barcode"></i> 
                     ${item.codigo_barras || 'Sem código'}
                 </li>
             </ul>
         </div>`;
     };
 
-    // Função para aplicar filtros aos resultados
+    // Função para aplicar filtros aos resultados - Versão simplificada do código enviado
     const applyFilters = () => {
         if (currentResults.length === 0) return;
         
@@ -298,18 +290,29 @@ document.addEventListener('DOMContentLoaded', () => {
             filteredResults = filteredResults.filter(item => item.cnpj_supermercado === selectedMarket);
         }
         
-        // Ordenar resultados - SEMPRE por preço crescente
-        filteredResults.sort((a, b) => {
-            const priceA = a.preco_produto || 0;
-            const priceB = b.preco_produto || 0;
-            return priceA - priceB; // Ordem crescente
-        });
+        // Ordenar resultados - Versão do código enviado com opções
+        const sortBy = sortFilter.value;
+        switch(sortBy) {
+            case 'cheap': 
+                filteredResults.sort((a, b) => (a.preco_produto || Infinity) - (b.preco_produto || Infinity)); 
+                break;
+            case 'expensive': 
+                filteredResults.sort((a, b) => (b.preco_produto || 0) - (a.preco_produto || 0)); 
+                break;
+            case 'name': 
+                filteredResults.sort((a, b) => (a.nome_produto || '').localeCompare(b.nome_produto || '')); 
+                break;
+            case 'recent': 
+            default: 
+                filteredResults.sort((a, b) => new Date(b.data_ultima_venda || 0) - new Date(a.data_ultima_venda || 0)); 
+                break;
+        }
         
         // Exibir resultados filtrados
         displayFilteredResults(filteredResults);
     };
 
-    // Exibir resultados filtrados
+    // Exibir resultados filtrados - Combinação das duas versões
     const displayFilteredResults = (results) => {
         if (results.length === 0) {
             resultsGrid.innerHTML = `
@@ -320,17 +323,14 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        const frag = document.createDocumentFragment();
-        
-        // Adicionar contador de resultados com estatísticas
+        // Adicionar contador de resultados com estatísticas (do script original)
         const prices = results.map(r => r.preco_produto).filter(p => typeof p === 'number');
         const minPrice = prices.length ? Math.min(...prices).toFixed(2).replace('.', ',') : '0,00';
         const maxPrice = prices.length ? Math.max(...prices).toFixed(2).replace('.', ',') : '0,00';
         const avgPrice = prices.length ? (prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2).replace('.', ',') : '0,00';
         
-        const resultsCount = document.createElement('div');
-        resultsCount.className = 'results-summary';
-        resultsCount.innerHTML = `
+        let html = `
+        <div class="results-summary">
             <div class="summary-stats">
                 <div class="stat">
                     <span class="stat-value">${results.length}</span>
@@ -349,36 +349,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="stat-label">preço médio</span>
                 </div>
             </div>
-        `;
-        frag.appendChild(resultsCount);
+        </div>`;
         
-        // Adicionar cards de produtos (já ordenados por preço crescente)
-        results.forEach((item, index) => {
-            const div = document.createElement('div');
-            div.innerHTML = buildProductCard(item, index, results);
-            frag.appendChild(div.firstElementChild);
-        });
+        // Adicionar cards de produtos (versão simplificada do código enviado)
+        html += results.map((item) => buildProductCard(item, results)).join('');
         
-        resultsGrid.innerHTML = '';
-        resultsGrid.appendChild(frag);
+        resultsGrid.innerHTML = html;
     };
 
-    // Atualizar filtro de mercados com base nos resultados
+    // Atualizar filtro de mercados com base nos resultados - Versão do código enviado
     const updateMarketFilter = (results) => {
-        // Limpar opções existentes (mantendo a opção "Todos")
-        while (marketFilter.options.length > 1) {
-            marketFilter.remove(1);
-        }
-        
-        // Coletar mercados únicos dos resultados
+        while (marketFilter.options.length > 1) marketFilter.remove(1);
         const markets = {};
         results.forEach(item => {
             if (item.cnpj_supermercado && item.nome_supermercado) {
                 markets[item.cnpj_supermercado] = item.nome_supermercado;
             }
         });
-        
-        // Adicionar opções ao select
         Object.entries(markets).forEach(([cnpj, nome]) => {
             const option = document.createElement('option');
             option.value = cnpj;
@@ -387,25 +374,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    // Carregar supermercados
+    // Carregar supermercados - Versão simplificada do código enviado
     const loadSupermarkets = async () => {
         try {
-            const session = await getSession();
-            let headers = { 'Content-Type': 'application/json' };
-            if (session) headers['Authorization'] = `Bearer ${session.access_token}`;
-            
-            const response = await fetch(`/api/supermarkets/public`, { headers });
-
+            const response = await fetch(`/api/supermarkets/public`);
             if (!response.ok) throw new Error('Falha ao carregar mercados.');
-            const data = await response.json();
-            buildSupermarketFilters(data);
+            allMarkets = await response.json();
+            renderMarketFilters(allMarkets);
         } catch (error) {
             console.error(error);
             supermarketFiltersContainer.innerHTML = '<p style="color: red;">Não foi possível carregar os filtros.</p>';
         }
     };
 
-    // Função auxiliar para fetch com autenticação
+    // Função authenticatedFetch do código enviado
     const authenticatedFetch = async (url, options = {}) => {
         const session = await getSession();
         const headers = { 
@@ -417,99 +399,78 @@ document.addEventListener('DOMContentLoaded', () => {
             headers['Authorization'] = `Bearer ${session.access_token}`;
         }
         
-        return fetch(url, { ...options, headers });
-    };
-
-    // Nova busca (CORRIGIDA)
-   const performSearch = async (isRealtime = false) => {
-    const query = searchInput.value.trim();
-    if (query.length < 3) {
-        showMessage('Digite pelo menos 3 caracteres.');
-        return;
-    }
-
-    const selectedCnpjs = Array.from(
-        document.querySelectorAll('input[name="supermarket"]:checked')
-    ).map(cb => cb.value);
-
-    if (isRealtime && selectedCnpjs.length === 0) {
-        showMessage('Selecione ao menos um supermercado para busca em tempo real.');
-        return;
-    }
-
-    showLoader(true);
-    resultsGrid.innerHTML = '';
-    resultsFilters.style.display = 'none';
-
-    try {
-        let session = null;
-        if (isRealtime) {
-            session = await getSession();
-            if (!session) {
-                showMessage('Sua sessão expirou. Faça login novamente.');
-                setTimeout(() => window.location.href = '/login.html', 1200);
-                return;
-            }
-        }
-
-        const headers = { 'Content-Type': 'application/json' };
-        if (session) {
-            headers['Authorization'] = `Bearer ${session.access_token}`;
-        }
-
-        let response;
-        if (isRealtime) {
-            response = await fetch('/api/realtime-search', {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({ produto: query, cnpjs: selectedCnpjs })
-            });
-        } else {
-            let url = `/api/search?q=${encodeURIComponent(query)}`;
-            if (selectedCnpjs.length > 0) {
-                url += `&${selectedCnpjs.map(cnpj => `cnpjs=${cnpj}`).join('&')}`;
-            }
-            response = await fetch(url, { headers });
-        }
-
+        const response = await fetch(url, { ...options, headers });
+        
         if (response.status === 401) {
             showMessage('Sua sessão expirou. Faça login novamente.');
             setTimeout(() => window.location.href = '/login.html', 1200);
-            return;
+            throw new Error("Sessão não encontrada.");
         }
+        
+        return response;
+    };
 
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.detail || `Erro ${response.status} na API.`);
-        }
-
-        const data = await response.json();
-        currentResults = data.results || [];
-        currentQuery = query;
-
-        displayResults(currentResults, query);
-        showNotification(`Encontramos ${currentResults.length} resultado(s) para "${query}"`);
-
-    } catch (error) {
-        console.error(error);
-        showMessage(`Erro na busca: ${error.message}`);
-        showNotification('Erro ao realizar a busca', 'error');
-    } finally {
-        showLoader(false);
-    }
-};
-
-    // Exibir resultados
-    const displayResults = (results, query) => {
-        if (!results || results.length === 0) {
-            showMessage(`Nenhum resultado para "${query}".`, 'gray');
-            resultsFilters.style.display = 'none';
+    // Nova busca - Versão do código enviado com melhorias
+    const performSearch = async (isRealtime = false) => {
+        const query = searchInput.value.trim();
+        if (query.length < 3) {
+            showMessage('Digite pelo menos 3 caracteres.');
             return;
         }
         
-        resultsFilters.style.display = 'block';
-        updateMarketFilter(results);
-        applyFilters();
+        const selectedCnpjs = Array.from(document.querySelectorAll('input[name="supermarket"]:checked')).map(cb => cb.value);
+        if (isRealtime && selectedCnpjs.length === 0) {
+            showMessage('Selecione ao menos um supermercado para busca em tempo real.');
+            return;
+        }
+
+        showLoader(true);
+        resultsGrid.innerHTML = '';
+        currentResults = [];
+        resultsFilters.style.display = 'none';
+
+        try {
+            let response;
+            
+            if (isRealtime) {
+                response = await authenticatedFetch('/api/realtime-search', {
+                    method: 'POST',
+                    body: JSON.stringify({ produto: query, cnpjs: selectedCnpjs })
+                });
+            } else {
+                let url = `/api/search?q=${encodeURIComponent(query)}`;
+                if (selectedCnpjs.length > 0) {
+                    url += `&${selectedCnpjs.map(cnpj => `cnpjs=${cnpj}`).join('&')}`;
+                }
+                response = await authenticatedFetch(url);
+            }
+
+            if (!response.ok) { 
+                const err = await response.json();
+                throw new Error(err.detail || `Erro ${response.status} na API.`);
+            }
+            
+            const data = await response.json();
+            currentResults = data.results || [];
+            currentQuery = query;
+            
+            if (currentResults.length === 0) {
+                showMessage(`Nenhum resultado encontrado para "${query}".`);
+            } else {
+                resultsFilters.style.display = 'block';
+                updateMarketFilter(currentResults);
+                applyFilters();
+                showNotification(`Encontramos ${currentResults.length} resultado(s) para "${query}"`);
+            }
+        } catch (error) {
+            if (error.message !== "Sessão não encontrada.") {
+                console.error('Erro na busca:', error);
+                showMessage(`Erro na busca: ${error.message}`, true);
+                showNotification('Erro ao realizar a busca', 'error');
+            }
+        } finally {
+            showLoader(false);
+        }
     };
 
     // Limpar filtros
