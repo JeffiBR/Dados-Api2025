@@ -165,7 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             let response;
             // AQUI ESTÁ A CORREÇÃO: Usamos a função `authenticatedFetch` do auth.js
-            // para TODAS as buscas, garantindo que o token seja enviado e o logout não ocorra.
+            // que gerencia o token de forma segura, resolvendo o problema de logout.
             if (isRealtime) {
                 response = await authenticatedFetch('/api/realtime-search', { 
                     method: 'POST', 
