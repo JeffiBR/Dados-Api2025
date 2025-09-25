@@ -390,7 +390,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Carregar supermercados
     const loadSupermarkets = async () => {
         try {
-            const response = await authenticatedFetch(`/api/supermarkets/public`);
+            const session = await getSession();
+let headers = { 'Content-Type': 'application/json' };
+if (session) headers['Authorization'] = `Bearer ${session.access_token}`;
+const response = await fetch(`/api/supermarkets/public`, { headers });
+
             if (!response.ok) throw new Error('Falha ao carregar mercados.');
             const data = await response.json();
             buildSupermarketFilters(data);
@@ -436,16 +440,24 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             let url = '', options = {};
-            if (isRealtime) {
-                url = `/api/realtime-search`;
-                options = { method: 'POST', headers, body: JSON.stringify({ produto: query, cnpjs: selectedCnpjs }) };
-            } else {
-                url = `/api/search?q=${encodeURIComponent(query)}`;
-                if (selectedCnpjs.length > 0) url += `&${selectedCnpjs.map(cnpj => `cnpjs=${cnpj}`).join('&')}`;
-                options = { method: 'GET', headers };
-            }
+           const session = await getSession();
+let headers = { 'Content-Type': 'application/json' };
+if (session) headers['Authorization'] = `Bearer ${session.access_token}`;
 
-            const response = await authenticatedFetch(url, options);
+let response;
+if (isRealtime) {
+    response = await fetch('/api/realtime-search', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ produto: query, cnpjs: selectedCnpjs })
+    });
+} else {
+    let url = `/api/search?q=${encodeURIComponent(query)}`;
+    if (selectedCnpjs.length > 0) {
+        url += `&${selectedCnpjs.map(cnpj => `cnpjs=${cnpj}`).join('&')}`;
+    }
+    response = await fetch(url, { headers });
+
             
             if (response.status === 401) {
                 showMessage('Sua sessão expirou. Faça login novamente.');
