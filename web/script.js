@@ -1,3 +1,4 @@
+// script.js - CÓDIGO COMPLETO CORRIGIDO
 document.addEventListener('DOMContentLoaded', () => {
     // Elementos
     const searchInput = document.getElementById('searchInput');
@@ -12,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sortFilter = document.getElementById('sortFilter');
     const clearFiltersButton = document.getElementById('clearFiltersButton');
     
-    // Elementos do menu
+    // Elementos do menu (igual ao admin.html)
     const mobileMenuBtn = document.getElementById('mobileMenuBtn');
     const sidebar = document.querySelector('.sidebar');
     const sidebarOverlay = document.getElementById('sidebarOverlay');
@@ -34,50 +35,65 @@ document.addEventListener('DOMContentLoaded', () => {
     let allMarkets = [];
 
     // Função para obter a sessão do usuário - CORRIGIDA
-    const getSession = () => {
+    const getSession = async () => {
         try {
+            // Verificar se existe um cliente Supabase inicializado
+            if (window.supabase && window.supabase.auth) {
+                const { data: { session }, error } = await window.supabase.auth.getSession();
+                if (error) throw error;
+                return session;
+            }
+            
+            // Fallback para o método antigo (compatibilidade)
             const token = localStorage.getItem('supabase.auth.token');
             if (!token) return null;
             
             const tokenData = JSON.parse(token);
             if (!tokenData || !tokenData.access_token) return null;
             
-            // Verificar se o token expirou
+            // Verificar expiração do token
             const currentTime = Math.floor(Date.now() / 1000);
             if (tokenData.expires_at && tokenData.expires_at < currentTime) {
                 localStorage.removeItem('supabase.auth.token');
                 return null;
             }
             
-            return tokenData;
+            return {
+                access_token: tokenData.access_token,
+                user: tokenData.user
+            };
         } catch (error) {
             console.error('Erro ao obter sessão:', error);
-            localStorage.removeItem('supabase.auth.token');
             return null;
         }
     };
 
-    // Função para fazer requisições autenticadas - CORRIGIDA
+    // Nova função para fazer requisições autenticadas - ADICIONADA
     const authenticatedFetch = async (url, options = {}) => {
-        const session = getSession();
+        const session = await getSession();
+        
+        if (!session) {
+            throw new Error('Sessão expirada. Faça login novamente.');
+        }
+        
         const headers = {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
             ...options.headers
         };
         
-        if (session && session.access_token) {
-            headers['Authorization'] = `Bearer ${session.access_token}`;
+        const response = await fetch(url, { ...options, headers });
+        
+        if (response.status === 401) {
+            localStorage.removeItem('supabase.auth.token');
+            window.location.href = '/login.html';
+            throw new Error('Sessão expirada');
         }
         
-        console.log('Fetch headers:', headers); // Para debug
-        
-        return fetch(url, { 
-            ...options, 
-            headers 
-        });
+        return response;
     };
 
-    // Menu mobile
+    // Menu mobile (igual ao admin.html)
     if (mobileMenuBtn) {
         mobileMenuBtn.addEventListener('click', () => {
             sidebar.classList.toggle('active');
@@ -92,7 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Dropdown do usuário
+    // Dropdown do usuário (igual ao admin.html)
     if (userMenuBtn) {
         userMenuBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -100,12 +116,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Fechar dropdown ao clicar fora
+    // Fechar dropdown ao clicar fora (igual ao admin.html)
     document.addEventListener('click', () => {
         userDropdown.classList.remove('show');
     });
 
-    // Logout
+    // Logout (igual ao admin.html)
     if (logoutBtn) {
         logoutBtn.addEventListener('click', (e) => {
             e.preventDefault();
@@ -114,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Toggle do tema
+    // Toggle do tema (igual ao admin.html)
     if (themeToggle) {
         themeToggle.addEventListener('click', () => {
             document.body.classList.toggle('light-mode');
@@ -245,8 +261,8 @@ document.addEventListener('DOMContentLoaded', () => {
         filterMarkets(e.target.value);
     });
 
-    // Renderização de cards de produto
-    const buildProductCard = (item, allItemsInResult) => {
+    // Renderização de cards de produto - MODIFICADA
+    const buildProductCard = (item, index, allResults) => {
         const price = typeof item.preco_produto === 'number' ? 
             `R$ ${item.preco_produto.toFixed(2).replace('.', ',')}` : 'N/A';
         
@@ -254,33 +270,61 @@ document.addEventListener('DOMContentLoaded', () => {
             new Date(item.data_ultima_venda).toLocaleDateString('pt-BR') : 'N/A';
         
         // Calcular estatísticas de preço
-        const prices = allItemsInResult.map(r => r.preco_produto).filter(p => typeof p === 'number');
+        const prices = allResults.map(r => r.preco_produto).filter(p => typeof p === 'number');
         const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+        const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
         
-        // Determinar classe de preço
-        let priceClass = '';
-        if (prices.length > 1 && item.preco_produto === minPrice) {
-            priceClass = 'cheapest-price';
+        // Determinar classe de preço - MODIFICADA
+        let priceClass = 'normal-price';
+        if (prices.length > 1) {
+            if (item.preco_produto === minPrice) {
+                priceClass = 'cheapest-price';
+            } else if (item.preco_produto === maxPrice) {
+                priceClass = 'expensive-price';
+            }
+        }
+        
+        // Calcular diferença da média
+        let avgIndicator = '';
+        if (prices.length > 1 && typeof item.preco_produto === 'number') {
+            const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
+            if (avgPrice > 0) {
+                const diffFromAvg = ((item.preco_produto - avgPrice) / avgPrice * 100).toFixed(1);
+                if (item.preco_produto < avgPrice) {
+                    avgIndicator = `<span class="avg-indicator below">${Math.abs(diffFromAvg)}% abaixo da média</span>`;
+                } else if (item.preco_produto > avgPrice) {
+                    avgIndicator = `<span class="avg-indicator above">${diffFromAvg}% acima da média</span>`;
+                }
+            }
         }
 
         return `
-        <div class="product-card ${priceClass}" data-price="${item.preco_produto || 0}">
+        <div class="product-card" data-price="${item.preco_produto || 0}">
             <div class="card-header">
                 <div class="product-name">${item.nome_produto || 'Produto sem nome'}</div>
             </div>
             <div class="price-section">
-                <div class="product-price">${price}</div>
+                <div class="product-price ${priceClass}">${price}</div>
+                ${avgIndicator}
             </div>
             <ul class="product-details">
-                <li><i class="fas fa-store"></i> <span class="supermarket-name">${item.nome_supermercado}</span></li>
-                <li><i class="fas fa-weight-hanging"></i> ${item.tipo_unidade || 'UN'} (${item.unidade_medida || 'N/A'})</li>
-                <li><i class="fas fa-calendar-alt"></i> <span class="sale-date">Última Venda: ${date}</span></li>
-                <li><i class="fas fa-barcode"></i> ${item.codigo_barras || 'Sem código'}</li>
+                <li><span class="detail-icon"></span> 
+                    <span class="supermarket-name">${item.nome_supermercado}</span>
+                </li>
+                <li><span class="detail-icon"></span> 
+                    ${item.tipo_unidade || 'UN'} (${item.unidade_medida || 'N/A'})
+                </li>
+                <li><span class="detail-icon"></span> 
+                    <span class="sale-date">Última Venda: ${date}</span>
+                </li>
+                <li><span class="detail-icon"></span> 
+                    ${item.codigo_barras || 'Sem código'}
+                </li>
             </ul>
         </div>`;
     };
 
-    // Função para aplicar filtros aos resultados
+    // Função para aplicar filtros aos resultados - MODIFICADA
     const applyFilters = () => {
         if (currentResults.length === 0) return;
         
@@ -292,29 +336,18 @@ document.addEventListener('DOMContentLoaded', () => {
             filteredResults = filteredResults.filter(item => item.cnpj_supermercado === selectedMarket);
         }
         
-        // Ordenar resultados
-        const sortBy = sortFilter.value;
-        switch(sortBy) {
-            case 'cheap':
-                filteredResults.sort((a, b) => (a.preco_produto || Infinity) - (b.preco_produto || Infinity));
-                break;
-            case 'expensive':
-                filteredResults.sort((a, b) => (b.preco_produto || 0) - (a.preco_produto || 0));
-                break;
-            case 'name':
-                filteredResults.sort((a, b) => (a.nome_produto || '').localeCompare(b.nome_produto || ''));
-                break;
-            case 'recent':
-            default:
-                filteredResults.sort((a, b) => new Date(b.data_ultima_venda) - new Date(a.data_ultima_venda));
-                break;
-        }
+        // Ordenar resultados - SEMPRE por preço crescente (MODIFICADO)
+        filteredResults.sort((a, b) => {
+            const priceA = a.preco_produto || 0;
+            const priceB = b.preco_produto || 0;
+            return priceA - priceB; // Ordem crescente
+        });
         
         // Exibir resultados filtrados
         displayFilteredResults(filteredResults);
     };
 
-    // Exibir resultados filtrados
+    // Exibir resultados filtrados - MODIFICADA para usar ordenação por preço
     const displayFilteredResults = (results) => {
         if (results.length === 0) {
             resultsGrid.innerHTML = `
@@ -327,7 +360,12 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const frag = document.createDocumentFragment();
         
-        // Adicionar contador de resultados
+        // Adicionar contador de resultados com estatísticas
+        const prices = results.map(r => r.preco_produto).filter(p => typeof p === 'number');
+        const minPrice = prices.length ? Math.min(...prices).toFixed(2).replace('.', ',') : '0,00';
+        const maxPrice = prices.length ? Math.max(...prices).toFixed(2).replace('.', ',') : '0,00';
+        const avgPrice = prices.length ? (prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2).replace('.', ',') : '0,00';
+        
         const resultsCount = document.createElement('div');
         resultsCount.className = 'results-summary';
         resultsCount.innerHTML = `
@@ -336,14 +374,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="stat-value">${results.length}</span>
                     <span class="stat-label">produtos encontrados</span>
                 </div>
+                <div class="stat">
+                    <span class="stat-value">R$ ${minPrice}</span>
+                    <span class="stat-label">menor preço</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value">R$ ${maxPrice}</span>
+                    <span class="stat-label">maior preço</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value">R$ ${avgPrice}</span>
+                    <span class="stat-label">preço médio</span>
+                </div>
             </div>
         `;
         frag.appendChild(resultsCount);
         
-        // Adicionar cards de produtos
-        results.forEach((item) => {
+        // Adicionar cards de produtos (já ordenados por preço crescente)
+        results.forEach((item, index) => {
             const div = document.createElement('div');
-            div.innerHTML = buildProductCard(item, results);
+            div.innerHTML = buildProductCard(item, index, results);
             frag.appendChild(div.firstElementChild);
         });
         
@@ -388,7 +438,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Nova busca - CORRIGIDA com melhor tratamento de autenticação
+    // Nova busca - CORRIGIDA
     const performSearch = async (isRealtime = false) => {
         const query = searchInput.value.trim();
         if (query.length < 3) {
@@ -402,77 +452,66 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Verificar autenticação para busca em tempo real
-        if (isRealtime) {
-            const session = getSession();
-            if (!session) {
-                showMessage('Sua sessão expirou. Faça login novamente para buscar em tempo real.');
-                setTimeout(() => {
-                    window.location.href = '/login.html';
-                }, 2000);
-                return;
-            }
-        }
-
         showLoader(true);
         resultsGrid.innerHTML = '';
-        currentResults = [];
         resultsFilters.style.display = 'none';
 
         try {
             let response;
+            
             if (isRealtime) {
-                response = await authenticatedFetch('/api/realtime-search', { 
-                    method: 'POST', 
-                    body: JSON.stringify({ produto: query, cnpjs: selectedCnpjs }) 
+                // CORREÇÃO: Usar a função authenticatedFetch para garantir autenticação
+                response = await authenticatedFetch('/api/realtime-search', {
+                    method: 'POST',
+                    body: JSON.stringify({ produto: query, cnpjs: selectedCnpjs })
                 });
             } else {
+                // Busca normal (pública)
                 let url = `/api/search?q=${encodeURIComponent(query)}`;
                 if (selectedCnpjs.length > 0) {
                     url += `&${selectedCnpjs.map(cnpj => `cnpjs=${cnpj}`).join('&')}`;
                 }
-                response = await fetch(url); // Busca normal não precisa de autenticação
-            }
-
-            if (response.status === 401) {
-                showMessage('Sua sessão expirou. Faça login novamente.');
-                setTimeout(() => {
-                    window.location.href = '/login.html';
-                }, 2000);
-                return;
+                response = await fetch(url);
             }
             
-            if (!response.ok) { 
-                const errorText = await response.text();
-                let errorDetail = `Erro ${response.status} na API.`;
-                try {
-                    const errorJson = JSON.parse(errorText);
-                    errorDetail = errorJson.detail || errorDetail;
-                } catch (e) {
-                    errorDetail = errorText || errorDetail;
-                }
-                throw new Error(errorDetail);
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.detail || `Erro ${response.status} na API.`);
             }
             
             const data = await response.json();
             currentResults = data.results || [];
             currentQuery = query;
             
-            if (currentResults.length === 0) {
-                showMessage(`Nenhum resultado encontrado para "${query}".`);
-            } else {
-                resultsFilters.style.display = 'block';
-                updateMarketFilter(currentResults);
-                applyFilters();
-                showNotification(`Encontramos ${currentResults.length} resultado(s) para "${query}"`);
-            }
+            displayResults(currentResults, query);
+            showNotification(`Encontramos ${currentResults.length} resultado(s) para "${query}"`);
+
         } catch (error) {
             console.error('Erro na busca:', error);
-            showMessage(`Erro na busca: ${error.message}`);
-            showNotification('Erro ao realizar a busca', 'error');
+            
+            if (error.message.includes('Sessão expirada')) {
+                showMessage('Sua sessão expirou. Redirecionando para login...');
+                setTimeout(() => window.location.href = '/login.html', 1500);
+            } else {
+                showMessage(`Erro na busca: ${error.message}`);
+                showNotification('Erro ao realizar a busca', 'error');
+            }
         } finally {
             showLoader(false);
         }
+    };
+
+    // Exibir resultados
+    const displayResults = (results, query) => {
+        if (!results || results.length === 0) {
+            showMessage(`Nenhum resultado para "${query}".`, 'gray');
+            resultsFilters.style.display = 'none';
+            return;
+        }
+        
+        resultsFilters.style.display = 'block';
+        updateMarketFilter(results);
+        applyFilters();
     };
 
     // Limpar filtros
@@ -485,7 +524,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Limpar busca
     const clearSearch = () => {
         searchInput.value = '';
-        clearSearchButton.style.display = 'none';
         resultsGrid.innerHTML = '';
         resultsFilters.style.display = 'none';
         searchInput.focus();
@@ -493,11 +531,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Eventos
     clearSearchButton.addEventListener('click', clearSearch);
-    
-    // Mostrar/ocultar botão de limpar busca
-    searchInput.addEventListener('input', () => {
-        clearSearchButton.style.display = searchInput.value ? 'block' : 'none';
-    });
+    clearFiltersButton.addEventListener('click', clearFilters);
     
     searchButton.addEventListener('click', () => performSearch(false));
     realtimeSearchButton.addEventListener('click', () => performSearch(true));
@@ -508,12 +542,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
     marketFilter.addEventListener('change', applyFilters);
     sortFilter.addEventListener('change', applyFilters);
-    clearFiltersButton.addEventListener('click', clearFilters);
 
-    // Carregar informações do usuário
+    // Carregar informações do usuário (igual ao admin.html)
     const loadUserInfo = async () => {
         try {
-            const session = getSession();
+            const session = await getSession();
             if (session && session.user) {
                 const userName = document.querySelector('.user-name');
                 const userRole = document.querySelector('.user-role');
@@ -521,9 +554,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 if (userName) userName.textContent = session.user.email || 'Usuário';
                 if (userRole) userRole.textContent = session.user.role || 'Usuário';
-                if (userAvatar) {
-                    userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(session.user.email || 'U')}&background=3b82f6&color=fff`;
-                }
+                if (userAvatar) userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(session.user.email || 'U')}&background=3b82f6&color=fff`;
             }
         } catch (error) {
             console.error('Erro ao carregar informações do usuário:', error);
@@ -533,7 +564,4 @@ document.addEventListener('DOMContentLoaded', () => {
     // Inicialização
     loadSupermarkets();
     loadUserInfo();
-    
-    // Ocultar botão de limpar busca inicialmente
-    clearSearchButton.style.display = 'none';
 });
