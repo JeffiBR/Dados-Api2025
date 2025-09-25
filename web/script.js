@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sortFilter = document.getElementById('sortFilter');
     const clearFiltersButton = document.getElementById('clearFiltersButton');
     
-    // Elementos do menu (igual ao admin.html)
+    // Elementos do menu
     const mobileMenuBtn = document.getElementById('mobileMenuBtn');
     const sidebar = document.querySelector('.sidebar');
     const sidebarOverlay = document.getElementById('sidebarOverlay');
@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Menu mobile (igual ao admin.html)
+    // Menu mobile
     if (mobileMenuBtn) {
         mobileMenuBtn.addEventListener('click', () => {
             sidebar.classList.toggle('active');
@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Dropdown do usuário (igual ao admin.html)
+    // Dropdown do usuário
     if (userMenuBtn) {
         userMenuBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -78,12 +78,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Fechar dropdown ao clicar fora (igual ao admin.html)
+    // Fechar dropdown ao clicar fora
     document.addEventListener('click', () => {
-        if (userDropdown) userDropdown.classList.remove('show');
+        userDropdown.classList.remove('show');
     });
 
-    // Logout (igual ao admin.html)
+    // Logout
     if (logoutBtn) {
         logoutBtn.addEventListener('click', (e) => {
             e.preventDefault();
@@ -92,7 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Toggle do tema (igual ao admin.html)
+    // Toggle do tema
     if (themeToggle) {
         themeToggle.addEventListener('click', () => {
             document.body.classList.toggle('light-mode');
@@ -139,9 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Atualizar contador de seleção
     const updateSelectionCount = () => {
         const selected = document.querySelectorAll('.market-card.selected').length;
-        if (selectionCount) {
-            selectionCount.textContent = `${selected} selecionados`;
-        }
+        selectionCount.textContent = `${selected} selecionados`;
     };
 
     // Filtrar mercados na pesquisa
@@ -198,40 +196,32 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Selecionar/Deselecionar todos os mercados
-    if (selectAllMarkets) {
-        selectAllMarkets.addEventListener('click', () => {
-            document.querySelectorAll('.market-card').forEach(card => {
-                card.classList.add('selected');
-                card.querySelector('input').checked = true;
-            });
-            updateSelectionCount();
+    selectAllMarkets.addEventListener('click', () => {
+        document.querySelectorAll('.market-card').forEach(card => {
+            card.classList.add('selected');
+            card.querySelector('input').checked = true;
         });
-    }
+        updateSelectionCount();
+    });
 
-    if (deselectAllMarkets) {
-        deselectAllMarkets.addEventListener('click', () => {
-            document.querySelectorAll('.market-card').forEach(card => {
-                card.classList.remove('selected');
-                card.querySelector('input').checked = false;
-            });
-            updateSelectionCount();
+    deselectAllMarkets.addEventListener('click', () => {
+        document.querySelectorAll('.market-card').forEach(card => {
+            card.classList.remove('selected');
+            card.querySelector('input').checked = false;
         });
-    }
+        updateSelectionCount();
+    });
 
     // Limpar pesquisa de mercados
-    if (clearMarketSearch) {
-        clearMarketSearch.addEventListener('click', () => {
-            marketSearchInput.value = '';
-            filterMarkets('');
-        });
-    }
+    clearMarketSearch.addEventListener('click', () => {
+        marketSearchInput.value = '';
+        filterMarkets('');
+    });
 
     // Pesquisa em tempo real nos mercados
-    if (marketSearchInput) {
-        marketSearchInput.addEventListener('input', (e) => {
-            filterMarkets(e.target.value);
-        });
-    }
+    marketSearchInput.addEventListener('input', (e) => {
+        filterMarkets(e.target.value);
+    });
 
     // Renderização de cards de produto
     const buildProductCard = (item, index, allResults) => {
@@ -397,11 +387,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    // Carregar supermercados - CORRIGIDA
+    // Carregar supermercados
     const loadSupermarkets = async () => {
         try {
             const session = await getSession();
-            const headers = { 'Content-Type': 'application/json' };
+            let headers = { 'Content-Type': 'application/json' };
             if (session) headers['Authorization'] = `Bearer ${session.access_token}`;
             
             const response = await fetch(`/api/supermarkets/public`, { headers });
@@ -415,7 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Nova busca - CORRIGIDA (principal problema resolvido)
+    // Nova busca - CORRIGIDA: removida a declaração duplicada de 'session'
     const performSearch = async (isRealtime = false) => {
         const query = searchInput.value.trim();
         if (query.length < 3) {
@@ -431,7 +421,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         showLoader(true);
         resultsGrid.innerHTML = '';
-        if (resultsFilters) resultsFilters.style.display = 'none';
+        resultsFilters.style.display = 'none';
 
         try {
             let session = null;
@@ -451,7 +441,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             let response;
-            
             if (isRealtime) {
                 response = await fetch('/api/realtime-search', {
                     method: 'POST',
@@ -461,9 +450,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 let url = `/api/search?q=${encodeURIComponent(query)}`;
                 if (selectedCnpjs.length > 0) {
-                    selectedCnpjs.forEach(cnpj => {
-                        url += `&cnpjs=${cnpj}`;
-                    });
+                    url += `&${selectedCnpjs.map(cnpj => `cnpjs=${cnpj}`).join('&')}`;
                 }
                 response = await fetch(url, { headers });
             }
@@ -487,7 +474,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showNotification(`Encontramos ${currentResults.length} resultado(s) para "${query}"`);
 
         } catch (error) {
-            console.error('Erro na busca:', error);
+            console.error(error);
             showMessage(`Erro na busca: ${error.message}`);
             showNotification('Erro ao realizar a busca', 'error');
         } finally {
@@ -499,19 +486,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const displayResults = (results, query) => {
         if (!results || results.length === 0) {
             showMessage(`Nenhum resultado para "${query}".`, 'gray');
-            if (resultsFilters) resultsFilters.style.display = 'none';
+            resultsFilters.style.display = 'none';
             return;
         }
         
-        if (resultsFilters) resultsFilters.style.display = 'block';
+        resultsFilters.style.display = 'block';
         updateMarketFilter(results);
         applyFilters();
     };
 
     // Limpar filtros
     const clearFilters = () => {
-        if (marketFilter) marketFilter.value = 'all';
-        if (sortFilter) sortFilter.value = 'recent';
+        marketFilter.value = 'all';
+        sortFilter.value = 'recent';
         applyFilters();
     };
 
@@ -519,40 +506,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const clearSearch = () => {
         searchInput.value = '';
         resultsGrid.innerHTML = '';
-        if (resultsFilters) resultsFilters.style.display = 'none';
+        resultsFilters.style.display = 'none';
         searchInput.focus();
     };
 
     // Eventos
-    if (clearSearchButton) {
-        clearSearchButton.addEventListener('click', clearSearch);
-    }
+    clearSearchButton.addEventListener('click', clearSearch);
+    clearFiltersButton.addEventListener('click', clearFilters);
     
-    if (clearFiltersButton) {
-        clearFiltersButton.addEventListener('click', clearFilters);
-    }
+    searchButton.addEventListener('click', () => performSearch(false));
+    realtimeSearchButton.addEventListener('click', () => performSearch(true));
     
-    if (searchButton) {
-        searchButton.addEventListener('click', () => performSearch(false));
-    }
+    searchInput.addEventListener('keypress', (event) => {
+        if (event.key === 'Enter') performSearch(false);
+    });
     
-    if (realtimeSearchButton) {
-        realtimeSearchButton.addEventListener('click', () => performSearch(true));
-    }
-    
-    if (searchInput) {
-        searchInput.addEventListener('keypress', (event) => {
-            if (event.key === 'Enter') performSearch(false);
-        });
-    }
-    
-    if (marketFilter) {
-        marketFilter.addEventListener('change', applyFilters);
-    }
-    
-    if (sortFilter) {
-        sortFilter.addEventListener('change', applyFilters);
-    }
+    marketFilter.addEventListener('change', applyFilters);
+    sortFilter.addEventListener('change', applyFilters);
 
     // Carregar informações do usuário
     const loadUserInfo = async () => {
