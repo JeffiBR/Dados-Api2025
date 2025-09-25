@@ -405,7 +405,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Nova busca - CORRIGIDA: removida a declaração duplicada de 'session'
+    // Função auxiliar para fetch com autenticação
+    const authenticatedFetch = async (url, options = {}) => {
+        const session = await getSession();
+        const headers = { 
+            'Content-Type': 'application/json', 
+            ...options.headers 
+        };
+        
+        if (session) {
+            headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+        
+        return fetch(url, { ...options, headers });
+    };
+
+    // Nova busca (CORRIGIDA)
     const performSearch = async (isRealtime = false) => {
         const query = searchInput.value.trim();
         if (query.length < 3) {
@@ -424,35 +439,21 @@ document.addEventListener('DOMContentLoaded', () => {
         resultsFilters.style.display = 'none';
 
         try {
-            let session = null;
-            
-            if (isRealtime) {
-                session = await getSession();
-                if (!session) {
-                    showMessage('Sua sessão expirou. Faça login novamente.');
-                    setTimeout(() => window.location.href = '/login.html', 1200);
-                    return;
-                }
-            }
-            
-            const headers = { 'Content-Type': 'application/json' };
-            if (session) {
-                headers['Authorization'] = `Bearer ${session.access_token}`;
-            }
-
             let response;
+            
             if (isRealtime) {
-                response = await fetch('/api/realtime-search', {
+                // Busca em tempo real
+                response = await authenticatedFetch('/api/realtime-search', {
                     method: 'POST',
-                    headers,
                     body: JSON.stringify({ produto: query, cnpjs: selectedCnpjs })
                 });
             } else {
+                // Busca normal
                 let url = `/api/search?q=${encodeURIComponent(query)}`;
                 if (selectedCnpjs.length > 0) {
                     url += `&${selectedCnpjs.map(cnpj => `cnpjs=${cnpj}`).join('&')}`;
                 }
-                response = await fetch(url, { headers });
+                response = await authenticatedFetch(url);
             }
             
             if (response.status === 401) {
