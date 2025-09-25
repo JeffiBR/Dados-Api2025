@@ -26,9 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let allMarkets = [];
 
     // --- FUNÇÕES DE UI E RENDERIZAÇÃO ---
-    const showLoader = (show) => {
-        if(loader) loader.style.display = show ? 'flex' : 'none';
-    };
+    const showLoader = (show) => loader.style.display = show ? 'flex' : 'none';
     
     const showMessage = (msg, isError = false) => {
         resultsGrid.innerHTML = `
@@ -38,56 +36,9 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>`;
     };
 
-    const showNotification = (message, type = 'success') => {
-        const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
-        notification.textContent = message;
-        document.body.appendChild(notification);
-        setTimeout(() => notification.classList.add('show'), 10);
-        setTimeout(() => {
-            notification.classList.remove('show');
-            setTimeout(() => {
-                if(document.body.contains(notification)){
-                    document.body.removeChild(notification);
-                }
-            }, 300);
-        }, 3000);
-    };
-
     const updateSelectionCount = () => {
         const selected = document.querySelectorAll('.market-card.selected').length;
         if (selectionCount) selectionCount.textContent = `${selected} selecionados`;
-    };
-
-    const filterMarkets = (searchText) => {
-        const searchLower = searchText.toLowerCase();
-        document.querySelectorAll('.market-card').forEach(card => {
-            const marketName = card.querySelector('.market-name').textContent.toLowerCase();
-            const marketCnpj = card.querySelector('.market-cnpj').textContent.toLowerCase();
-            card.style.display = (marketName.includes(searchLower) || marketCnpj.includes(searchLower)) ? 'flex' : 'none';
-        });
-    };
-    
-    const buildMarketCard = (market) => {
-        const card = document.createElement('div');
-        card.className = 'market-card';
-        card.innerHTML = `<input type="checkbox" name="supermarket" value="${market.cnpj}" style="display: none;"><div class="market-info"><div class="market-name">${market.nome}</div><div class="market-cnpj">${market.cnpj}</div></div>`;
-        card.addEventListener('click', (e) => {
-            const checkbox = card.querySelector('input');
-            checkbox.checked = !checkbox.checked;
-            card.classList.toggle('selected', checkbox.checked);
-            updateSelectionCount();
-        });
-        return card;
-    };
-
-    const buildSupermarketFilters = (markets) => {
-        allMarkets = markets;
-        const frag = document.createDocumentFragment();
-        markets.forEach(market => frag.appendChild(buildMarketCard(market)));
-        supermarketFiltersContainer.innerHTML = '';
-        supermarketFiltersContainer.appendChild(frag);
-        updateSelectionCount();
     };
 
     const buildProductCard = (item, allItemsInResult) => {
@@ -126,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const updateMarketFilter = (results) => {
-        marketFilter.innerHTML = '<option value="all">Todos os mercados</option>';
+        while (marketFilter.options.length > 1) marketFilter.remove(1);
         const markets = {};
         results.forEach(item => {
             if (item.cnpj_supermercado && item.nome_supermercado) markets[item.cnpj_supermercado] = item.nome_supermercado;
@@ -150,6 +101,23 @@ document.addEventListener('DOMContentLoaded', () => {
             supermarketFiltersContainer.innerHTML = '<p style="color: red;">Não foi possível carregar os filtros.</p>';
         }
     };
+    
+    const renderMarketFilters = (marketsToRender) => {
+        supermarketFiltersContainer.innerHTML = '';
+        marketsToRender.forEach(market => {
+            const card = document.createElement('div');
+            card.className = 'market-card';
+            card.innerHTML = `<input type="checkbox" name="supermarket" value="${market.cnpj}" style="display: none;"><div class="market-info"><div class="market-name">${market.nome}</div><div class="market-cnpj">${market.cnpj}</div></div>`;
+            card.addEventListener('click', (e) => {
+                const checkbox = card.querySelector('input');
+                checkbox.checked = !checkbox.checked;
+                card.classList.toggle('selected', checkbox.checked);
+                updateSelectionCount();
+            });
+            supermarketFiltersContainer.appendChild(card);
+        });
+        updateSelectionCount();
+    };
 
     const performSearch = async (isRealtime = false) => {
         const query = searchInput.value.trim();
@@ -165,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             let response;
             // AQUI ESTÁ A CORREÇÃO: Usamos a função `authenticatedFetch` do auth.js
-            // que gerencia o token de forma segura, resolvendo o problema de logout.
+            // para TODAS as buscas, garantindo que o token seja enviado e o logout não ocorra.
             if (isRealtime) {
                 response = await authenticatedFetch('/api/realtime-search', { 
                     method: 'POST', 
@@ -193,7 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 applyFilters();
             }
         } catch (error) {
-            // A authenticatedFetch já lida com o alerta de sessão, então aqui pegamos outros erros.
+            // A authenticatedFetch já lida com o alerta de sessão, então aqui pegamos outros erros
             if (error.message !== "Sessão não encontrada.") {
                 console.error('Erro na busca:', error);
                 showMessage(`Erro na busca: ${error.message}`, true);
@@ -207,19 +175,40 @@ document.addEventListener('DOMContentLoaded', () => {
     searchButton.addEventListener('click', () => performSearch(false));
     realtimeSearchButton.addEventListener('click', () => performSearch(true));
     searchInput.addEventListener('keypress', (event) => { if (event.key === 'Enter') performSearch(false); });
-    clearSearchButton.addEventListener('click', () => { searchInput.value = ''; resultsGrid.innerHTML = ''; resultsFilters.style.display = 'none'; });
+    
+    clearSearchButton.addEventListener('click', () => {
+        searchInput.value = '';
+        resultsGrid.innerHTML = '';
+        resultsFilters.style.display = 'none';
+        searchInput.focus();
+    });
+    
     marketFilter.addEventListener('change', applyFilters);
     sortFilter.addEventListener('change', applyFilters);
-    clearFiltersButton.addEventListener('click', () => { marketFilter.value = 'all'; sortFilter.value = 'recent'; applyFilters(); });
-    marketSearchInput.addEventListener('input', (e) => filterMarkets(e.target.value));
+    clearFiltersButton.addEventListener('click', () => {
+        marketFilter.value = 'all';
+        sortFilter.value = 'recent';
+        applyFilters();
+    });
+    
+    marketSearchInput.addEventListener('input', (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        const filteredMarkets = allMarkets.filter(market => 
+            market.nome.toLowerCase().includes(searchTerm) || market.cnpj.includes(searchTerm)
+        );
+        renderMarketFilters(filteredMarkets);
+    });
+
     selectAllMarkets.addEventListener('click', () => {
         document.querySelectorAll('.market-card input').forEach(cb => { cb.checked = true; cb.parentElement.classList.add('selected'); });
         updateSelectionCount();
     });
+
     deselectAllMarkets.addEventListener('click', () => {
         document.querySelectorAll('.market-card input').forEach(cb => { cb.checked = false; cb.parentElement.classList.remove('selected'); });
         updateSelectionCount();
     });
 
+    // Inicialização
     loadSupermarkets();
 });
