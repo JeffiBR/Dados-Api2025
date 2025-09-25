@@ -5,57 +5,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const pruneButton = document.getElementById('pruneButton');
     const resultMessage = document.getElementById('resultMessage');
 
-    // Elementos do tema
-    const mobileMenuButton = document.querySelector('.mobile-menu-button');
-    const sidebar = document.querySelector('.sidebar');
-    const themeToggle = document.getElementById('themeToggle');
-    const profileButton = document.querySelector('.profile-button');
-    const profileDropdown = document.querySelector('.profile-dropdown');
-    const sidebarOverlay = document.querySelector('.sidebar-overlay');
+    // Função para fazer requisições autenticadas
+    const authenticatedFetch = async (url, options = {}) => {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        const headers = {
+            'Content-Type': 'application/json',
+            ...options.headers
+        };
 
-    // Toggle do tema
-    themeToggle.addEventListener('click', () => {
-        document.body.classList.toggle('light-mode');
-        const icon = themeToggle.querySelector('i');
-        if (document.body.classList.contains('light-mode')) {
-            icon.classList.remove('fa-moon');
-            icon.classList.add('fa-sun');
-        } else {
-            icon.classList.remove('fa-sun');
-            icon.classList.add('fa-moon');
+        if (session) {
+            headers['Authorization'] = `Bearer ${session.access_token}`;
         }
-    });
 
-    // Toggle do menu mobile
-    mobileMenuButton.addEventListener('click', () => {
-        sidebar.classList.toggle('open');
-        sidebarOverlay.classList.toggle('show');
-    });
-
-    // Fechar menu ao clicar no overlay
-    sidebarOverlay.addEventListener('click', () => {
-        sidebar.classList.remove('open');
-        sidebarOverlay.classList.remove('show');
-    });
-
-    // Toggle do dropdown do perfil
-    profileButton.addEventListener('click', (e) => {
-        e.stopPropagation();
-        profileDropdown.classList.toggle('show');
-    });
-
-    // Fechar dropdown ao clicar fora
-    document.addEventListener('click', (e) => {
-        if (!profileButton.contains(e.target) && !profileDropdown.contains(e.target)) {
-            profileDropdown.classList.remove('show');
-        }
-    });
+        return fetch(url, {
+            ...options,
+            headers
+        });
+    };
 
     const loadSupermarkets = async () => {
         try {
-            // Usa o endpoint protegido para admin
             const response = await authenticatedFetch(`/api/supermarkets`);
-            if (!response.ok) throw new Error("Não foi possível carregar os supermercados.");
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || "Não foi possível carregar os supermercados.");
+            }
             
             const markets = await response.json();
             
@@ -67,11 +42,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 marketSelect.appendChild(option);
             });
         } catch (error) {
-            marketSelect.innerHTML = `<option value="">${error.message}</option>`;
-            console.error('Erro:', error);
-            
-            // Mostrar notificação de erro
-            showNotification(`Erro ao carregar supermercados: ${error.message}`, 'error');
+            marketSelect.innerHTML = `<option value="">Erro: ${error.message}</option>`;
+            console.error('Erro ao carregar supermercados:', error);
         }
     };
 
@@ -88,7 +60,6 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await authenticatedFetch(`/api/collections-by-market/${cnpj}`);
             
-            // Verifica se a resposta da API foi bem-sucedida (status 200)
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(errorData.detail || 'Falha ao buscar coletas do mercado.');
@@ -104,19 +75,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
             collections.forEach(collection => {
                 const date = new Date(collection.iniciada_em).toLocaleDateString('pt-BR');
+                const time = new Date(collection.iniciada_em).toLocaleTimeString('pt-BR');
+                
                 const label = document.createElement('label');
-                label.innerHTML = `<input type="checkbox" name="collection" value="${collection.coleta_id}"> 
-                                  <i class="fas fa-database"></i> Coleta #${collection.coleta_id} de ${date}`;
+                label.className = 'checkbox-label';
+                label.innerHTML = `
+                    <input type="checkbox" name="collection" value="${collection.coleta_id}">
+                    <span>Coleta #${collection.coleta_id} - ${date} às ${time}</span>
+                `;
                 collectionsCheckboxList.appendChild(label);
             });
+            
             pruneButton.disabled = false;
 
         } catch (error) {
-            collectionsCheckboxList.innerHTML = `<p style="color: red;">${error.message}</p>`;
+            collectionsCheckboxList.innerHTML = `<p style="color: var(--danger-color);">Erro: ${error.message}</p>`;
             console.error('Erro ao carregar coletas:', error);
-            
-            // Mostrar notificação de erro
-            showNotification(`Erro ao carregar coletas: ${error.message}`, 'error');
         }
     };
 
@@ -127,88 +101,92 @@ document.addEventListener('DOMContentLoaded', () => {
         const collection_ids = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
 
         if (collection_ids.length === 0) {
-            showNotification('Por favor, selecione pelo menos uma coleta para apagar.', 'warning');
+            alert('Por favor, selecione pelo menos uma coleta para apagar.');
             return;
         }
 
-        const confirmMessage = `Você tem certeza que deseja apagar os dados do supermercado "${selectedMarketName}" para as ${collection_ids.length} coletas selecionadas?\n\nESTA AÇÃO É PERMANENTE.`;
+        const confirmMessage = `Você tem certeza que deseja apagar os dados do supermercado "${selectedMarketName}" para as ${collection_ids.length} coletas selecionadas?\n\nESTA AÇÃO É PERMANENTE E IRREVERSÍVEL.`;
         if (!confirm(confirmMessage)) return;
 
         pruneButton.disabled = true;
-        pruneButton.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Apagando...';
+        pruneButton.textContent = 'Apagando...';
         resultMessage.textContent = '';
 
         try {
             const response = await authenticatedFetch(`/api/prune-by-collections`, {
                 method: 'POST',
-                body: JSON.stringify({ cnpj: selectedCnpj, collection_ids: collection_ids })
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    cnpj: selectedCnpj, 
+                    collection_ids: collection_ids 
+                })
             });
-            
-            // Verificar se a resposta é 401 (Unauthorized)
-            if (response.status === 401) {
-                throw new Error("Sessão expirada. Faça login novamente.");
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Erro ao apagar dados.');
             }
-            
+
             const data = await response.json();
-            if (!response.ok) throw new Error(data.detail);
             
-            resultMessage.textContent = `Sucesso! ${data.deleted_count} registros foram apagados. Atualizando lista de coletas...`;
-            resultMessage.className = 'result-message success';
+            resultMessage.innerHTML = `
+                <div style="color: var(--success-color); background: var(--success-bg); padding: 1rem; border-radius: 0.5rem;">
+                    <i class="fas fa-check-circle"></i> 
+                    Sucesso! ${data.deleted_count || data.affected_rows || 0} registros foram apagados.
+                    Atualizando lista de coletas...
+                </div>
+            `;
             
-            showNotification(`${data.deleted_count} registros foram apagados com sucesso!`, 'success');
-            
-            setTimeout(() => loadCollectionsForMarket(selectedCnpj), 2000);
+            // Recarregar a lista de coletas após 2 segundos
+            setTimeout(() => {
+                loadCollectionsForMarket(selectedCnpj);
+                resultMessage.innerHTML = '';
+            }, 2000);
 
         } catch (error) {
-            resultMessage.textContent = `Erro: ${error.message}`;
-            resultMessage.className = 'result-message error';
-            
-            // Verificar se é um erro de autenticação
-            if (error.message.includes("Sessão não encontrada") || 
-                error.message.includes("Sessão expirada") ||
-                error.message.includes("401")) {
-                showNotification("Sua sessão expirou. Por favor, faça login novamente.", 'error');
-                setTimeout(() => window.location.href = '/login.html', 2000);
-                return;
-            }
-            
-            showNotification(`Erro ao apagar dados: ${error.message}`, 'error');
+            resultMessage.innerHTML = `
+                <div style="color: var(--danger-color); background: var(--danger-bg); padding: 1rem; border-radius: 0.5rem;">
+                    <i class="fas fa-exclamation-circle"></i> 
+                    Erro: ${error.message}
+                </div>
+            `;
+            console.error('Erro ao apagar dados:', error);
         } finally {
             pruneButton.disabled = false;
-            pruneButton.innerHTML = '<i class="fas fa-trash"></i> Deletar Coletas Selecionadas';
+            pruneButton.textContent = 'Deletar Coletas Selecionadas';
         }
     };
 
-    // Função para mostrar notificações
-    const showNotification = (message, type = 'success') => {
-        const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
-        notification.innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : 'exclamation'}-circle"></i> ${message}`;
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            notification.classList.add('show');
-        }, 10);
-        
-        setTimeout(() => {
-            notification.classList.remove('show');
-            setTimeout(() => {
-                document.body.removeChild(notification);
-            }, 300);
-        }, 5000);
-    };
-
+    // Event listeners
     marketSelect.addEventListener('change', () => {
         loadCollectionsForMarket(marketSelect.value);
     });
 
     pruneButton.addEventListener('click', performPrune);
     
-    // Inicialização
+    // Inicializar
     loadSupermarkets();
-    
-    // Atualizar a UI do usuário após o carregamento
-    if (typeof updateUIVisibility === 'function') {
-        setTimeout(updateUIVisibility, 100);
-    }
+
+    // Adicionar estilo para os checkboxes
+    const style = document.createElement('style');
+    style.textContent = `
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem;
+            margin: 0.25rem 0;
+            background: var(--card-bg);
+            border-radius: 0.25rem;
+            cursor: pointer;
+        }
+        .checkbox-label:hover {
+            background: var(--hover-bg);
+        }
+        .checkbox-label input {
+            margin-right: 0.5rem;
+        }
+    `;
+    document.head.appendChild(style);
 });
