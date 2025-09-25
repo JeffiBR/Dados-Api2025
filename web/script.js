@@ -1,4 +1,3 @@
-// script.js - CÓDIGO COMPLETO CORRIGIDO
 document.addEventListener('DOMContentLoaded', () => {
     // Elementos
     const searchInput = document.getElementById('searchInput');
@@ -34,63 +33,26 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentQuery = '';
     let allMarkets = [];
 
-    // Função para obter a sessão do usuário - CORRIGIDA
+    // Função para obter a sessão do usuário
     const getSession = async () => {
         try {
-            // Verificar se existe um cliente Supabase inicializado
-            if (window.supabase && window.supabase.auth) {
-                const { data: { session }, error } = await window.supabase.auth.getSession();
-                if (error) throw error;
-                return session;
-            }
-            
-            // Fallback para o método antigo (compatibilidade)
             const token = localStorage.getItem('supabase.auth.token');
             if (!token) return null;
             
             const tokenData = JSON.parse(token);
             if (!tokenData || !tokenData.access_token) return null;
             
-            // Verificar expiração do token
             const currentTime = Math.floor(Date.now() / 1000);
             if (tokenData.expires_at && tokenData.expires_at < currentTime) {
                 localStorage.removeItem('supabase.auth.token');
                 return null;
             }
             
-            return {
-                access_token: tokenData.access_token,
-                user: tokenData.user
-            };
+            return tokenData;
         } catch (error) {
             console.error('Erro ao obter sessão:', error);
             return null;
         }
-    };
-
-    // Nova função para fazer requisições autenticadas - ADICIONADA
-    const authenticatedFetch = async (url, options = {}) => {
-        const session = await getSession();
-        
-        if (!session) {
-            throw new Error('Sessão expirada. Faça login novamente.');
-        }
-        
-        const headers = {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-            ...options.headers
-        };
-        
-        const response = await fetch(url, { ...options, headers });
-        
-        if (response.status === 401) {
-            localStorage.removeItem('supabase.auth.token');
-            window.location.href = '/login.html';
-            throw new Error('Sessão expirada');
-        }
-        
-        return response;
     };
 
     // Menu mobile (igual ao admin.html)
@@ -428,7 +390,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Carregar supermercados
     const loadSupermarkets = async () => {
         try {
-            const response = await fetch(`/api/supermarkets/public`);
+            const response = await authenticatedFetch(`/api/supermarkets/public`);
             if (!response.ok) throw new Error('Falha ao carregar mercados.');
             const data = await response.json();
             buildSupermarketFilters(data);
@@ -438,7 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Nova busca - CORRIGIDA
+    // Nova busca
     const performSearch = async (isRealtime = false) => {
         const query = searchInput.value.trim();
         if (query.length < 3) {
@@ -457,21 +419,38 @@ document.addEventListener('DOMContentLoaded', () => {
         resultsFilters.style.display = 'none';
 
         try {
-            let response;
+            let session = null;
             
             if (isRealtime) {
-                // CORREÇÃO: Usar a função authenticatedFetch para garantir autenticação
-                response = await authenticatedFetch('/api/realtime-search', {
-                    method: 'POST',
-                    body: JSON.stringify({ produto: query, cnpjs: selectedCnpjs })
-                });
-            } else {
-                // Busca normal (pública)
-                let url = `/api/search?q=${encodeURIComponent(query)}`;
-                if (selectedCnpjs.length > 0) {
-                    url += `&${selectedCnpjs.map(cnpj => `cnpjs=${cnpj}`).join('&')}`;
+                session = await getSession();
+                if (!session) {
+                    showMessage('Sua sessão expirou. Faça login novamente.');
+                    setTimeout(() => window.location.href = '/login.html', 1200);
+                    return;
                 }
-                response = await fetch(url);
+            }
+            
+            const headers = { 'Content-Type': 'application/json' };
+            if (session) {
+                headers['Authorization'] = `Bearer ${session.access_token}`;
+            }
+
+            let url = '', options = {};
+            if (isRealtime) {
+                url = `/api/realtime-search`;
+                options = { method: 'POST', headers, body: JSON.stringify({ produto: query, cnpjs: selectedCnpjs }) };
+            } else {
+                url = `/api/search?q=${encodeURIComponent(query)}`;
+                if (selectedCnpjs.length > 0) url += `&${selectedCnpjs.map(cnpj => `cnpjs=${cnpj}`).join('&')}`;
+                options = { method: 'GET', headers };
+            }
+
+            const response = await authenticatedFetch(url, options);
+            
+            if (response.status === 401) {
+                showMessage('Sua sessão expirou. Faça login novamente.');
+                setTimeout(() => window.location.href = '/login.html', 1200);
+                return;
             }
             
             if (!response.ok) {
@@ -487,15 +466,9 @@ document.addEventListener('DOMContentLoaded', () => {
             showNotification(`Encontramos ${currentResults.length} resultado(s) para "${query}"`);
 
         } catch (error) {
-            console.error('Erro na busca:', error);
-            
-            if (error.message.includes('Sessão expirada')) {
-                showMessage('Sua sessão expirou. Redirecionando para login...');
-                setTimeout(() => window.location.href = '/login.html', 1500);
-            } else {
-                showMessage(`Erro na busca: ${error.message}`);
-                showNotification('Erro ao realizar a busca', 'error');
-            }
+            console.error(error);
+            showMessage(`Erro na busca: ${error.message}`);
+            showNotification('Erro ao realizar a busca', 'error');
         } finally {
             showLoader(false);
         }
@@ -548,12 +521,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const session = await getSession();
             if (session && session.user) {
-                const userName = document.querySelector('.user-name');
-                const userRole = document.querySelector('.user-role');
+                const userName = document.getElementById('userName');
                 const userAvatar = document.getElementById('userAvatar');
                 
                 if (userName) userName.textContent = session.user.email || 'Usuário';
-                if (userRole) userRole.textContent = session.user.role || 'Usuário';
                 if (userAvatar) userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(session.user.email || 'U')}&background=3b82f6&color=fff`;
             }
         } catch (error) {
