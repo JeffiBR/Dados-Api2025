@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sortFilter = document.getElementById('sortFilter');
     const clearFiltersButton = document.getElementById('clearFiltersButton');
     
-    // Elementos do menu (igual ao admin.html)
+    // Elementos do menu
     const mobileMenuBtn = document.getElementById('mobileMenuBtn');
     const sidebar = document.querySelector('.sidebar');
     const sidebarOverlay = document.getElementById('sidebarOverlay');
@@ -33,8 +33,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentQuery = '';
     let allMarkets = [];
 
-    // Função para obter a sessão do usuário
-    const getSession = async () => {
+    // Função para obter a sessão do usuário - CORRIGIDA
+    const getSession = () => {
         try {
             const token = localStorage.getItem('supabase.auth.token');
             if (!token) return null;
@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const tokenData = JSON.parse(token);
             if (!tokenData || !tokenData.access_token) return null;
             
+            // Verificar se o token expirou
             const currentTime = Math.floor(Date.now() / 1000);
             if (tokenData.expires_at && tokenData.expires_at < currentTime) {
                 localStorage.removeItem('supabase.auth.token');
@@ -51,26 +52,32 @@ document.addEventListener('DOMContentLoaded', () => {
             return tokenData;
         } catch (error) {
             console.error('Erro ao obter sessão:', error);
+            localStorage.removeItem('supabase.auth.token');
             return null;
         }
     };
 
-    // Função para fazer requisições autenticadas
+    // Função para fazer requisições autenticadas - CORRIGIDA
     const authenticatedFetch = async (url, options = {}) => {
-        const session = await getSession();
+        const session = getSession();
         const headers = {
             'Content-Type': 'application/json',
             ...options.headers
         };
         
-        if (session) {
+        if (session && session.access_token) {
             headers['Authorization'] = `Bearer ${session.access_token}`;
         }
         
-        return fetch(url, { ...options, headers });
+        console.log('Fetch headers:', headers); // Para debug
+        
+        return fetch(url, { 
+            ...options, 
+            headers 
+        });
     };
 
-    // Menu mobile (igual ao admin.html)
+    // Menu mobile
     if (mobileMenuBtn) {
         mobileMenuBtn.addEventListener('click', () => {
             sidebar.classList.toggle('active');
@@ -85,7 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Dropdown do usuário (igual ao admin.html)
+    // Dropdown do usuário
     if (userMenuBtn) {
         userMenuBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -93,12 +100,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Fechar dropdown ao clicar fora (igual ao admin.html)
+    // Fechar dropdown ao clicar fora
     document.addEventListener('click', () => {
         userDropdown.classList.remove('show');
     });
 
-    // Logout (igual ao admin.html)
+    // Logout
     if (logoutBtn) {
         logoutBtn.addEventListener('click', (e) => {
             e.preventDefault();
@@ -107,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Toggle do tema (igual ao admin.html)
+    // Toggle do tema
     if (themeToggle) {
         themeToggle.addEventListener('click', () => {
             document.body.classList.toggle('light-mode');
@@ -238,7 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
         filterMarkets(e.target.value);
     });
 
-    // Renderização de cards de produto - ATUALIZADA
+    // Renderização de cards de produto
     const buildProductCard = (item, allItemsInResult) => {
         const price = typeof item.preco_produto === 'number' ? 
             `R$ ${item.preco_produto.toFixed(2).replace('.', ',')}` : 'N/A';
@@ -273,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>`;
     };
 
-    // Função para aplicar filtros aos resultados - ATUALIZADA
+    // Função para aplicar filtros aos resultados
     const applyFilters = () => {
         if (currentResults.length === 0) return;
         
@@ -307,7 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
         displayFilteredResults(filteredResults);
     };
 
-    // Exibir resultados filtrados - ATUALIZADA
+    // Exibir resultados filtrados
     const displayFilteredResults = (results) => {
         if (results.length === 0) {
             resultsGrid.innerHTML = `
@@ -381,7 +388,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Nova busca - ATUALIZADA com a lógica fornecida
+    // Nova busca - CORRIGIDA com melhor tratamento de autenticação
     const performSearch = async (isRealtime = false) => {
         const query = searchInput.value.trim();
         if (query.length < 3) {
@@ -393,6 +400,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isRealtime && selectedCnpjs.length === 0) {
             showMessage('Selecione ao menos um supermercado para busca em tempo real.');
             return;
+        }
+
+        // Verificar autenticação para busca em tempo real
+        if (isRealtime) {
+            const session = getSession();
+            if (!session) {
+                showMessage('Sua sessão expirou. Faça login novamente para buscar em tempo real.');
+                setTimeout(() => {
+                    window.location.href = '/login.html';
+                }, 2000);
+                return;
+            }
         }
 
         showLoader(true);
@@ -409,13 +428,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             } else {
                 let url = `/api/search?q=${encodeURIComponent(query)}`;
-                if (selectedCnpjs.length > 0) url += `&${selectedCnpjs.map(cnpj => `cnpjs=${cnpj}`).join('&')}`;
-                response = await authenticatedFetch(url);
+                if (selectedCnpjs.length > 0) {
+                    url += `&${selectedCnpjs.map(cnpj => `cnpjs=${cnpj}`).join('&')}`;
+                }
+                response = await fetch(url); // Busca normal não precisa de autenticação
             }
 
+            if (response.status === 401) {
+                showMessage('Sua sessão expirou. Faça login novamente.');
+                setTimeout(() => {
+                    window.location.href = '/login.html';
+                }, 2000);
+                return;
+            }
+            
             if (!response.ok) { 
-                const err = await response.json(); 
-                throw new Error(err.detail || `Erro ${response.status} na API.`); 
+                const errorText = await response.text();
+                let errorDetail = `Erro ${response.status} na API.`;
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    errorDetail = errorJson.detail || errorDetail;
+                } catch (e) {
+                    errorDetail = errorText || errorDetail;
+                }
+                throw new Error(errorDetail);
             }
             
             const data = await response.json();
@@ -431,7 +467,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showNotification(`Encontramos ${currentResults.length} resultado(s) para "${query}"`);
             }
         } catch (error) {
-            console.error(error);
+            console.error('Erro na busca:', error);
             showMessage(`Erro na busca: ${error.message}`);
             showNotification('Erro ao realizar a busca', 'error');
         } finally {
@@ -446,7 +482,7 @@ document.addEventListener('DOMContentLoaded', () => {
         applyFilters();
     };
 
-    // Limpar busca - ATUALIZADA
+    // Limpar busca
     const clearSearch = () => {
         searchInput.value = '';
         clearSearchButton.style.display = 'none';
@@ -455,7 +491,7 @@ document.addEventListener('DOMContentLoaded', () => {
         searchInput.focus();
     };
 
-    // Eventos - ATUALIZADOS
+    // Eventos
     clearSearchButton.addEventListener('click', clearSearch);
     
     // Mostrar/ocultar botão de limpar busca
@@ -474,16 +510,20 @@ document.addEventListener('DOMContentLoaded', () => {
     sortFilter.addEventListener('change', applyFilters);
     clearFiltersButton.addEventListener('click', clearFilters);
 
-    // Carregar informações do usuário (igual ao admin.html)
+    // Carregar informações do usuário
     const loadUserInfo = async () => {
         try {
-            const session = await getSession();
+            const session = getSession();
             if (session && session.user) {
-                const userName = document.getElementById('userName');
+                const userName = document.querySelector('.user-name');
+                const userRole = document.querySelector('.user-role');
                 const userAvatar = document.getElementById('userAvatar');
                 
                 if (userName) userName.textContent = session.user.email || 'Usuário';
-                if (userAvatar) userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(session.user.email || 'U')}&background=3b82f6&color=fff`;
+                if (userRole) userRole.textContent = session.user.role || 'Usuário';
+                if (userAvatar) {
+                    userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(session.user.email || 'U')}&background=3b82f6&color=fff`;
+                }
             }
         } catch (error) {
             console.error('Erro ao carregar informações do usuário:', error);
