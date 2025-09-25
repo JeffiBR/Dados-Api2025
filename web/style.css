@@ -3017,6 +3017,9 @@ body.light-mode .search-input-group input {
     background: var(--primary);
     color: white;
 }
+
+/* style.css - Adicionar estas regras CSS */
+
 /* Cores para os preços: menor -> verde, maior -> vermelho, demais -> branco */
 .product-price {
     color: #ffffff; /* padrão: branco */
@@ -3024,12 +3027,12 @@ body.light-mode .search-input-group input {
 }
 
 /* menor preço */
-.product-price.price-min {
+.product-price.cheapest-price {
     color: #16a34a; /* verde (Tailwind green-600) */
 }
 
 /* maior preço */
-.product-price.price-max {
+.product-price.expensive-price {
     color: #ef4444; /* vermelho (Tailwind red-500) */
 }
 
@@ -3038,5 +3041,46 @@ body.light-mode .product-price {
     color: #111827; /* quase preto em light-mode */
 }
 
+body.light-mode .product-price.cheapest-price {
+    color: #16a34a; /* verde mantém igual */
+}
 
+body.light-mode .product-price.expensive-price {
+    color: #ef4444; /* vermelho mantém igual */
+}
 
+/* Melhorar visualização dos indicadores de média */
+.avg-indicator {
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.avg-indicator.above {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.avg-indicator.below {
+    background: rgba(22, 163, 74, 0.1);
+    color: #16a34a;
+}
+
+/* Destacar cards com preços extremos */
+.product-card .price-section {
+    position: relative;
+}
+
+.product-card .cheapest-price::before {
+    content: "↓";
+    margin-right: 0.3rem;
+    font-weight: bold;
+}
+
+.product-card .expensive-price::before {
+    content: "↑";
+    margin-right: 0.3rem;
+    font-weight: bold;
+}
