@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Fechar dropdown ao clicar fora (igual ao admin.html)
     document.addEventListener('click', () => {
-        userDropdown.classList.remove('show');
+        if (userDropdown) userDropdown.classList.remove('show');
     });
 
     // Logout (igual ao admin.html)
@@ -139,7 +139,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Atualizar contador de seleção
     const updateSelectionCount = () => {
         const selected = document.querySelectorAll('.market-card.selected').length;
-        selectionCount.textContent = `${selected} selecionados`;
+        if (selectionCount) {
+            selectionCount.textContent = `${selected} selecionados`;
+        }
     };
 
     // Filtrar mercados na pesquisa
@@ -196,34 +198,42 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Selecionar/Deselecionar todos os mercados
-    selectAllMarkets.addEventListener('click', () => {
-        document.querySelectorAll('.market-card').forEach(card => {
-            card.classList.add('selected');
-            card.querySelector('input').checked = true;
+    if (selectAllMarkets) {
+        selectAllMarkets.addEventListener('click', () => {
+            document.querySelectorAll('.market-card').forEach(card => {
+                card.classList.add('selected');
+                card.querySelector('input').checked = true;
+            });
+            updateSelectionCount();
         });
-        updateSelectionCount();
-    });
+    }
 
-    deselectAllMarkets.addEventListener('click', () => {
-        document.querySelectorAll('.market-card').forEach(card => {
-            card.classList.remove('selected');
-            card.querySelector('input').checked = false;
+    if (deselectAllMarkets) {
+        deselectAllMarkets.addEventListener('click', () => {
+            document.querySelectorAll('.market-card').forEach(card => {
+                card.classList.remove('selected');
+                card.querySelector('input').checked = false;
+            });
+            updateSelectionCount();
         });
-        updateSelectionCount();
-    });
+    }
 
     // Limpar pesquisa de mercados
-    clearMarketSearch.addEventListener('click', () => {
-        marketSearchInput.value = '';
-        filterMarkets('');
-    });
+    if (clearMarketSearch) {
+        clearMarketSearch.addEventListener('click', () => {
+            marketSearchInput.value = '';
+            filterMarkets('');
+        });
+    }
 
     // Pesquisa em tempo real nos mercados
-    marketSearchInput.addEventListener('input', (e) => {
-        filterMarkets(e.target.value);
-    });
+    if (marketSearchInput) {
+        marketSearchInput.addEventListener('input', (e) => {
+            filterMarkets(e.target.value);
+        });
+    }
 
-    // Renderização de cards de produto - MODIFICADA
+    // Renderização de cards de produto
     const buildProductCard = (item, index, allResults) => {
         const price = typeof item.preco_produto === 'number' ? 
             `R$ ${item.preco_produto.toFixed(2).replace('.', ',')}` : 'N/A';
@@ -236,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
         const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
         
-        // Determinar classe de preço - MODIFICADA
+        // Determinar classe de preço
         let priceClass = 'normal-price';
         if (prices.length > 1) {
             if (item.preco_produto === minPrice) {
@@ -286,7 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>`;
     };
 
-    // Função para aplicar filtros aos resultados - MODIFICADA
+    // Função para aplicar filtros aos resultados
     const applyFilters = () => {
         if (currentResults.length === 0) return;
         
@@ -298,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
             filteredResults = filteredResults.filter(item => item.cnpj_supermercado === selectedMarket);
         }
         
-        // Ordenar resultados - SEMPRE por preço crescente (MODIFICADO)
+        // Ordenar resultados - SEMPRE por preço crescente
         filteredResults.sort((a, b) => {
             const priceA = a.preco_produto || 0;
             const priceB = b.preco_produto || 0;
@@ -309,7 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
         displayFilteredResults(filteredResults);
     };
 
-    // Exibir resultados filtrados - MODIFICADA para usar ordenação por preço
+    // Exibir resultados filtrados
     const displayFilteredResults = (results) => {
         if (results.length === 0) {
             resultsGrid.innerHTML = `
@@ -387,13 +397,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    // Carregar supermercados
+    // Carregar supermercados - CORRIGIDA
     const loadSupermarkets = async () => {
         try {
             const session = await getSession();
-let headers = { 'Content-Type': 'application/json' };
-if (session) headers['Authorization'] = `Bearer ${session.access_token}`;
-const response = await fetch(`/api/supermarkets/public`, { headers });
+            const headers = { 'Content-Type': 'application/json' };
+            if (session) headers['Authorization'] = `Bearer ${session.access_token}`;
+            
+            const response = await fetch(`/api/supermarkets/public`, { headers });
 
             if (!response.ok) throw new Error('Falha ao carregar mercados.');
             const data = await response.json();
@@ -404,7 +415,7 @@ const response = await fetch(`/api/supermarkets/public`, { headers });
         }
     };
 
-    // Nova busca
+    // Nova busca - CORRIGIDA (principal problema resolvido)
     const performSearch = async (isRealtime = false) => {
         const query = searchInput.value.trim();
         if (query.length < 3) {
@@ -420,7 +431,7 @@ const response = await fetch(`/api/supermarkets/public`, { headers });
 
         showLoader(true);
         resultsGrid.innerHTML = '';
-        resultsFilters.style.display = 'none';
+        if (resultsFilters) resultsFilters.style.display = 'none';
 
         try {
             let session = null;
@@ -439,25 +450,23 @@ const response = await fetch(`/api/supermarkets/public`, { headers });
                 headers['Authorization'] = `Bearer ${session.access_token}`;
             }
 
-            let url = '', options = {};
-           const session = await getSession();
-let headers = { 'Content-Type': 'application/json' };
-if (session) headers['Authorization'] = `Bearer ${session.access_token}`;
-
-let response;
-if (isRealtime) {
-    response = await fetch('/api/realtime-search', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ produto: query, cnpjs: selectedCnpjs })
-    });
-} else {
-    let url = `/api/search?q=${encodeURIComponent(query)}`;
-    if (selectedCnpjs.length > 0) {
-        url += `&${selectedCnpjs.map(cnpj => `cnpjs=${cnpj}`).join('&')}`;
-    }
-    response = await fetch(url, { headers });
-
+            let response;
+            
+            if (isRealtime) {
+                response = await fetch('/api/realtime-search', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ produto: query, cnpjs: selectedCnpjs })
+                });
+            } else {
+                let url = `/api/search?q=${encodeURIComponent(query)}`;
+                if (selectedCnpjs.length > 0) {
+                    selectedCnpjs.forEach(cnpj => {
+                        url += `&cnpjs=${cnpj}`;
+                    });
+                }
+                response = await fetch(url, { headers });
+            }
             
             if (response.status === 401) {
                 showMessage('Sua sessão expirou. Faça login novamente.');
@@ -478,7 +487,7 @@ if (isRealtime) {
             showNotification(`Encontramos ${currentResults.length} resultado(s) para "${query}"`);
 
         } catch (error) {
-            console.error(error);
+            console.error('Erro na busca:', error);
             showMessage(`Erro na busca: ${error.message}`);
             showNotification('Erro ao realizar a busca', 'error');
         } finally {
@@ -490,19 +499,19 @@ if (isRealtime) {
     const displayResults = (results, query) => {
         if (!results || results.length === 0) {
             showMessage(`Nenhum resultado para "${query}".`, 'gray');
-            resultsFilters.style.display = 'none';
+            if (resultsFilters) resultsFilters.style.display = 'none';
             return;
         }
         
-        resultsFilters.style.display = 'block';
+        if (resultsFilters) resultsFilters.style.display = 'block';
         updateMarketFilter(results);
         applyFilters();
     };
 
     // Limpar filtros
     const clearFilters = () => {
-        marketFilter.value = 'all';
-        sortFilter.value = 'recent';
+        if (marketFilter) marketFilter.value = 'all';
+        if (sortFilter) sortFilter.value = 'recent';
         applyFilters();
     };
 
@@ -510,25 +519,42 @@ if (isRealtime) {
     const clearSearch = () => {
         searchInput.value = '';
         resultsGrid.innerHTML = '';
-        resultsFilters.style.display = 'none';
+        if (resultsFilters) resultsFilters.style.display = 'none';
         searchInput.focus();
     };
 
     // Eventos
-    clearSearchButton.addEventListener('click', clearSearch);
-    clearFiltersButton.addEventListener('click', clearFilters);
+    if (clearSearchButton) {
+        clearSearchButton.addEventListener('click', clearSearch);
+    }
     
-    searchButton.addEventListener('click', () => performSearch(false));
-    realtimeSearchButton.addEventListener('click', () => performSearch(true));
+    if (clearFiltersButton) {
+        clearFiltersButton.addEventListener('click', clearFilters);
+    }
     
-    searchInput.addEventListener('keypress', (event) => {
-        if (event.key === 'Enter') performSearch(false);
-    });
+    if (searchButton) {
+        searchButton.addEventListener('click', () => performSearch(false));
+    }
     
-    marketFilter.addEventListener('change', applyFilters);
-    sortFilter.addEventListener('change', applyFilters);
+    if (realtimeSearchButton) {
+        realtimeSearchButton.addEventListener('click', () => performSearch(true));
+    }
+    
+    if (searchInput) {
+        searchInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') performSearch(false);
+        });
+    }
+    
+    if (marketFilter) {
+        marketFilter.addEventListener('change', applyFilters);
+    }
+    
+    if (sortFilter) {
+        sortFilter.addEventListener('change', applyFilters);
+    }
 
-    // Carregar informações do usuário (igual ao admin.html)
+    // Carregar informações do usuário
     const loadUserInfo = async () => {
         try {
             const session = await getSession();
