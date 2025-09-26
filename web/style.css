@@ -3084,3 +3084,85 @@ body.light-mode .product-price.expensive-price {
     margin-right: 0.3rem;
     font-weight: bold;
 }
+/* Estilos específicos para o menu do usuário */
+.admin-role {
+    color: var(--accent) !important;
+    font-weight: 700 !important;
+}
+
+.user-avatar {
+    border: 2px solid transparent;
+    transition: var(--transition);
+}
+
+.user-menu-btn:hover .user-avatar {
+    border-color: var(--accent);
+    box-shadow: 0 0 10px rgba(124, 58, 237, 0.3);
+}
+
+.user-info {
+    text-align: left;
+    min-width: 120px;
+}
+
+.user-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+}
+
+.user-role {
+    font-size: 0.8rem;
+    opacity: 0.8;
+    font-weight: 500;
+}
+
+/* Melhorias visuais para o dropdown */
+.user-dropdown.active {
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Badge para admin */
+.user-role.admin-role::before {
+    content: "👑 ";
+    font-size: 0.7em;
+}
+
+/* Responsividade melhorada */
+@media (max-width: 768px) {
+    .user-info {
+        min-width: auto;
+    }
+    
+    .user-name {
+        max-width: 100px;
+    }
+}
+
+@media (max-width: 480px) {
+    .user-name {
+        display: none;
+    }
+    
+    .user-role {
+        display: none;
+    }
+    
+    .user-menu-btn {
+        padding: 0.5rem;
+    }
+}
