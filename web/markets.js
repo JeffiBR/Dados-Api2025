@@ -8,12 +8,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const marketNameInput = document.getElementById('marketName');
     const marketCnpjInput = document.getElementById('marketCnpj');
 
-    // Função para obter a sessão do usuário
+ // Função para obter a sessão do usuário (com token atualizado)
     const getSession = async () => {
         try {
-            const { data: { session }, error } = await window.supabase.auth.getSession();
+            const { data, error } = await window.supabase.auth.getSession();
             if (error) throw error;
-            return session;
+            if (!data.session) return null;
+
+            // Confirma se ainda existe usuário válido
+            const { data: { user } } = await window.supabase.auth.getUser();
+            if (!user) return null;
+
+            return data.session;
         } catch (error) {
             console.error('Erro ao obter sessão:', error);
             return null;
