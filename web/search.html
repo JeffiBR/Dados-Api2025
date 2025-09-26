@@ -11,8 +11,9 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth.js"></script>
+    <script src="theme.js"></script> <!-- Adicione esta linha -->
 </head>
-<body class="theme-dark">
+<body class="theme-dark"> <!-- A classe será gerenciada pelo theme.js -->
     <script>routeGuard();</script>
 
     <div class="app-container">
@@ -41,10 +42,13 @@
             </nav>
             <div class="theme-switcher">
                 <span>Tema</span>
-                <button id="themeToggle"><i class="fas fa-moon"></i></button>
+                <button id="themeToggle" aria-label="Alternar tema">
+                    <i class="fas fa-moon"></i> <!-- Será atualizado automaticamente -->
+                </button>
             </div>
         </aside>
 
+        <!-- Resto do HTML permanece exatamente igual -->
         <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
         <div class="main-content">
