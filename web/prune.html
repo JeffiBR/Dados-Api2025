@@ -2,7 +2,6 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Limpeza de Dados</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,6 +10,7 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth.js"></script>
+    <script src="theme.js"></script>
 </head>
 <body class="theme-dark">
     <script>routeGuard('prune');</script>
@@ -41,7 +41,9 @@
             </nav>
             <div class="theme-switcher">
                 <span>Tema</span>
-                <button id="themeToggle"><i class="fas fa-moon"></i></button>
+                <button id="themeToggle" aria-label="Alternar tema">
+                    <i class="fas fa-moon"></i>
+                </button>
             </div>
         </aside>
 
@@ -83,10 +85,13 @@
 
             <div class="page-content">
                 <main class="admin-panel">
-                    <div class="form-container">
+                    <div class="panel-header">
+                        <i class="fas fa-broom"></i>
                         <h2>Limpeza Granular de Dados</h2>
-                        <p>Esta ferramenta permite apagar dados de coletas específicas para um supermercado.</p>
-                        
+                    </div>
+                    <p class="panel-description">Esta ferramenta permite apagar dados de coletas específicas para um supermercado.</p>
+                    
+                    <div class="form-container">
                         <div class="form-group full-width">
                             <label for="marketSelect">1. Selecione o Supermercado</label>
                             <select id="marketSelect">
@@ -96,18 +101,18 @@
                         
                         <div id="collectionsContainer" class="form-group full-width" style="display: none;">
                             <label>2. Marque as coletas que deseja apagar</label>
-                            <div id="collectionsCheckboxList" class="supermarket-list">
-                            </div>
+                            <div id="collectionsCheckboxList" class="supermarket-list"></div>
                         </div>
 
-                        <button id="pruneButton" class="btn full-width" style="background-color: var(--danger-color);" disabled>Deletar Coletas Selecionadas</button>
-                        <div id="resultMessage" style="grid-column: 1 / -1; text-align: center; margin-top: 1rem;"></div>
+                        <button id="pruneButton" class="btn danger full-width" disabled>
+                            <i class="fas fa-trash"></i> Deletar Coletas Selecionadas
+                        </button>
+                        <div id="resultMessage" class="result-message"></div>
                     </div>
                 </main>
             </div>
         </div>
     </div>
-    
     <script src="prune.js"></script>
 </body>
 </html>
