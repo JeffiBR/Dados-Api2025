@@ -13,101 +13,7 @@
     <script src="auth.js"></script>
     
     <style>
-        /* Estilos específicos para os botões de ação */
-        .actions {
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .edit-btn, .delete-btn {
-            border: none;
-            border-radius: 6px;
-            padding: 8px 16px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            text-decoration: none;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            font-family: 'Inter', sans-serif;
-        }
-
-        .edit-btn {
-            background: linear-gradient(135deg, #3498db, #2980b9);
-            color: white;
-            border: 1px solid #2980b9;
-        }
-
-        .edit-btn:hover {
-            background: linear-gradient(135deg, #2980b9, #1f639c);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(41, 128, 185, 0.3);
-        }
-
-        .edit-btn:active {
-            transform: translateY(0);
-            box-shadow: 0 2px 4px rgba(41, 128, 185, 0.3);
-        }
-
-        .delete-btn {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
-            color: white;
-            border: 1px solid #c0392b;
-        }
-
-        .delete-btn:hover {
-            background: linear-gradient(135deg, #c0392b, #a93226);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(231, 76, 60, 0.3);
-        }
-
-        .delete-btn:active {
-            transform: translateY(0);
-            box-shadow: 0 2px 4px rgba(231, 76, 60, 0.3);
-        }
-
-        /* Estados desabilitados */
-        .edit-btn:disabled, .delete-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none !important;
-        }
-
-        .edit-btn:disabled:hover, .delete-btn:disabled:hover {
-            background: inherit;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        /* Efeito de loading */
-        .fa-spinner {
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Responsividade */
-        @media (max-width: 768px) {
-            .actions {
-                flex-direction: column;
-                gap: 6px;
-            }
-            
-            .edit-btn, .delete-btn {
-                padding: 6px 12px;
-                font-size: 13px;
-                justify-content: center;
-            }
-        }
-
-        /* Estilos para a tabela */
+        /* ESTILOS ESPECÍFICOS APENAS PARA ELEMENTOS ÚNICOS DESTA PÁGINA */
         .table-container {
             background: var(--card-bg);
             border-radius: 10px;
@@ -148,38 +54,26 @@
             background: var(--hover-color);
         }
 
-        /* Botões principais do formulário */
-        #saveButton, #cancelButton {
-            display: inline-flex;
-            align-items: center;
+        /* Container das ações - mantido para alinhamento */
+        .actions {
+            display: flex;
             gap: 8px;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
+            justify-content: center;
+            flex-wrap: wrap;
         }
 
-        #saveButton {
-            background: linear-gradient(135deg, #27ae60, #219653);
-            color: white;
-        }
-
-        #saveButton:hover {
-            background: linear-gradient(135deg, #219653, #1e8449);
-            transform: translateY(-2px);
-        }
-
-        #cancelButton {
-            background: #7f8c8d;
-            color: white;
-            margin-left: 10px;
-        }
-
-        #cancelButton:hover {
-            background: #6c7a7d;
-            transform: translateY(-2px);
+        /* Responsividade para ações */
+        @media (max-width: 768px) {
+            .actions {
+                flex-direction: column;
+                gap: 6px;
+            }
+            
+            .actions .btn {
+                padding: 6px 12px;
+                font-size: 13px;
+                justify-content: center;
+            }
         }
     </style>
 </head>
@@ -292,7 +186,6 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <!-- Conteúdo dinâmico será inserido aqui -->
                                 <tr>
                                     <td colspan="3" style="text-align: center; padding: 2rem;">
                                         <i class="fas fa-spinner fa-spin"></i> Carregando mercados...
