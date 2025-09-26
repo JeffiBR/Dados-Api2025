@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth.js"></script>
+    <script src="theme.js"></script>
 </head>
 <body class="theme-dark page-collections">
     <script>routeGuard('collections');</script>
@@ -41,7 +42,9 @@
             </nav>
             <div class="theme-switcher">
                 <span>Tema</span>
-                <button id="themeToggle"><i class="fas fa-moon"></i></button>
+                <button id="themeToggle" aria-label="Alternar tema">
+                    <i class="fas fa-moon"></i>
+                </button>
             </div>
         </aside>
 
@@ -138,86 +141,5 @@
     </div>
     
     <script src="collections.js"></script>
-    <script>
-        // Adicionando funcionalidades de filtro e melhorias na interface
-        document.addEventListener('DOMContentLoaded', () => {
-            // Inicializar filtros
-            const statusFilter = document.getElementById('statusFilter');
-            const dateFilter = document.getElementById('dateFilter');
-            const searchInput = document.getElementById('searchInput');
-            
-            // Função para aplicar filtros
-            const applyFilters = () => {
-                const statusValue = statusFilter.value;
-                const dateValue = dateFilter.value;
-                const searchValue = searchInput.value.toLowerCase();
-                
-                const rows = document.querySelectorAll('#collectionsTable tbody tr:not(.details-row)');
-                
-                rows.forEach(row => {
-                    let showRow = true;
-                    
-                    // Filtrar por status
-                    if (statusValue !== 'all') {
-                        const statusCell = row.querySelector('td:nth-child(3)');
-                        if (statusCell.textContent.toLowerCase() !== statusValue) {
-                            showRow = false;
-                        }
-                    }
-                    
-                    // Filtrar por data (implementação básica)
-                    if (dateValue !== 'all' && showRow) {
-                        const dateCell = row.querySelector('td:nth-child(2)');
-                        const cellDate = new Date(dateCell.getAttribute('data-date'));
-                        const today = new Date();
-                        
-                        if (dateValue === 'today') {
-                            if (cellDate.toDateString() !== today.toDateString()) {
-                                showRow = false;
-                            }
-                        } else if (dateValue === 'week') {
-                            const weekStart = new Date(today);
-                            weekStart.setDate(today.getDate() - today.getDay());
-                            weekStart.setHours(0, 0, 0, 0);
-                            
-                            if (cellDate < weekStart) {
-                                showRow = false;
-                            }
-                        } else if (dateValue === 'month') {
-                            if (cellDate.getMonth() !== today.getMonth() || 
-                                cellDate.getFullYear() !== today.getFullYear()) {
-                                showRow = false;
-                            }
-                        }
-                    }
-                    
-                    // Filtrar por busca
-                    if (searchValue && showRow) {
-                        const idCell = row.querySelector('td:first-child');
-                        const dateCell = row.querySelector('td:nth-child(2)');
-                        
-                        if (!idCell.textContent.toLowerCase().includes(searchValue) && 
-                            !dateCell.textContent.toLowerCase().includes(searchValue)) {
-                            showRow = false;
-                        }
-                    }
-                    
-                    // Mostrar/ocultar linha
-                    row.style.display = showRow ? '' : 'none';
-                    
-                    // Ocultar também a linha de detalhes se existir
-                    const detailsRow = document.getElementById(`details-${row.querySelector('.details-btn').dataset.id}`);
-                    if (detailsRow) {
-                        detailsRow.style.display = showRow ? '' : 'none';
-                    }
-                });
-            };
-            
-            // Adicionar event listeners para os filtros
-            statusFilter.addEventListener('change', applyFilters);
-            dateFilter.addEventListener('change', applyFilters);
-            searchInput.addEventListener('input', applyFilters);
-        });
-    </script>
 </body>
 </html>
