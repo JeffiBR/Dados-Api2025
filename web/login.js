@@ -1,63 +1,46 @@
 // web/login.js
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('[DEBUG] Página carregada. O script login.js está executando.');
-
     const loginButton = document.getElementById('loginButton');
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
     const errorMessage = document.getElementById('errorMessage');
 
-    if (!loginButton) {
-        console.error('[DEBUG] ERRO CRÍTICO: Botão de login #loginButton não encontrado!');
-        return;
-    }
-    console.log('[DEBUG] Botão de login encontrado com sucesso.');
-
-    // Função para limpar a mensagem de erro
-    function clearError() {
-        if (errorMessage.textContent) {
-            errorMessage.textContent = '';
+    // Verifica se o usuário já está logado ao carregar a página de login
+    (async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+            // Se já há uma sessão, tenta ir para a página principal
+            window.location.replace('/search.html');
         }
-    }
+    })();
 
-    emailInput.addEventListener('input', clearError);
-    passwordInput.addEventListener('input', clearError);
 
     loginButton.addEventListener('click', async (e) => {
-        console.log('[DEBUG] Botão "Entrar" foi clicado!');
-        e.preventDefault(); // Previne o envio padrão do formulário
-
+        e.preventDefault();
         errorMessage.textContent = '';
         loginButton.disabled = true;
         loginButton.textContent = 'Entrando...';
 
         const email = emailInput.value;
         const password = passwordInput.value;
-        console.log(`[DEBUG] Email: ${email}, Senha: [oculta]`);
 
         try {
-            console.log('[DEBUG] Entrando no bloco try... prestes a chamar o Supabase.');
-            
             const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-            
-            console.log('[DEBUG] Chamada ao Supabase concluída.');
+            if (error) throw error;
 
-            if (error) {
-                console.error('[DEBUG] Supabase retornou um erro:', error);
-                throw error;
-            }
-
-            console.log('[DEBUG] Login bem-sucedido! Redirecionando...');
+            // Lógica de redirecionamento inteligente
             const urlParams = new URLSearchParams(window.location.search);
             const redirectUrl = urlParams.get('redirect');
+
+            // Usar 'replace' previne que a página de login entre no histórico do navegador,
+            // evitando loops de login ao clicar em "voltar".
             window.location.replace(redirectUrl || '/search.html');
 
         } catch (error) {
-            console.error('[DEBUG] Erro capturado no bloco catch:', error.message);
-            errorMessage.textContent = 'E-mail ou senha inválidos. Tente novamente.';
+            errorMessage.textContent = 'Email ou senha inválidos.';
+            console.error('Erro de login:', error.message);
         } finally {
-            console.log('[DEBUG] Executando bloco finally.');
             loginButton.disabled = false;
             loginButton.textContent = 'Entrar';
         }
