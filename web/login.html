@@ -4,40 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Admin Preços AL</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="login.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth.js"></script>
-    <script src="theme.js"></script>
 </head>
-<body>
-    <button id="themeToggle" class="theme-toggle">
-        <i class="fas fa-moon"></i>
-    </button>
-
-    <div class="login-container">
-        <div class="login-header">
-            <h1>Admin Preços AL</h1>
-            <p>Acesso restrito ao sistema</p>
-        </div>
+<body style="display: flex; justify-content: center; align-items: center; height: 100vh;">
+    <div class="form-container" style="max-width: 400px; width: 100%;">
+        <h2 style="text-align: center;">Acesso Restrito</h2>
         
-        <div class="form-group">
-            <label for="email"><i class="fas fa-envelope"></i> Email</label>
-            <input type="email" id="email" placeholder="Seu email" required>
-        </div>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Senha</label>
+                <input type="password" id="password" required>
+            </div>
+            <button id="loginButton" class="full-width">Entrar</button>
+        </form>
         
-        <div class="form-group">
-            <label for="password"><i class="fas fa-lock"></i> Senha</label>
-            <input type="password" id="password" placeholder="Sua senha" required>
-        </div>
-        
-        <button id="loginButton" class="btn">
-            <i class="fas fa-sign-in-alt"></i> Entrar
-        </button>
-        
-        <p id="errorMessage" class="error-message"></p>
+        <p id="errorMessage" style="color: var(--danger-color); text-align: center; margin-top: 1rem;"></p>
     </div>
-
     <script src="login.js"></script>
 </body>
 </html>
