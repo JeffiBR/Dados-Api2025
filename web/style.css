@@ -3166,3 +3166,85 @@ body.light-mode .product-price.expensive-price {
         padding: 0.5rem;
     }
 }
+
+
+/* Estilos específicos para o botão hamburger do menu mobile */
+.mobile-menu-button, .mobile-menu-btn {
+    display: none;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 30px;
+    height: 21px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    z-index: 102;
+}
+
+.mobile-menu-button span, .mobile-menu-btn span {
+    display: block;
+    height: 3px;
+    width: 100%;
+    background-color: var(--text-dark);
+    border-radius: 3px;
+    transition: var(--transition);
+}
+
+body.light-mode .mobile-menu-button span,
+body.light-mode .mobile-menu-btn span {
+    background-color: var(--text-light);
+}
+
+/* Animação do hamburger quando menu está aberto */
+.sidebar.open ~ .main-content .mobile-menu-button span:nth-child(1),
+.sidebar.open ~ .main-content .mobile-menu-btn span:nth-child(1) {
+    transform: rotate(45deg) translate(5px, 5px);
+}
+
+.sidebar.open ~ .main-content .mobile-menu-button span:nth-child(2),
+.sidebar.open ~ .main-content .mobile-menu-btn span:nth-child(2) {
+    opacity: 0;
+}
+
+.sidebar.open ~ .main-content .mobile-menu-button span:nth-child(3),
+.sidebar.open ~ .main-content .mobile-menu-btn span:nth-child(3) {
+    transform: rotate(-45deg) translate(7px, -6px);
+}
+
+/* Media query para mobile */
+@media (max-width: 768px) {
+    .mobile-menu-button, .mobile-menu-btn {
+        display: flex !important;
+    }
+    
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+    
+    .sidebar.open {
+        transform: translateX(0);
+    }
+    
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+    }
+    
+    /* Overlay para fundo quando menu está aberto */
+    .sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 99;
+        display: none;
+    }
+    
+    .sidebar-overlay.show {
+        display: block;
+    }
+}
