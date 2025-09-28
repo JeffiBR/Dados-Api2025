@@ -74,17 +74,19 @@ document.addEventListener('DOMContentLoaded', function() {
                             email: payload.email,
                             name: payload.user_metadata?.name || payload.email?.split('@')[0] || 'Usuário',
                             role: payload.user_metadata?.role || 'user',
-                            avatar: payload.user_metadata?.avatar_url || null
+                            avatar: payload.user_metadata?.avatar_url || null,
+                            permissions: payload.user_metadata?.permissions || ['search', 'compare']
                         };
                     }
                 }
                 
-                // Último fallback
+                // Último fallback - dados mínimos para mostrar menu
                 return {
                     name: 'Usuário',
                     role: 'user',
                     email: '',
-                    avatar: null
+                    avatar: null,
+                    permissions: ['search', 'compare'] // Permissões básicas
                 };
                 
             } catch (error) {
@@ -147,23 +149,45 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         checkPermissions(userData) {
-            // Esconder itens do menu baseado nas permissões
+            console.log('Verificando permissões para:', userData);
+            
+            // Primeiro, garantir que todos os itens do menu estejam visíveis
+            const allMenuItems = document.querySelectorAll('.sidebar-nav li');
+            allMenuItems.forEach(item => {
+                item.style.display = 'flex';
+            });
+            
+            // Agora esconder apenas os itens que o usuário NÃO tem permissão
             const permissionItems = document.querySelectorAll('[data-permission]');
             
             permissionItems.forEach(item => {
                 const requiredPermission = item.getAttribute('data-permission');
                 
-                // Admin tem acesso a tudo
+                // Admin tem acesso a tudo - NÃO esconder nada
                 if (userData.role === 'admin') {
+                    console.log('Admin - mostrando tudo');
                     item.style.display = 'flex';
                     return;
                 }
                 
                 // Verificar se o usuário tem a permissão específica
-                const hasPermission = userData.permissions?.includes(requiredPermission) || 
+                const userPermissions = userData.permissions || [];
+                const hasPermission = userPermissions.includes(requiredPermission) || 
                                     userData.role === requiredPermission;
                 
-                item.style.display = hasPermission ? 'flex' : 'none';
+                console.log(`Permissão ${requiredPermission}: ${hasPermission ? 'SIM' : 'NÃO'}`);
+                
+                if (!hasPermission) {
+                    item.style.display = 'none';
+                } else {
+                    item.style.display = 'flex';
+                }
+            });
+            
+            // Garantir que os headers das seções não sejam escondidos
+            const navHeaders = document.querySelectorAll('.nav-header');
+            navHeaders.forEach(header => {
+                header.style.display = 'block';
             });
         }
 
@@ -280,6 +304,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (this.userName) this.userName.textContent = 'Erro ao carregar';
             if (this.userRole) this.userRole.textContent = '---';
             this.setDefaultAvatar({ name: 'Erro', role: 'user' });
+            
+            // Garantir que o menu lateral apareça mesmo com erro
+            this.ensureMenuVisibility();
         }
 
         handleNoUserData() {
@@ -287,10 +314,26 @@ document.addEventListener('DOMContentLoaded', function() {
             if (this.userRole) this.userRole.textContent = '---';
             this.showNotification('Usuário não autenticado', 'warning');
             
+            // Garantir que o menu lateral apareça
+            this.ensureMenuVisibility();
+            
             // Redirecionar para login após delay
             setTimeout(() => {
                 window.location.href = '/login.html';
             }, 2000);
+        }
+
+        ensureMenuVisibility() {
+            // Garantir que todos os itens do menu lateral estejam visíveis
+            const allMenuItems = document.querySelectorAll('.sidebar-nav li');
+            allMenuItems.forEach(item => {
+                item.style.display = 'flex';
+            });
+            
+            const navHeaders = document.querySelectorAll('.nav-header');
+            navHeaders.forEach(header => {
+                header.style.display = 'block';
+            });
         }
 
         showNotification(message, type = 'info') {
