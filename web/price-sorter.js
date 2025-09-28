@@ -1,4 +1,4 @@
-// price-sorter.js - Ordenação e coloração de preços (versão corrigida)
+// price-sorter.js - Ordenação e coloração de preços (versão sem piscagem)
 document.addEventListener('DOMContentLoaded', () => {
     // Verificar se estamos na página de busca
     if (!document.getElementById('resultsGrid')) return;
@@ -21,6 +21,8 @@ function initializePriceSorter() {
     let minPrice = 0;
     let maxPrice = 0;
     let currentResults = [];
+    let isProcessing = false;
+    let isSorting = false;
     
     // Adicionar listener para o filtro de ordenação
     sortFilter.addEventListener('change', handleSortChange);
@@ -46,38 +48,56 @@ function initializePriceSorter() {
     }
     
     function handleSortChange() {
-        if (sortFilter.value === 'cheap') {
+        if (sortFilter.value === 'cheap' && !isSorting) {
             applyPriceSorting();
+        } else if (sortFilter.value !== 'cheap') {
+            // Se mudou para outra ordenação, remover as cores especiais
+            removePriceColors();
         }
     }
     
     function observeResultsGrid() {
         // Observar mudanças no grid de resultados
         const observer = new MutationObserver((mutations) => {
-            let shouldProcess = false;
+            // Se já está processando, ignora novas mutações
+            if (isProcessing || isSorting) return;
+            
+            let hasNewProducts = false;
             
             mutations.forEach((mutation) => {
-                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                    shouldProcess = true;
+                if (mutation.type === 'childList') {
+                    // Verifica se foram adicionados novos product-cards
+                    mutation.addedNodes.forEach(node => {
+                        if (node.nodeType === 1 && (node.classList?.contains('product-card') || 
+                            node.querySelector?.('.product-card'))) {
+                            hasNewProducts = true;
+                        }
+                    });
                 }
             });
             
-            if (shouldProcess) {
+            if (hasNewProducts) {
+                isProcessing = true;
+                
                 // Aguardar um pouco para garantir que os resultados foram renderizados
                 setTimeout(() => {
                     processResults();
-                    // Se a ordenação por preço estiver ativa, reordenar após novos resultados
-                    if (sortFilter.value === 'cheap') {
-                        setTimeout(applyPriceSorting, 100);
-                    }
+                    isProcessing = false;
                 }, 300);
             }
         });
         
-        observer.observe(resultsGrid, { childList: true, subtree: true });
+        observer.observe(resultsGrid, { 
+            childList: true, 
+            subtree: true 
+        });
         
         // Processar resultados iniciais
-        setTimeout(processResults, 500);
+        setTimeout(() => {
+            if (!isProcessing) {
+                processResults();
+            }
+        }, 1000);
     }
     
     function observeThemeChanges() {
@@ -134,6 +154,8 @@ function initializePriceSorter() {
     }
     
     function applyPriceColors() {
+        if (isSorting) return;
+        
         const productCards = resultsGrid.querySelectorAll('.product-card');
         
         productCards.forEach(card => {
@@ -160,28 +182,45 @@ function initializePriceSorter() {
             if (price === minPrice) {
                 // Preço mais barato - Verde
                 priceElement.classList.add('price-cheapest', 'price-min');
-                console.log(`Preço mais barato: R$ ${price.toFixed(2)}`);
             } else if (price === maxPrice) {
                 // Preço mais caro - Vermelho
                 priceElement.classList.add('price-most-expensive', 'price-max');
-                console.log(`Preço mais caro: R$ ${price.toFixed(2)}`);
             } else {
-                // Preço intermediário - cor padrão (branco no modo escuro, preto no modo claro)
+                // Preço intermediário - cor padrão
                 applyDefaultColor(priceElement);
             }
+        });
+    }
+    
+    function removePriceColors() {
+        const productCards = resultsGrid.querySelectorAll('.product-card');
+        
+        productCards.forEach(card => {
+            const priceElement = card.querySelector('.product-price');
+            if (!priceElement) return;
+            
+            // Remover todas as classes e estilos de cor
+            priceElement.style.color = '';
+            priceElement.style.fontWeight = '';
+            priceElement.classList.remove('price-cheapest', 'price-most-expensive', 'price-min', 'price-max');
+            
+            // Aplicar cor padrão
+            applyDefaultColor(priceElement);
         });
     }
     
     function applyDefaultColor(element) {
         const isLightMode = document.body.classList.contains('light-mode');
         if (isLightMode) {
-            element.style.color = '#111827'; // Quase preto no modo claro
+            element.style.color = '#111827';
         } else {
-            element.style.color = '#ffffff'; // Branco no modo escuro
+            element.style.color = '#ffffff';
         }
     }
     
     function applyPriceSorting() {
+        if (isSorting) return;
+        
         const productCards = Array.from(resultsGrid.querySelectorAll('.product-card'));
         if (productCards.length === 0) {
             console.log('Nenhum card encontrado para ordenar');
@@ -189,6 +228,7 @@ function initializePriceSorter() {
         }
         
         console.log(`Ordenando ${productCards.length} produtos por preço...`);
+        isSorting = true;
         
         // Ordenar cards por preço (crescente)
         productCards.sort((a, b) => {
@@ -198,55 +238,44 @@ function initializePriceSorter() {
             return priceA - priceB;
         });
         
-        // Reordenar no DOM
-        const resultsContainer = resultsGrid;
-        const existingElements = Array.from(resultsContainer.children);
+        // Criar fragmento para atualização em lote
+        const fragment = document.createDocumentFragment();
         
-        // Encontrar elementos que não são product-cards (como contadores, mensagens, etc)
-        const nonProductElements = existingElements.filter(el => !el.classList.contains('product-card'));
-        const existingProductCards = existingElements.filter(el => el.classList.contains('product-card'));
+        // Adicionar cards ordenados ao fragmento
+        productCards.forEach(card => {
+            fragment.appendChild(card);
+        });
         
-        // Limpar apenas os product cards
+        // Fazer a substituição de uma vez só
+        const existingProductCards = Array.from(resultsGrid.querySelectorAll('.product-card'));
         existingProductCards.forEach(card => card.remove());
         
-        // Adicionar elementos não-product primeiro
-        nonProductElements.forEach(el => {
-            if (el.parentNode === resultsContainer) {
-                el.remove();
-                resultsContainer.appendChild(el);
-            }
-        });
-        
-        // Adicionar cards ordenados
-        productCards.forEach(card => {
-            resultsContainer.appendChild(card);
-        });
+        resultsGrid.appendChild(fragment);
         
         console.log('Produtos ordenados por preço crescente');
         
         // Reaplicar cores após reordenar
         setTimeout(() => {
-            processResults(); // Recalcular min/max após ordenação
-        }, 100);
+            processResults();
+            isSorting = false;
+        }, 150);
     }
     
     function extractPriceFromCard(card) {
         const priceElement = card.querySelector('.product-price');
         if (!priceElement) {
-            console.log('Elemento de preço não encontrado no card:', card);
             return 0;
         }
         
         const priceText = priceElement.textContent
             .replace('R$', '')
-            .replace(/\./g, '') // Remove pontos (para formato 1.000,00)
+            .replace(/\./g, '')
             .replace(',', '.')
             .trim();
         
         const price = parseFloat(priceText);
         
         if (isNaN(price)) {
-            console.log('Preço inválido:', priceElement.textContent, '->', priceText);
             return 0;
         }
         
@@ -288,24 +317,6 @@ function initializePriceSorter() {
             
             .product-card:hover {
                 transform: translateY(-2px);
-            }
-            
-            /* Indicador visual de ordenação */
-            .sorting-indicator {
-                display: inline-block;
-                margin-left: 8px;
-                font-size: 0.8em;
-                color: #6b7280;
-            }
-            
-            .sort-asc .sorting-indicator::after {
-                content: "↑";
-                color: #10b981;
-            }
-            
-            .sort-desc .sorting-indicator::after {
-                content: "↓";
-                color: #ef4444;
             }
         `;
         document.head.appendChild(style);
