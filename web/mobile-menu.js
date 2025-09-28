@@ -1,38 +1,34 @@
-// mobile-menu.js - Gerenciamento do menu mobile para todas as páginas
-
+// mobile-menu.js - Versão final otimizada
 document.addEventListener('DOMContentLoaded', () => {
-    // Elementos do menu mobile
-    const mobileMenuButton = document.querySelector('.mobile-menu-button, .mobile-menu-btn');
+    const mobileMenuButton = document.getElementById('mobileMenuButton');
     const sidebar = document.querySelector('.sidebar');
-    const sidebarOverlay = document.querySelector('.sidebar-overlay');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
     
-    // Verificar se os elementos existem na página
-    if (!mobileMenuButton || !sidebar) {
-        console.log('Elementos do menu mobile não encontrados nesta página');
-        return;
-    }
+    if (!mobileMenuButton || !sidebar) return;
 
-    // Função para abrir/fechar o menu
     const toggleMobileMenu = () => {
+        const wasOpen = sidebar.classList.contains('open');
+        
         sidebar.classList.toggle('open');
         if (sidebarOverlay) {
             sidebarOverlay.classList.toggle('show');
         }
         
-        // Prevenir scroll do body quando menu estiver aberto
-        if (sidebar.classList.contains('open')) {
+        if (!wasOpen) {
+            document.body.classList.add('menu-open');
             document.body.style.overflow = 'hidden';
         } else {
+            document.body.classList.remove('menu-open');
             document.body.style.overflow = '';
         }
     };
 
-    // Função para fechar o menu
     const closeMobileMenu = () => {
         sidebar.classList.remove('open');
         if (sidebarOverlay) {
             sidebarOverlay.classList.remove('show');
         }
+        document.body.classList.remove('menu-open');
         document.body.style.overflow = '';
     };
 
@@ -43,40 +39,31 @@ document.addEventListener('DOMContentLoaded', () => {
         sidebarOverlay.addEventListener('click', closeMobileMenu);
     }
 
-    // Fechar menu ao clicar em links do sidebar (em mobile)
+    // Fechar menu ao clicar em links
     const sidebarLinks = sidebar.querySelectorAll('a');
     sidebarLinks.forEach(link => {
-        link.addEventListener('click', () => {
-            if (window.innerWidth <= 768) {
-                closeMobileMenu();
-            }
-        });
+        link.addEventListener('click', closeMobileMenu);
     });
 
-    // Fechar menu ao redimensionar a janela para tamanho maior
+    // Ajustes responsivos
     window.addEventListener('resize', () => {
         if (window.innerWidth > 768 && sidebar.classList.contains('open')) {
             closeMobileMenu();
         }
     });
 
-    // Fechar menu ao pressionar ESC
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && sidebar.classList.contains('open')) {
             closeMobileMenu();
         }
     });
 
-    // Verificar tamanho da tela ao carregar
-    if (window.innerWidth <= 768) {
-        sidebar.classList.remove('open');
-        if (sidebarOverlay) {
-            sidebarOverlay.classList.remove('show');
+    // Fechar ao clicar fora
+    document.addEventListener('click', (e) => {
+        if (sidebar.classList.contains('open') && 
+            !sidebar.contains(e.target) && 
+            !mobileMenuButton.contains(e.target)) {
+            closeMobileMenu();
         }
-    }
+    });
 });
-
-// Função auxiliar para verificar se é mobile
-function isMobile() {
-    return window.innerWidth <= 768;
-}
