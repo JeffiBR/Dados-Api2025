@@ -119,6 +119,7 @@
                             <button id="realtimeSearchButton" class="btn"><i class="fas fa-bolt"></i> <span>Buscar em Tempo Real</span></button>
                         </div>
                         
+                        <!-- Filtros de Supermercado -->
                         <details id="filters-details" class="market-filters" role="group" aria-labelledby="filters-toggle">
                             <summary id="filters-toggle" role="button" aria-expanded="false" aria-controls="filters-container">
                                 <div class="summary-content">
@@ -131,17 +132,17 @@
                                 <div class="market-search-controls">
                                     <div class="search-box">
                                         <i class="fas fa-search" aria-hidden="true"></i>
-                                        <input type="text" id="marketSearchInput" placeholder="Pesquisar mercado..." aria-label="Pesquisar supermercados">
+                                        <input type="text" id="marketSearchInput" placeholder="Pesquisar mercado por nome ou CNPJ..." aria-label="Pesquisar supermercados">
                                         <button id="clearMarketSearch" class="clear-btn" aria-label="Limpar pesquisa">
                                             <i class="fas fa-times" aria-hidden="true"></i>
                                         </button>
                                     </div>
                                     <div class="selection-actions">
-                                        <button id="selectAllMarkets" class="btn small" aria-label="Selecionar todos">
-                                            <i class="fas fa-check-double"></i> <span>Selecionar Todos</span>
+                                        <button id="selectAllMarkets" class="btn small" aria-label="Selecionar todos os supermercados">
+                                            <i class="fas fa-check-double" aria-hidden="true"></i> <span>Selecionar Todos</span>
                                         </button>
-                                        <button id="deselectAllMarkets" class="btn small outline" aria-label="Desmarcar todos">
-                                            <i class="fas fa-times-circle"></i> <span>Limpar Seleção</span>
+                                        <button id="deselectAllMarkets" class="btn small outline" aria-label="Desmarcar todos os supermercados">
+                                            <i class="fas fa-times-circle" aria-hidden="true"></i> <span>Limpar Seleção</span>
                                         </button>
                                     </div>
                                 </div>
@@ -155,6 +156,7 @@
                         <p>Buscando produtos...</p>
                     </div>
                     
+                    <!-- Área para os filtros de resultados -->
                     <div id="resultsFilters" class="admin-panel" style="display: none; margin-top: 2rem;">
                         <div class="panel-header">
                             <i class="fas fa-sliders-h"></i>
