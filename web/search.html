@@ -2,10 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <meta name="theme-color" content="#4f46e5">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Consulta de Preços - Thunder Theme</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,18 +11,9 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth.js"></script>
-    <script src="theme.js"></script>
-    
-    <style>
-        /* Prevenir zoom indesejado em inputs no iOS */
-        @media screen and (max-width: 768px) {
-            input, select, textarea {
-                font-size: 16px !important;
-            }
-        }
-    </style>
+    <script src="theme.js"></script> <!-- Adicione esta linha -->
 </head>
-<body class="theme-dark">
+<body class="theme-dark"> <!-- A classe será gerenciada pelo theme.js -->
     <script>routeGuard();</script>
 
     <div class="app-container">
@@ -37,42 +25,38 @@
             <nav class="sidebar-nav">
                 <ul>
                     <li class="nav-header">ANÁLISE</li>
-                    <li><a href="/search.html" class="active"><i class="fas fa-search"></i> <span>Busca</span></a></li>
-                    <li data-permission="compare"><a href="/compare.html"><i class="fas fa-chart-bar"></i> <span>Comparador</span></a></li>
-                    <li data-permission="dashboard"><a href="/dashboard.html"><i class="fas fa-chart-line"></i> <span>Dashboard</span></a></li>
+                    <li><a href="/search.html" class="active"><i class="fas fa-search"></i> Busca</a></li>
+                    <li data-permission="compare"><a href="/compare.html"><i class="fas fa-chart-bar"></i> Comparador</a></li>
+                    <li data-permission="dashboard"><a href="/dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
                     
                     <li class="nav-header">ADMINISTRAÇÃO</li>
-                    <li data-permission="coleta"><a href="/admin.html"><i class="fas fa-database"></i> <span>Coleta</span></a></li>
-                    <li data-permission="collections"><a href="/collections.html"><i class="fas fa-history"></i> <span>Histórico</span></a></li>
-                    <li data-permission="product_log"><a href="/product-log.html"><i class="fas fa-file-alt"></i> <span>Log de Produtos</span></a></li>
-                    <li data-permission="prune"><a href="/prune.html"><i class="fas fa-broom"></i> <span>Limpeza</span></a></li>
+                    <li data-permission="coleta"><a href="/admin.html"><i class="fas fa-database"></i> Coleta</a></li>
+                    <li data-permission="collections"><a href="/collections.html"><i class="fas fa-history"></i> Histórico de Coletas</a></li>
+                    <li data-permission="product_log"><a href="/product-log.html"><i class="fas fa-file-alt"></i> Log de Produtos</a></li>
+                    <li data-permission="prune"><a href="/prune.html"><i class="fas fa-broom"></i> Limpeza de Dados</a></li>
 
                     <li class="nav-header">CONFIGURAÇÃO</li>
-                    <li data-permission="markets"><a href="/markets.html"><i class="fas fa-store"></i> <span>Mercados</span></a></li>
-                    <li data-permission="users"><a href="/users.html"><i class="fas fa-users"></i> <span>Usuários</span></a></li>
+                    <li data-permission="markets"><a href="/markets.html"><i class="fas fa-store"></i> Gerenciar Mercados</a></li>
+                    <li data-permission="users"><a href="/users.html"><i class="fas fa-users"></i> Gerenciar Usuários</a></li>
                 </ul>
             </nav>
             <div class="theme-switcher">
                 <span>Tema</span>
                 <button id="themeToggle" aria-label="Alternar tema">
-                    <i class="fas fa-moon"></i>
+                    <i class="fas fa-moon"></i> <!-- Será atualizado automaticamente -->
                 </button>
             </div>
         </aside>
 
+        <!-- Resto do HTML permanece exatamente igual -->
         <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
         <div class="main-content">
             <header class="top-bar">
                 <div class="top-bar-left">
-                    <button class="mobile-menu-button" id="mobileMenuButton" aria-label="Abrir menu">
-                        <span></span>
-                        <span></span>
-                        <span></span>
+                    <button class="mobile-menu-btn" id="mobileMenuBtn">
+                        <span></span><span></span><span></span>
                     </button>
-                    <div class="page-title-mobile">
-                        <h1>Busca de Produtos</h1>
-                    </div>
                 </div>
                 <div class="top-bar-right">
                     <div class="user-menu" id="userMenu">
@@ -115,11 +99,11 @@
                             <button id="clearSearchButton" class="clear-search"><i class="fas fa-times"></i></button>
                         </div>
                         <div class="search-buttons">
-                            <button id="searchButton" class="btn"><i class="fas fa-database"></i> <span>Buscar no Banco</span></button>
-                            <button id="realtimeSearchButton" class="btn"><i class="fas fa-bolt"></i> <span>Buscar em Tempo Real</span></button>
+                            <button id="searchButton" class="btn"><i class="fas fa-database"></i> Buscar no Banco</button>
+                            <button id="realtimeSearchButton" class="btn"><i class="fas fa-bolt"></i> Buscar em Tempo Real</button>
                         </div>
                         
-                        <!-- Filtros de Supermercado -->
+                        <!-- Filtros de Supermercado Melhorados -->
                         <details id="filters-details" class="market-filters" role="group" aria-labelledby="filters-toggle">
                             <summary id="filters-toggle" role="button" aria-expanded="false" aria-controls="filters-container">
                                 <div class="summary-content">
@@ -139,10 +123,10 @@
                                     </div>
                                     <div class="selection-actions">
                                         <button id="selectAllMarkets" class="btn small" aria-label="Selecionar todos os supermercados">
-                                            <i class="fas fa-check-double" aria-hidden="true"></i> <span>Selecionar Todos</span>
+                                            <i class="fas fa-check-double" aria-hidden="true"></i> Selecionar Todos
                                         </button>
                                         <button id="deselectAllMarkets" class="btn small outline" aria-label="Desmarcar todos os supermercados">
-                                            <i class="fas fa-times-circle" aria-hidden="true"></i> <span>Limpar Seleção</span>
+                                            <i class="fas fa-times-circle" aria-hidden="true"></i> Limpar Seleção
                                         </button>
                                     </div>
                                 </div>
@@ -178,7 +162,7 @@
                                     <option value="name">Nome do produto (A-Z)</option>
                                 </select>
                             </div>
-                            <button id="clearFiltersButton" class="btn outline"><i class="fas fa-times"></i> <span>Limpar Filtros</span></button>
+                            <button id="clearFiltersButton" class="btn outline"><i class="fas fa-times"></i> Limpar Filtros</button>
                         </div>
                     </div>
                     
@@ -187,9 +171,6 @@
             </div>
         </div>
     </div>
-    
     <script src="script.js"></script>
-    <script src="mobile-menu.js"></script>
-    <script src="responsive.js"></script>
 </body>
 </html>
