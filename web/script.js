@@ -217,4 +217,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     loadSupermarkets();
+
+    // --- EXPOR RESULTADOS E NOTIFICAR PRICE-SORTER ---
+    window.getCurrentResults = () => currentResults;
+
+    const originalDisplayFilteredResults = window.displayFilteredResults;
+    window.displayFilteredResults = function(results) {
+        if (originalDisplayFilteredResults) {
+            originalDisplayFilteredResults(results);
+        }
+        
+        setTimeout(() => {
+            if (window.priceSorter && typeof window.priceSorter.handleNewResults === 'function') {
+                window.priceSorter.handleNewResults(results);
+            }
+        }, 100);
+    };
 });
