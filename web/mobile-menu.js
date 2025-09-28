@@ -1,69 +1,89 @@
-// mobile-menu.js - Versão final otimizada
-document.addEventListener('DOMContentLoaded', () => {
+// mobile-menu.js - Versão corrigida e testada
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Script do menu mobile carregado');
+    
     const mobileMenuButton = document.getElementById('mobileMenuButton');
     const sidebar = document.querySelector('.sidebar');
     const sidebarOverlay = document.getElementById('sidebarOverlay');
     
-    if (!mobileMenuButton || !sidebar) return;
+    console.log('Elementos encontrados:', {
+        mobileMenuButton: !!mobileMenuButton,
+        sidebar: !!sidebar,
+        sidebarOverlay: !!sidebarOverlay
+    });
 
-    const toggleMobileMenu = () => {
-        const wasOpen = sidebar.classList.contains('open');
-        
+    if (!mobileMenuButton || !sidebar) {
+        console.error('Elementos do menu não encontrados');
+        return;
+    }
+
+    function toggleMenu() {
+        console.log('Toggle menu clicado');
         sidebar.classList.toggle('open');
+        
         if (sidebarOverlay) {
             sidebarOverlay.classList.toggle('show');
         }
         
-        if (!wasOpen) {
-            document.body.classList.add('menu-open');
+        // Prevenir scroll do body quando menu estiver aberto
+        if (sidebar.classList.contains('open')) {
             document.body.style.overflow = 'hidden';
+            console.log('Menu aberto');
         } else {
-            document.body.classList.remove('menu-open');
             document.body.style.overflow = '';
+            console.log('Menu fechado');
         }
-    };
+    }
 
-    const closeMobileMenu = () => {
+    function closeMenu() {
+        console.log('Fechando menu');
         sidebar.classList.remove('open');
+        
         if (sidebarOverlay) {
             sidebarOverlay.classList.remove('show');
         }
-        document.body.classList.remove('menu-open');
+        
         document.body.style.overflow = '';
-    };
-
-    // Event listeners
-    mobileMenuButton.addEventListener('click', toggleMobileMenu);
-    
-    if (sidebarOverlay) {
-        sidebarOverlay.addEventListener('click', closeMobileMenu);
     }
 
-    // Fechar menu ao clicar em links
+    // Event listeners
+    mobileMenuButton.addEventListener('click', function(e) {
+        e.stopPropagation();
+        toggleMenu();
+    });
+
+    if (sidebarOverlay) {
+        sidebarOverlay.addEventListener('click', closeMenu);
+    }
+
+    // Fechar menu ao clicar em links do sidebar
     const sidebarLinks = sidebar.querySelectorAll('a');
     sidebarLinks.forEach(link => {
-        link.addEventListener('click', closeMobileMenu);
+        link.addEventListener('click', function() {
+            if (window.innerWidth <= 768) {
+                closeMenu();
+            }
+        });
     });
 
-    // Ajustes responsivos
-    window.addEventListener('resize', () => {
+    // Fechar menu ao redimensionar para desktop
+    window.addEventListener('resize', function() {
         if (window.innerWidth > 768 && sidebar.classList.contains('open')) {
-            closeMobileMenu();
+            closeMenu();
         }
     });
 
-    document.addEventListener('keydown', (e) => {
+    // Fechar menu com ESC
+    document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && sidebar.classList.contains('open')) {
-            closeMobileMenu();
+            closeMenu();
         }
     });
 
-    // Fechar ao clicar fora
-    document.addEventListener('click', (e) => {
-        if (sidebar.classList.contains('open') && 
-            !sidebar.contains(e.target) && 
-            !mobileMenuButton.contains(e.target)) {
-            closeMobileMenu();
-        }
-    });
+    console.log('Menu mobile inicializado com sucesso');
 });
+
+// Função para verificar se está em mobile
+function isMobile() {
+    return window.innerWidth <= 768;
+}
