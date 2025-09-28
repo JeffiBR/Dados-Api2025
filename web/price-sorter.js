@@ -1,28 +1,116 @@
-// price-sorter.js - Ordenação e coloração de preços
+// price-sorter.js - Ordenação e coloração de preços (versão compatível)
 document.addEventListener('DOMContentLoaded', () => {
     // Verificar se estamos na página de busca
     if (!document.getElementById('resultsGrid')) return;
     
+    // Aguardar um pouco para garantir que o script.js principal foi carregado
+    setTimeout(initializePriceSorter, 100);
+});
+
+function initializePriceSorter() {
     // Elementos do DOM
     const resultsGrid = document.getElementById('resultsGrid');
     const sortFilter = document.getElementById('sortFilter');
     
-    // Adicionar opção de ordenação por preço (mais barato) se não existir
-    if (sortFilter && !sortFilter.querySelector('option[value="cheap"]')) {
-        const cheapOption = document.createElement('option');
-        cheapOption.value = 'cheap';
-        cheapOption.textContent = 'Preço: mais barato';
-        sortFilter.appendChild(cheapOption);
-    }
+    if (!sortFilter) return;
+    
+    // Adicionar opção de ordenação por preço se não existir
+    addSortOptionIfNeeded();
     
     // Variáveis para controle de cores
     let minPrice = 0;
     let maxPrice = 0;
+    let currentResults = [];
     
-    // Função para calcular min e max dos preços
-    const calculatePriceRange = (results) => {
-        const validPrices = results
-            .filter(item => item.preco_produto && typeof item.preco_produto === 'number' && item.preco_produto > 0)
+    // Adicionar listener para o filtro de ordenação
+    sortFilter.addEventListener('change', handleSortChange);
+    
+    // Observar mudanças no grid de resultados
+    observeResultsGrid();
+    
+    // Observar mudanças no tema
+    observeThemeChanges();
+    
+    // Adicionar CSS personalizado
+    addCustomStyles();
+    
+    console.log('Price sorter inicializado com sucesso!');
+    
+    function addSortOptionIfNeeded() {
+        if (!sortFilter.querySelector('option[value="cheap"]')) {
+            const cheapOption = document.createElement('option');
+            cheapOption.value = 'cheap';
+            cheapOption.textContent = 'Preço: mais barato';
+            sortFilter.appendChild(cheapOption);
+        }
+    }
+    
+    function handleSortChange() {
+        if (sortFilter.value === 'cheap' && currentResults.length > 0) {
+            applyPriceSorting();
+        }
+    }
+    
+    function observeResultsGrid() {
+        // Observar mudanças no grid de resultados
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                    // Aguardar um pouco para garantir que os resultados foram renderizados
+                    setTimeout(() => {
+                        processResults();
+                    }, 200);
+                }
+            });
+        });
+        
+        observer.observe(resultsGrid, { childList: true, subtree: true });
+    }
+    
+    function observeThemeChanges() {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'class') {
+                    setTimeout(applyPriceColors, 100);
+                }
+            });
+        });
+        
+        observer.observe(document.body, { attributes: true });
+    }
+    
+    function processResults() {
+        // Extrair resultados dos elementos do DOM
+        const productCards = resultsGrid.querySelectorAll('.product-card');
+        if (productCards.length === 0) return;
+        
+        // Reconstruir array de resultados a partir do DOM
+        currentResults = Array.from(productCards).map(card => {
+            const priceElement = card.querySelector('.product-price');
+            const priceText = priceElement?.textContent.replace('R$ ', '').replace(',', '.').trim();
+            const price = parseFloat(priceText) || 0;
+            
+            return {
+                preco_produto: price,
+                element: card
+            };
+        });
+        
+        // Calcular faixa de preços
+        calculatePriceRange();
+        
+        // Aplicar cores
+        applyPriceColors();
+        
+        // Se a ordenação por preço estiver ativa, reordenar
+        if (sortFilter.value === 'cheap') {
+            applyPriceSorting();
+        }
+    }
+    
+    function calculatePriceRange() {
+        const validPrices = currentResults
+            .filter(item => item.preco_produto > 0)
             .map(item => item.preco_produto);
         
         if (validPrices.length === 0) {
@@ -33,247 +121,148 @@ document.addEventListener('DOMContentLoaded', () => {
         
         minPrice = Math.min(...validPrices);
         maxPrice = Math.max(...validPrices);
-    };
+    }
     
-    // Função para determinar a cor baseada no preço
-    const getPriceColor = (price) => {
-        if (!price || typeof price !== 'number' || price <= 0 || minPrice === maxPrice) {
-            return null; // Sem cor especial
-        }
+    function applyPriceColors() {
+        const productCards = resultsGrid.querySelectorAll('.product-card');
         
-        // Calcular a posição no espectro (0 = mais barato, 1 = mais caro)
-        const position = (price - minPrice) / (maxPrice - minPrice);
-        
-        // Verificar se está no modo claro
-        const isLightMode = document.body.classList.contains('light-mode');
-        
-        if (position === 0) {
-            // Preço mais barato - Verde
-            return isLightMode ? '#10b981' : '#34d399'; // Verde mais suave no dark
-        } else if (position === 1) {
-            // Preço mais caro - Vermelho
-            return isLightMode ? '#ef4444' : '#f87171'; // Vermelho mais suave no dark
-        } else if (position < 0.3) {
-            // Preços baixos - tons de verde
-            const intensity = Math.floor(150 + (position * 50));
-            return isLightMode ? `rgb(16, 185, 129)` : `rgb(52, 211, 153)`;
-        } else if (position > 0.7) {
-            // Preços altos - tons de vermelho
-            const intensity = Math.floor(150 + ((1 - position) * 50));
-            return isLightMode ? `rgb(239, 68, 68)` : `rgb(248, 113, 113)`;
-        } else {
-            // Preços médios - cor padrão ou gradiente suave
-            return null;
-        }
-    };
-    
-    // Função para aplicar cores aos preços
-    const applyPriceColors = () => {
-        const priceElements = resultsGrid.querySelectorAll('.product-price');
-        
-        priceElements.forEach(element => {
-            // Remover estilos anteriores
-            element.style.color = '';
-            element.style.fontWeight = '';
-            element.style.background = '';
-            element.style.padding = '';
-            element.style.borderRadius = '';
+        productCards.forEach(card => {
+            const priceElement = card.querySelector('.product-price');
+            if (!priceElement) return;
             
-            // Tentar extrair o preço do texto do elemento
-            const priceText = element.textContent.replace('R$ ', '').replace(',', '.').trim();
+            // Remover estilos anteriores
+            priceElement.style.color = '';
+            priceElement.style.fontWeight = '';
+            priceElement.style.background = '';
+            priceElement.style.padding = '';
+            priceElement.style.borderRadius = '';
+            priceElement.classList.remove('price-cheapest', 'price-most-expensive');
+            
+            const priceText = priceElement.textContent.replace('R$ ', '').replace(',', '.').trim();
             const price = parseFloat(priceText);
             
-            if (!isNaN(price) && price > 0) {
-                const color = getPriceColor(price);
-                
-                if (color) {
-                    element.style.color = color;
-                    element.style.fontWeight = '600';
-                    
-                    // Adicionar fundo sutil para melhor contraste
-                    if (document.body.classList.contains('light-mode')) {
-                        element.style.background = `${color}15`; // Cor com 10% de opacidade
-                        element.style.padding = '2px 6px';
-                        element.style.borderRadius = '4px';
-                    }
-                }
+            if (isNaN(price) || price <= 0 || minPrice === maxPrice) return;
+            
+            // Aplicar cores baseadas na posição do preço
+            if (price === minPrice) {
+                // Preço mais barato - Verde
+                priceElement.classList.add('price-cheapest');
+            } else if (price === maxPrice) {
+                // Preço mais caro - Vermelho
+                priceElement.classList.add('price-most-expensive');
+            } else {
+                // Preço intermediário - cor gradiente
+                applyGradientColor(priceElement, price);
             }
         });
-    };
+    }
     
-    // Função para ordenar resultados por preço (crescente)
-    const sortByPrice = (results) => {
-        return [...results].sort((a, b) => {
-            const priceA = a.preco_produto || 0;
-            const priceB = b.preco_produto || 0;
-            
-            // Tratar casos onde o preço não está disponível
-            if (!priceA && !priceB) return 0;
-            if (!priceA) return 1; // Sem preço vai para o final
-            if (!priceB) return -1; // Sem preço vai para o final
+    function applyGradientColor(element, price) {
+        const position = (price - minPrice) / (maxPrice - minPrice);
+        const isLightMode = document.body.classList.contains('light-mode');
+        
+        // Interpolar entre verde e vermelho
+        let red, green;
+        
+        if (position < 0.5) {
+            // Verde para amarelo
+            green = 255;
+            red = Math.floor(255 * (position * 2));
+        } else {
+            // Amarelo para vermelho
+            red = 255;
+            green = Math.floor(255 * ((1 - position) * 2));
+        }
+        
+        // Ajustar cores para os temas
+        if (isLightMode) {
+            // Cores mais vibrantes no modo claro
+            element.style.color = `rgb(${red}, ${green}, 0)`;
+        } else {
+            // Cores mais suaves no modo escuro
+            const adjustedRed = Math.floor(red * 0.8);
+            const adjustedGreen = Math.floor(green * 0.8);
+            element.style.color = `rgb(${adjustedRed}, ${adjustedGreen}, 100)`;
+        }
+        
+        element.style.fontWeight = '600';
+    }
+    
+    function applyPriceSorting() {
+        const productCards = Array.from(resultsGrid.querySelectorAll('.product-card'));
+        if (productCards.length === 0) return;
+        
+        // Ordenar cards por preço
+        productCards.sort((a, b) => {
+            const priceA = extractPriceFromCard(a);
+            const priceB = extractPriceFromCard(b);
             
             return priceA - priceB;
         });
-    };
-    
-    // Observar mudanças no tema para atualizar cores
-    const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-            if (mutation.attributeName === 'class') {
-                applyPriceColors();
-            }
-        });
-    });
-    
-    observer.observe(document.body, { attributes: true });
-    
-    // Sobrescrever a função applyFilters original para incluir a coloração
-    const originalApplyFilters = window.applyFilters;
-    
-    window.applyFilters = function() {
-        if (originalApplyFilters) {
-            originalApplyFilters();
+        
+        // Reordenar no DOM
+        const resultsCount = resultsGrid.querySelector('div[style*="grid-column"]');
+        const fragment = document.createDocumentFragment();
+        
+        // Manter o contador de resultados no topo
+        if (resultsCount) {
+            fragment.appendChild(resultsCount);
         }
         
-        // Aplicar cores após um pequeno delay para garantir que o DOM foi atualizado
-        setTimeout(applyPriceColors, 50);
-    };
-    
-    // Sobrescrever a função displayFilteredResults original
-    const originalDisplayFilteredResults = window.displayFilteredResults;
-    
-    window.displayFilteredResults = function(results) {
-        // Ordenar por preço se a opção estiver selecionada
-        if (sortFilter && sortFilter.value === 'cheap') {
-            results = sortByPrice(results);
-        }
-        
-        // Calcular a faixa de preços para o gradiente
-        calculatePriceRange(results);
-        
-        if (originalDisplayFilteredResults) {
-            originalDisplayFilteredResults(results);
-        } else {
-            // Fallback caso a função original não exista
-            displayResultsFallback(results);
-        }
-        
-        // Aplicar cores após a renderização
-        setTimeout(applyPriceColors, 100);
-    };
-    
-    // Função fallback para exibir resultados
-    const displayResultsFallback = (results) => {
-        if (results.length === 0) {
-            resultsGrid.innerHTML = `
-                <div class="empty-state">
-                    <h3>Nenhum resultado encontrado</h3>
-                    <p>Tente ajustar os filtros aplicados</p>
-                </div>`;
-            return;
-        }
-        
-        const frag = document.createDocumentFragment();
-        
-        // Adicionar contador de resultados
-        const resultsCount = document.createElement('div');
-        resultsCount.style.cssText = 'grid-column: 1 / -1; margin-bottom: 1rem;';
-        resultsCount.innerHTML = `<p><strong>${results.length}</strong> resultado(s) encontrado(s)</p>`;
-        frag.appendChild(resultsCount);
-        
-        // Adicionar cards de produtos
-        results.forEach(item => {
-            const div = document.createElement('div');
-            div.innerHTML = buildProductCardEnhanced(item);
-            frag.appendChild(div.firstElementChild);
+        // Adicionar cards ordenados
+        productCards.forEach(card => {
+            fragment.appendChild(card);
         });
         
+        // Limpar e re-adicionar
         resultsGrid.innerHTML = '';
-        resultsGrid.appendChild(frag);
-    };
+        resultsGrid.appendChild(fragment);
+        
+        // Reaplicar cores após reordenar
+        setTimeout(applyPriceColors, 50);
+    }
     
-    // Versão melhorada do card de produto com suporte a cores
-    const buildProductCardEnhanced = (item) => {
-        const price = typeof item.preco_produto === 'number' ? 
-            `R$ ${item.preco_produto.toFixed(2).replace('.', ',')}` : 'N/A';
+    function extractPriceFromCard(card) {
+        const priceElement = card.querySelector('.product-price');
+        if (!priceElement) return 0;
         
-        const date = item.data_ultima_venda ? 
-            new Date(item.data_ultima_venda).toLocaleDateString('pt-BR') : 'N/A';
-        
-        // Determinar se é o mais barato ou mais caro
-        const isCheapest = item.preco_produto === minPrice && minPrice !== maxPrice;
-        const isMostExpensive = item.preco_produto === maxPrice && minPrice !== maxPrice;
-        
-        let priceClass = '';
-        if (isCheapest) priceClass = 'price-cheapest';
-        if (isMostExpensive) priceClass = 'price-most-expensive';
-        
-        return `
-        <div class="product-card">
-            <div class="card-header">
-                <div class="product-name">${item.nome_produto || 'Produto sem nome'}</div>
-                <div class="product-price ${priceClass}">${price}</div>
-            </div>
-            <ul class="product-details">
-                <li><span>🛒</span> ${item.nome_supermercado}</li>
-                <li><span>⚖️</span> ${item.tipo_unidade || 'UN'} (${item.unidade_medida || 'N/A'})</li>
-                <li><span>📅</span> Visto em: ${date}</li>
-                <li><span>🔳</span> ${item.codigo_barras || 'Sem código'}</li>
-            </ul>
-        </div>`;
-    };
+        const priceText = priceElement.textContent.replace('R$ ', '').replace(',', '.').trim();
+        return parseFloat(priceText) || 0;
+    }
     
-    // Adicionar CSS personalizado para as cores dos preços
-    const style = document.createElement('style');
-    style.textContent = `
-        .product-price.price-cheapest {
-            color: #10b981 !important;
-            font-weight: 600 !important;
-        }
+    function addCustomStyles() {
+        // Verificar se o estilo já foi adicionado
+        if (document.getElementById('price-sorter-styles')) return;
         
-        .product-price.price-most-expensive {
-            color: #ef4444 !important;
-            font-weight: 600 !important;
-        }
-        
-        .theme-dark .product-price.price-cheapest {
-            color: #34d399 !important;
-        }
-        
-        .theme-dark .product-price.price-most-expensive {
-            color: #f87171 !important;
-        }
-        
-        .price-badge {
-            display: inline-block;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.8em;
-            font-weight: 600;
-            margin-left: 5px;
-        }
-        
-        .price-badge.cheapest {
-            background: #10b98120;
-            color: #10b981;
-        }
-        
-        .price-badge.most-expensive {
-            background: #ef444420;
-            color: #ef4444;
-        }
-        
-        .theme-dark .price-badge.cheapest {
-            background: #34d39920;
-            color: #34d399;
-        }
-        
-        .theme-dark .price-badge.most-expensive {
-            background: #f8717120;
-            color: #f87171;
-        }
-    `;
-    document.head.appendChild(style);
-    
-    console.log('Price sorter carregado com sucesso!');
-});
+        const style = document.createElement('style');
+        style.id = 'price-sorter-styles';
+        style.textContent = `
+            .product-price.price-cheapest {
+                color: #10b981 !important;
+                font-weight: 600 !important;
+            }
+            
+            .product-price.price-most-expensive {
+                color: #ef4444 !important;
+                font-weight: 600 !important;
+            }
+            
+            .theme-dark .product-price.price-cheapest {
+                color: #34d399 !important;
+            }
+            
+            .theme-dark .product-price.price-most-expensive {
+                color: #f87171 !important;
+            }
+            
+            .product-card {
+                transition: transform 0.2s ease;
+            }
+            
+            .product-card:hover {
+                transform: translateY(-2px);
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
