@@ -117,13 +117,48 @@ async def get_all_baskets(current_user: dict = Depends(lambda: get_current_user(
         logging.error(f"Erro ao buscar todas as cestas: {e}")
         raise HTTPException(status_code=500, detail="Erro ao carregar cestas")
 
-@basket_router.put("/")
+@basket_router.post("/")
+async def create_user_basket(current_user: dict = Depends(lambda: get_current_user())):
+    """
+    Cria uma nova cesta para o usuário
+    """
+    try:
+        # Verifica se já existe uma cesta
+        existing_response = await asyncio.to_thread(
+            supabase.table('user_baskets')
+            .select('*')
+            .eq('user_id', current_user.id)
+            .execute
+        )
+        
+        if existing_response.data:
+            return existing_response.data[0]
+        
+        # Cria nova cesta
+        new_basket = {
+            'user_id': current_user.id,
+            'basket_name': 'Minha Cesta',
+            'products': [],
+            'created_at': datetime.now().isoformat(),
+            'updated_at': datetime.now().isoformat()
+        }
+        
+        create_response = await asyncio.to_thread(
+            supabase.table('user_baskets').insert(new_basket).execute
+        )
+        return create_response.data[0]
+        
+    except Exception as e:
+        logging.error(f"Erro ao criar cesta: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao criar cesta")
+
+@basket_router.patch("/")
 async def update_user_basket(
     basket_update: BasketUpdateRequest, 
     current_user: dict = Depends(lambda: get_current_user())
 ):
     """
-    Atualiza a cesta do usuário atual
+    Atualiza a cesta do usuário atual - USANDO PATCH
     """
     try:
         # Busca a cesta existente do usuário
@@ -135,44 +170,33 @@ async def update_user_basket(
         )
         
         if not existing_response.data:
-            # Cria nova cesta se não existir
-            new_basket = {
-                'user_id': current_user.id,
-                'basket_name': basket_update.basket_name or 'Minha Cesta',
-                'products': [product.dict() for product in basket_update.products] if basket_update.products else [],
-                'created_at': datetime.now().isoformat(),
-                'updated_at': datetime.now().isoformat()
-            }
-            response = await asyncio.to_thread(
-                supabase.table('user_baskets').insert(new_basket).execute
-            )
+            raise HTTPException(status_code=404, detail="Cesta não encontrada")
+        
+        # Atualiza cesta existente
+        basket_id = existing_response.data[0]['id']
+        update_data = {
+            'updated_at': datetime.now().isoformat()
+        }
+        
+        if basket_update.basket_name is not None:
+            update_data['basket_name'] = basket_update.basket_name
+            
+        if basket_update.products is not None:
+            update_data['products'] = [product.dict() for product in basket_update.products]
+        
+        response = await asyncio.to_thread(
+            supabase.table('user_baskets')
+            .update(update_data)
+            .eq('id', basket_id)
+            .eq('user_id', current_user.id)
+            .execute
+        )
+        
+        if response.data:
             return response.data[0]
         else:
-            # Atualiza cesta existente
-            basket_id = existing_response.data[0]['id']
-            update_data = {
-                'updated_at': datetime.now().isoformat()
-            }
+            raise HTTPException(status_code=500, detail="Erro ao atualizar cesta")
             
-            if basket_update.basket_name is not None:
-                update_data['basket_name'] = basket_update.basket_name
-                
-            if basket_update.products is not None:
-                update_data['products'] = [product.dict() for product in basket_update.products]
-            
-            response = await asyncio.to_thread(
-                supabase.table('user_baskets')
-                .update(update_data)
-                .eq('id', basket_id)
-                .eq('user_id', current_user.id)
-                .execute
-            )
-            
-            if response.data:
-                return response.data[0]
-            else:
-                raise HTTPException(status_code=500, detail="Erro ao atualizar cesta")
-                
     except HTTPException:
         raise
     except Exception as e:
@@ -482,3 +506,26 @@ async def calculate_basket_prices(
     except Exception as e:
         logging.error(f"Erro ao calcular preços da cesta: {e}")
         raise HTTPException(status_code=500, detail="Erro ao calcular preços da cesta")
+
+@basket_router.get("/debug/search")
+async def debug_search_product(barcode: str = Query(...)):
+    """
+    Endpoint de debug para verificar se a busca está funcionando
+    """
+    try:
+        # Busca direta na tabela produtos
+        response = await asyncio.to_thread(
+            supabase.table('produtos')
+            .select('codigo_barras, nome_produto')
+            .eq('codigo_barras', barcode)
+            .limit(5)
+            .execute
+        )
+        
+        return {
+            "barcode": barcode,
+            "found": len(response.data) > 0,
+            "results": response.data
+        }
+    except Exception as e:
+        return {"error": str(e)}
