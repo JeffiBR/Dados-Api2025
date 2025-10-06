@@ -125,30 +125,58 @@ function renderAllBaskets(baskets) {
     `;
 }
 
-// Busca o nome do produto pelo código de barras
+// Busca o nome do produto pelo código de barras - CORRIGIDO
 async function getProductName(barcode) {
     try {
         console.log(`🔍 Buscando produto: ${barcode}`);
         
-        const response = await authenticatedFetch(`/api/search?q=${encodeURIComponent(barcode)}`);
+        // CORREÇÃO: Use o endpoint correto para busca
+        const response = await authenticatedFetch(`/api/search?query=${encodeURIComponent(barcode)}`);
         
         if (response.ok) {
             const data = await response.json();
             console.log('📦 Resultados da busca:', data);
             
             if (data.results && data.results.length > 0) {
+                // Encontra produto com código exato
                 const exactMatch = data.results.find(p => p.codigo_barras === barcode);
                 if (exactMatch) {
                     return exactMatch.nome_produto;
                 }
+                // Ou usa o primeiro resultado
                 return data.results[0].nome_produto;
             }
+        } else if (response.status === 404) {
+            console.log('ℹ️ Produto não encontrado na base de dados');
+            return null;
         } else {
-            console.warn('⚠️ Produto não encontrado na busca');
+            console.warn('⚠️ Erro na busca do produto:', response.status);
+            // Tenta método alternativo de busca
+            return await alternativeProductSearch(barcode);
         }
         return null;
     } catch (error) {
         console.error('💥 Erro na busca do produto:', error);
+        // Fallback: busca alternativa
+        return await alternativeProductSearch(barcode);
+    }
+}
+
+// Método alternativo de busca
+async function alternativeProductSearch(barcode) {
+    try {
+        // Tenta buscar diretamente na tabela produtos
+        const response = await authenticatedFetch(`/api/products?barcode=${encodeURIComponent(barcode)}`);
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data && data.length > 0) {
+                return data[0].nome_produto;
+            }
+        }
+        return null;
+    } catch (error) {
+        console.error('Erro na busca alternativa:', error);
         return null;
     }
 }
