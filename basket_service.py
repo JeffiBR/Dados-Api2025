@@ -85,28 +85,30 @@ async def get_all_baskets(current_user: dict = Depends(lambda: get_current_user(
     """
     try:
         # Verifica se o usuário é admin
-        if current_user.get('role') != 'admin':
+        if current_user.role != 'admin':
             raise HTTPException(status_code=403, detail="Acesso não autorizado")
         
         # Busca todas as cestas com informações dos usuários
         response = await asyncio.to_thread(
             supabase.table('user_baskets')
-            .select('*, users(email, user_metadata)')
+            .select('*, profiles(full_name, email)')
             .execute
         )
         
         # Processa os dados para incluir informações do usuário
         baskets_with_users = []
         for basket in response.data:
-            user_info = basket.get('users', {})
+            user_info = basket.get('profiles', {})
             basket_with_user = {
-                **basket,
-                'user_email': user_info.get('email', 'N/A'),
-                'user_name': user_info.get('user_metadata', {}).get('name', 'Usuário')
+                'id': basket['id'],
+                'user_id': basket['user_id'],
+                'basket_name': basket['basket_name'],
+                'products': basket['products'],
+                'created_at': basket['created_at'],
+                'updated_at': basket['updated_at'],
+                'user_name': user_info.get('full_name', 'Usuário'),
+                'user_email': user_info.get('email', 'N/A')
             }
-            # Remove o objeto users original para evitar duplicação
-            if 'users' in basket_with_user:
-                del basket_with_user['users']
             baskets_with_users.append(basket_with_user)
         
         return baskets_with_users
@@ -313,7 +315,7 @@ async def calculate_basket_prices(
         basket = basket_response.data[0]
         
         # Verifica se a cesta pertence ao usuário (a menos que seja admin)
-        if current_user.get('role') != 'admin' and basket['user_id'] != current_user.id:
+        if current_user.role != 'admin' and basket['user_id'] != current_user.id:
             raise HTTPException(status_code=403, detail="Acesso não autorizado a esta cesta")
         
         products = basket.get('products', [])
