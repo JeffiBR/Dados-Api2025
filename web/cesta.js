@@ -97,20 +97,26 @@ function renderAllBaskets(baskets) {
                     <div class="basket-card">
                         <div class="basket-header">
                             <h4>${basket.basket_name}</h4>
-                            <span class="user-badge">${basket.user_id}</span>
+                            <div class="user-info">
+                                <span class="user-badge">${basket.user_name || 'Usuário'}</span>
+                                <span class="user-email">${basket.user_email}</span>
+                            </div>
                         </div>
                         <div class="basket-info">
                             <p><strong>Produtos:</strong> ${basket.products.length}</p>
+                            <p><strong>Criada:</strong> ${new Date(basket.created_at).toLocaleString('pt-BR')}</p>
                             <p><strong>Atualizada:</strong> ${new Date(basket.updated_at).toLocaleString('pt-BR')}</p>
                         </div>
                         <div class="basket-products">
-                            ${basket.products.slice(0, 3).map(product => `
+                            <h5>Produtos na Cesta:</h5>
+                            ${basket.products.slice(0, 5).map(product => `
                                 <div class="product-preview">
                                     <span class="product-name">${product.product_name || product.product_barcode}</span>
                                     <span class="product-barcode">${product.product_barcode}</span>
                                 </div>
                             `).join('')}
-                            ${basket.products.length > 3 ? `<p>... e mais ${basket.products.length - 3} produtos</p>` : ''}
+                            ${basket.products.length > 5 ? `<p class="more-products">... e mais ${basket.products.length - 5} produtos</p>` : ''}
+                            ${basket.products.length === 0 ? '<p class="empty-basket">Cesta vazia</p>' : ''}
                         </div>
                     </div>
                 `).join('')}
@@ -256,11 +262,43 @@ async function clearBasket() {
     }
 }
 
-// Edita produto existente
-async function editProduct(oldBarcode, newBarcode, newName = null) {
+// Abre modal para editar produto
+function openEditModal(product) {
+    const modal = document.getElementById('edit-product-modal');
+    document.getElementById('edit-barcode').value = product.product_barcode;
+    document.getElementById('edit-name').value = product.product_name || '';
+    
+    // Armazena o código de barras original para referência
+    modal.setAttribute('data-original-barcode', product.product_barcode);
+    modal.style.display = 'flex';
+}
+
+// Fecha modal de edição
+function closeEditModal() {
+    const modal = document.getElementById('edit-product-modal');
+    modal.style.display = 'none';
+}
+
+// Salva edição do produto
+async function saveProductEdit() {
+    const modal = document.getElementById('edit-product-modal');
+    const originalBarcode = modal.getAttribute('data-original-barcode');
+    const newBarcode = document.getElementById('edit-barcode').value.trim();
+    const newName = document.getElementById('edit-name').value.trim();
+    
+    if (!newBarcode) {
+        showMessage('Código de barras não pode estar vazio', 'warning');
+        return;
+    }
+    
+    if (!/^\d+$/.test(newBarcode)) {
+        showMessage('Código de barras deve conter apenas números', 'warning');
+        return;
+    }
+    
     try {
         // Remove o produto antigo
-        userBasket.products = userBasket.products.filter(p => p.product_barcode !== oldBarcode);
+        userBasket.products = userBasket.products.filter(p => p.product_barcode !== originalBarcode);
         
         // Busca novo nome se necessário
         let productName = newName;
@@ -276,6 +314,7 @@ async function editProduct(oldBarcode, newBarcode, newName = null) {
         
         await saveBasket();
         renderProducts();
+        closeEditModal();
         showMessage('✅ Produto atualizado com sucesso!', 'success');
         
     } catch (error) {
@@ -315,53 +354,29 @@ async function saveBasket() {
     }
 }
 
-// Mostra modal de edição
-function showEditModal(product) {
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Editar Produto</h3>
-                <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>Código de Barras:</label>
-                    <input type="text" id="edit-barcode" value="${product.product_barcode}" maxlength="20">
-                </div>
-                <div class="form-group">
-                    <label>Nome do Produto:</label>
-                    <input type="text" id="edit-name" value="${product.product_name || ''}" placeholder="Nome do produto">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancelar</button>
-                <button class="btn btn-primary" onclick="saveProductEdit('${product.product_barcode}')">Salvar</button>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-}
-
-// Salva edição do produto
-function saveProductEdit(oldBarcode) {
-    const newBarcode = document.getElementById('edit-barcode').value.trim();
-    const newName = document.getElementById('edit-name').value.trim();
-    
-    if (!newBarcode) {
-        showMessage('Código de barras não pode estar vazio', 'warning');
+// Exporta a cesta para JSON
+function exportBasket() {
+    if (userBasket.products.length === 0) {
+        showMessage('A cesta está vazia', 'warning');
         return;
     }
     
-    if (!/^\d+$/.test(newBarcode)) {
-        showMessage('Código de barras deve conter apenas números', 'warning');
-        return;
-    }
+    const basketData = {
+        basket_name: userBasket.basket_name,
+        products: userBasket.products,
+        export_date: new Date().toISOString(),
+        total_products: userBasket.products.length
+    };
     
-    editProduct(oldBarcode, newBarcode, newName || null);
-    document.querySelector('.modal-overlay').remove();
+    const dataStr = JSON.stringify(basketData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(dataBlob);
+    link.download = `cesta-basica-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    
+    showMessage('✅ Cesta exportada com sucesso!', 'success');
 }
 
 // Renderiza os produtos
@@ -395,7 +410,7 @@ function renderProducts() {
         productCard.innerHTML = `
             <div class="product-content">
                 <div class="product-actions">
-                    <button class="btn-icon edit-btn" onclick="showEditModal(${JSON.stringify(product).replace(/"/g, '&quot;')})" title="Editar produto">
+                    <button class="btn-icon edit-btn" onclick="openEditModal(${JSON.stringify(product).replace(/"/g, '&quot;')})" title="Editar produto">
                         <i class="fas fa-edit"></i>
                     </button>
                     <button class="btn-icon remove-btn" onclick="removeProduct('${product.product_barcode}')" title="Remover produto">
@@ -556,6 +571,118 @@ async function calculateBasket() {
     }
 }
 
+// Exibe os resultados do cálculo
+function displayResults(results) {
+    displayCompleteBasket(results.best_complete_basket, results.complete_basket_results);
+    displayMixedBasket(results.mixed_basket_results);
+}
+
+function displayCompleteBasket(bestBasket, allBaskets) {
+    const container = document.getElementById('complete-basket-details');
+    if (!container) return;
+    
+    if (!bestBasket) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="icon">😕</div>
+                <p>Nenhum mercado encontrou todos os produtos</p>
+                <p>Tente selecionar mais mercados ou verificar os códigos de barras</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const productsFound = bestBasket.products_found;
+    const totalProducts = bestBasket.total_products;
+    const coveragePercent = Math.round((productsFound / totalProducts) * 100);
+    
+    container.innerHTML = `
+        <div class="price-highlight">R$ ${bestBasket.total.toFixed(2)}</div>
+        <div style="text-align: center; margin-bottom: 15px;">
+            <p><strong>🏪 ${bestBasket.market_name}</strong></p>
+            <p>📊 ${productsFound}/${totalProducts} produtos encontrados (${coveragePercent}%)</p>
+        </div>
+        
+        <div class="product-list">
+            <h4 style="margin-bottom: 10px;">📦 Produtos na Cesta:</h4>
+            ${bestBasket.products.map(product => `
+                <div class="product-item ${!product.found ? 'not-found' : ''}">
+                    <div class="product-info">
+                        <div class="product-name">${product.name}</div>
+                        <div class="product-barcode">${product.barcode}</div>
+                    </div>
+                    <div class="product-price">
+                        ${product.found ? `R$ ${product.price.toFixed(2)}` : '❌ Não encontrado'}
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function displayMixedBasket(mixedBasket) {
+    const container = document.getElementById('mixed-basket-details');
+    const breakdownContainer = document.getElementById('mixed-breakdown');
+    const marketBreakdown = document.getElementById('market-breakdown');
+    
+    if (!container) return;
+    
+    const foundProducts = mixedBasket.products.filter(p => p.found).length;
+    const totalProducts = mixedBasket.products.length;
+    
+    container.innerHTML = `
+        <div class="price-highlight">
+            R$ ${mixedBasket.total.toFixed(2)}
+            ${mixedBasket.economy_percent > 0 ? 
+                `<span class="economy-badge">Economia de ${mixedBasket.economy_percent}%</span>` : 
+                ''}
+        </div>
+        <div style="text-align: center; margin-bottom: 15px;">
+            <p><strong>📊 ${foundProducts}/${totalProducts} produtos encontrados</strong></p>
+            <p>💰 Compre cada produto no mercado mais barato</p>
+        </div>
+        
+        <div class="product-list">
+            <h4 style="margin-bottom: 10px;">🛒 Produtos e Melhores Preços:</h4>
+            ${mixedBasket.products.map(product => `
+                <div class="product-item ${!product.found ? 'not-found' : ''}">
+                    <div class="product-info">
+                        <div class="product-name">${product.name}</div>
+                        <div class="product-barcode">${product.barcode}</div>
+                        ${product.found ? `<small>🏪 ${product.market_name}</small>` : ''}
+                    </div>
+                    <div class="product-price">
+                        ${product.found ? `R$ ${product.price.toFixed(2)}` : '❌ Não encontrado'}
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+    
+    // Mostra breakdown por mercado se houver economia e múltiplos mercados
+    if (mixedBasket.economy_percent > 0 && breakdownContainer && marketBreakdown && Object.keys(mixedBasket.market_breakdown).length > 1) {
+        breakdownContainer.style.display = 'block';
+        marketBreakdown.innerHTML = Object.values(mixedBasket.market_breakdown).map(market => `
+            <div class="market-store">
+                <h4>🏪 ${market.market_name}</h4>
+                <div class="market-subtotal">Subtotal: R$ ${market.subtotal.toFixed(2)}</div>
+                <div class="product-list">
+                    ${market.products.map(product => `
+                        <div class="product-item">
+                            <div class="product-info">
+                                <div class="product-name">${product.name}</div>
+                            </div>
+                            <div class="product-price">R$ ${product.price.toFixed(2)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `).join('');
+    } else if (breakdownContainer) {
+        breakdownContainer.style.display = 'none';
+    }
+}
+
 // Função para mostrar mensagens
 function showMessage(message, type = 'info') {
     const existingMessage = document.querySelector('.flash-message');
@@ -577,6 +704,15 @@ function showMessage(message, type = 'info') {
             messageDiv.remove();
         }
     }, 5000);
+}
+
+// Mostra seção de login necessária
+function showAuthRequired() {
+    const loginSection = document.getElementById('login-section');
+    const basketInterface = document.getElementById('basket-interface');
+    
+    if (loginSection) loginSection.style.display = 'block';
+    if (basketInterface) basketInterface.style.display = 'none';
 }
 
 // INICIALIZAÇÃO
@@ -616,14 +752,25 @@ document.addEventListener('DOMContentLoaded', async function() {
             console.log('✅ Usuário autenticado:', currentUser.email);
             isAdmin = currentUser.role === 'admin';
             
+            // Mostra a interface da cesta
+            const loginSection = document.getElementById('login-section');
+            const basketInterface = document.getElementById('basket-interface');
+            
+            if (loginSection) loginSection.style.display = 'none';
+            if (basketInterface) basketInterface.style.display = 'block';
+            
             await Promise.all([
                 loadUserBasket(),
                 loadMarkets()
             ]);
             
-            // Se for admin, carrega todas as cestas
+            // Se for admin, carrega todas as cestas e mostra a seção
             if (isAdmin) {
-                await loadAllBaskets();
+                const adminSection = document.getElementById('admin-section');
+                if (adminSection) {
+                    adminSection.style.display = 'block';
+                    await loadAllBaskets();
+                }
             }
             
         } else {
@@ -635,33 +782,3 @@ document.addEventListener('DOMContentLoaded', async function() {
         showMessage('Erro ao carregar a página. Tente recarregar.', 'error');
     }
 });
-
-// Função para mostrar seção de login necessária
-function showAuthRequired() {
-    const grid = document.getElementById('products-grid');
-    const marketSection = document.getElementById('market-selection');
-    
-    if (grid) {
-        grid.innerHTML = `
-            <div style="grid-column: 1 / -1; text-align: center; padding: 40px;">
-                <div class="icon">🔒</div>
-                <h3>Login Necessário</h3>
-                <p>Faça login para gerenciar sua cesta básica</p>
-                <button onclick="window.location.href='/login.html'" class="btn btn-primary" style="margin-top: 15px;">
-                    Fazer Login
-                </button>
-            </div>
-        `;
-    }
-    
-    if (marketSection) {
-        marketSection.innerHTML = `
-            <div style="text-align: center; padding: 20px; color: #666;">
-                <p>Faça login para selecionar mercados</p>
-            </div>
-        `;
-    }
-    
-    const calculateBtn = document.getElementById('calculate-btn');
-    if (calculateBtn) calculateBtn.disabled = true;
-}
