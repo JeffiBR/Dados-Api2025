@@ -856,6 +856,7 @@ async def log_page_access_endpoint(
     
     background_tasks.add_task(log_page_access, page_key, current_user)
     return {"message": "Log de acesso registrado"}
+}
 
 @app.post("/api/log-custom-action")
 async def log_custom_action(
@@ -865,6 +866,7 @@ async def log_custom_action(
 ):
     background_tasks.add_task(log_custom_action_internal, request, current_user)
     return {"message": "Ação customizada registrada"}
+}
 
 @app.get("/api/usage-statistics")
 async def get_usage_statistics(
@@ -923,6 +925,40 @@ async def get_products_log(page: int = 1, page_size: int = 50, user: UserProfile
         supabase.table('produtos').select('*', count='exact').order('created_at', desc=True).range(start_index, end_index).execute
     )
     return {"data": response.data, "total_count": response.count}
+
+# NOVO ENDPOINT: Busca específica por código de barras
+@app.get("/api/search-product")
+async def search_product_by_barcode(
+    barcode: str = Query(..., description="Código de barras do produto"),
+    current_user: Optional[UserProfile] = Depends(get_current_user_optional)
+):
+    """
+    Busca específica por código de barras exato
+    """
+    try:
+        response = await asyncio.to_thread(
+            supabase.table('produtos')
+            .select('codigo_barras, nome_produto, preco_produto, nome_supermercado')
+            .eq('codigo_barras', barcode)
+            .order('data_ultima_venda', desc=True)
+            .limit(1)
+            .execute
+        )
+        
+        if response.data:
+            return {
+                "found": True,
+                "product": response.data[0]
+            }
+        else:
+            return {
+                "found": False,
+                "message": "Produto não encontrado"
+            }
+            
+    except Exception as e:
+        logging.error(f"Erro na busca por código de barras {barcode}: {e}")
+        raise HTTPException(status_code=500, detail="Erro na busca do produto")
 
 @app.get("/api/search")
 async def search_products(
