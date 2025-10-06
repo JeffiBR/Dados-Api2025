@@ -104,21 +104,12 @@ async function routeGuard(requiredPermission = null) {
 }
 
 /**
- * Função para verificar autenticação - necessária para a página da cesta básica
+ * Função para verificar autenticação - compatibilidade com cesta.js
  */
 async function checkAuth() {
-    const token = localStorage.getItem('token');
-    if (!token) {
-        return false;
-    }
-
     try {
-        const response = await fetch('/api/users/me', {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        return response.ok;
+        const session = await getSession();
+        return !!session;
     } catch (error) {
         console.error('Erro ao verificar autenticação:', error);
         return false;
@@ -227,6 +218,21 @@ async function signUp(email, password, userMetadata = {}) {
     return data;
 }
 
+/**
+ * Verifica e atualiza o estado de autenticação globalmente
+ */
+async function checkAndUpdateAuthState() {
+    const isAuthenticated = await checkAuth();
+    
+    // Dispara um evento customizado para que outras partes da aplicação saibam do estado
+    const authEvent = new CustomEvent('authStateChange', {
+        detail: { isAuthenticated, user: currentUserProfile }
+    });
+    window.dispatchEvent(authEvent);
+    
+    return isAuthenticated;
+}
+
 // Inicializa a autenticação quando o script é carregado
 document.addEventListener('DOMContentLoaded', function() {
     initAuth().catch(console.error);
@@ -248,6 +254,7 @@ if (typeof module !== 'undefined' && module.exports) {
         hasPermission,
         initAuth,
         signIn,
-        signUp
+        signUp,
+        checkAndUpdateAuthState
     };
 }
