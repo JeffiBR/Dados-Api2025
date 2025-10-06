@@ -1,31 +1,53 @@
-// cesta.js - Lógica da página da Cesta Básica
+// cesta.js - Lógica da página da Cesta Básica (ATUALIZADO)
 let userBasket = { products: [] };
 let allMarkets = [];
 let selectedMarkets = new Set();
 
+// Função auxiliar para verificar autenticação (compatível com auth.js)
+async function checkUserAuth() {
+    try {
+        const session = await getSession();
+        return !!session;
+    } catch (error) {
+        console.error('Erro ao verificar autenticação:', error);
+        return false;
+    }
+}
+
 // Carrega a cesta do usuário
 async function loadUserBasket() {
     try {
-        const token = localStorage.getItem('token');
-        if (!token) {
+        // Verifica autenticação primeiro
+        const user = await getAuthUser();
+        if (!user) {
             showAuthRequired();
             return;
         }
 
-        const response = await fetch('/api/basket', {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-
+        const response = await authenticatedFetch('/api/basket');
+        
         if (response.ok) {
             userBasket = await response.json();
             renderProducts();
+            
+            // Garante que a interface principal está visível
+            const basketInterface = document.querySelector('.basket-interface');
+            if (basketInterface) {
+                basketInterface.style.display = 'block';
+            }
+        } else if (response.status === 401) {
+            console.log('Sessão expirada');
+            showAuthRequired();
         } else {
-            console.error('Erro ao carregar cesta');
+            console.error('Erro ao carregar cesta:', response.status);
         }
     } catch (error) {
-        console.error('Erro:', error);
+        console.error('Erro ao carregar cesta:', error);
+        // Em caso de erro de rede ou outros, tenta verificar se está autenticado
+        const user = await getAuthUser();
+        if (!user) {
+            showAuthRequired();
+        }
     }
 }
 
@@ -66,7 +88,7 @@ function renderProducts() {
         return;
     }
     
-    emptyState.style.display = 'none';
+    if (emptyState) emptyState.style.display = 'none';
     grid.innerHTML = '';
     
     userBasket.products.forEach((product, index) => {
@@ -86,6 +108,7 @@ function renderProducts() {
 // Renderiza a seleção de mercados
 function renderMarketSelection() {
     const container = document.getElementById('market-selection');
+    if (!container) return;
     
     if (!allMarkets || allMarkets.length === 0) {
         container.innerHTML = '<p class="not-found">Nenhum mercado disponível</p>';
@@ -140,12 +163,7 @@ async function addProduct() {
     // Busca o nome do produto
     let productName = null;
     try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`/api/search?q=${encodeURIComponent(barcode)}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
+        const response = await authenticatedFetch(`/api/search?q=${encodeURIComponent(barcode)}`);
         
         if (response.ok) {
             const data = await response.json();
@@ -188,12 +206,10 @@ async function removeProduct(index) {
 // Salva a cesta no servidor
 async function saveBasket() {
     try {
-        const token = localStorage.getItem('token');
-        const response = await fetch('/api/basket', {
+        const response = await authenticatedFetch('/api/basket', {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify(userBasket)
         });
@@ -237,20 +253,22 @@ async function calculateBasket() {
     
     calculateBtn.disabled = true;
     calculateBtn.textContent = '🔄 Calculando...';
-    resultsSection.style.display = 'block';
+    if (resultsSection) resultsSection.style.display = 'block';
     
     // Mostra loading nos resultados
-    document.getElementById('complete-basket-details').innerHTML = '<div class="loading">Buscando preços</div>';
-    document.getElementById('mixed-basket-details').innerHTML = '<div class="loading">Buscando preços</div>';
-    document.getElementById('mixed-breakdown').style.display = 'none';
+    const completeBasketDetails = document.getElementById('complete-basket-details');
+    const mixedBasketDetails = document.getElementById('mixed-basket-details');
+    const mixedBreakdown = document.getElementById('mixed-breakdown');
+    
+    if (completeBasketDetails) completeBasketDetails.innerHTML = '<div class="loading">Buscando preços</div>';
+    if (mixedBasketDetails) mixedBasketDetails.innerHTML = '<div class="loading">Buscando preços</div>';
+    if (mixedBreakdown) mixedBreakdown.style.display = 'none';
     
     try {
-        const token = localStorage.getItem('token');
-        const response = await fetch('/api/basket/calculate', {
+        const response = await authenticatedFetch('/api/basket/calculate', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({
                 basket_id: userBasket.id,
@@ -266,15 +284,15 @@ async function calculateBasket() {
             console.error('Erro ao calcular preços:', errorText);
             alert('Erro ao calcular preços. Tente novamente.');
             
-            document.getElementById('complete-basket-details').innerHTML = '<p class="not-found">Erro no cálculo</p>';
-            document.getElementById('mixed-basket-details').innerHTML = '<p class="not-found">Erro no cálculo</p>';
+            if (completeBasketDetails) completeBasketDetails.innerHTML = '<p class="not-found">Erro no cálculo</p>';
+            if (mixedBasketDetails) mixedBasketDetails.innerHTML = '<p class="not-found">Erro no cálculo</p>';
         }
     } catch (error) {
         console.error('Erro:', error);
         alert('Erro de conexão. Verifique sua internet e tente novamente.');
         
-        document.getElementById('complete-basket-details').innerHTML = '<p class="not-found">Erro de conexão</p>';
-        document.getElementById('mixed-basket-details').innerHTML = '<p class="not-found">Erro de conexão</p>';
+        if (completeBasketDetails) completeBasketDetails.innerHTML = '<p class="not-found">Erro de conexão</p>';
+        if (mixedBasketDetails) mixedBasketDetails.innerHTML = '<p class="not-found">Erro de conexão</p>';
     } finally {
         calculateBtn.disabled = false;
         calculateBtn.textContent = '🧮 Calcular Melhores Preços';
@@ -292,6 +310,7 @@ function displayResults(results) {
 
 function displayCompleteBasket(bestBasket, allBaskets) {
     const container = document.getElementById('complete-basket-details');
+    if (!container) return;
     
     if (!bestBasket) {
         container.innerHTML = `
@@ -337,6 +356,8 @@ function displayMixedBasket(mixedBasket) {
     const breakdownContainer = document.getElementById('mixed-breakdown');
     const marketBreakdown = document.getElementById('market-breakdown');
     
+    if (!container) return;
+    
     const foundProducts = mixedBasket.products.filter(p => p.found).length;
     const totalProducts = mixedBasket.products.length;
     
@@ -370,7 +391,7 @@ function displayMixedBasket(mixedBasket) {
     `;
     
     // Mostra breakdown por mercado se houver economia e múltiplos mercados
-    if (mixedBasket.economy_percent > 0 && Object.keys(mixedBasket.market_breakdown).length > 1) {
+    if (mixedBasket.economy_percent > 0 && breakdownContainer && marketBreakdown && Object.keys(mixedBasket.market_breakdown).length > 1) {
         breakdownContainer.style.display = 'block';
         marketBreakdown.innerHTML = Object.values(mixedBasket.market_breakdown).map(market => `
             <div class="market-store">
@@ -388,7 +409,7 @@ function displayMixedBasket(mixedBasket) {
                 </div>
             </div>
         `).join('');
-    } else {
+    } else if (breakdownContainer) {
         breakdownContainer.style.display = 'none';
     }
 }
@@ -397,44 +418,78 @@ function showAuthRequired() {
     const grid = document.getElementById('products-grid');
     const marketSection = document.getElementById('market-selection');
     
-    grid.innerHTML = `
-        <div style="grid-column: 1 / -1; text-align: center; padding: 40px;">
-            <div class="icon">🔒</div>
-            <h3>Login Necessário</h3>
-            <p>Faça login para gerenciar sua cesta básica</p>
-            <button onclick="window.location.href='/login.html'" class="btn-primary" style="margin-top: 15px;">
-                Fazer Login
-            </button>
-        </div>
-    `;
+    if (grid) {
+        grid.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 40px;">
+                <div class="icon">🔒</div>
+                <h3>Login Necessário</h3>
+                <p>Faça login para gerenciar sua cesta básica</p>
+                <button onclick="window.location.href='/login.html'" class="btn-primary" style="margin-top: 15px;">
+                    Fazer Login
+                </button>
+            </div>
+        `;
+    }
     
-    marketSection.innerHTML = `
-        <div style="text-align: center; padding: 20px; color: #666;">
-            <p>Faça login para selecionar mercados</p>
-        </div>
-    `;
+    if (marketSection) {
+        marketSection.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #666;">
+                <p>Faça login para selecionar mercados</p>
+            </div>
+        `;
+    }
     
-    document.getElementById('calculate-btn').disabled = true;
+    const calculateBtn = document.getElementById('calculate-btn');
+    if (calculateBtn) calculateBtn.disabled = true;
+    
+    // Mostra a seção de login e esconde a interface da cesta
+    const loginSection = document.querySelector('.login-section');
+    const basketInterface = document.querySelector('.basket-interface');
+    
+    if (loginSection) loginSection.style.display = 'block';
+    if (basketInterface) basketInterface.style.display = 'none';
 }
 
 // Permitir adicionar produto com Enter
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     const barcodeInput = document.getElementById('product-barcode');
-    barcodeInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            addProduct();
-        }
-    });
+    if (barcodeInput) {
+        barcodeInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addProduct();
+            }
+        });
+    }
     
-    // Inicialização
-    checkAuth().then(isAuthenticated => {
-        if (isAuthenticated) {
-            loadUserBasket();
-            loadMarkets();
+    // INICIALIZAÇÃO CORRIGIDA
+    try {
+        // Verifica autenticação usando as funções atualizadas do auth.js
+        const user = await getAuthUser();
+        
+        if (user) {
+            console.log('✅ Usuário autenticado, carregando cesta...');
+            await loadUserBasket();
+            await loadMarkets();
+            
+            // Esconde a seção de login se estiver visível
+            const loginSection = document.querySelector('.login-section');
+            if (loginSection) {
+                loginSection.style.display = 'none';
+            }
+            
+            // Mostra a interface principal da cesta
+            const basketInterface = document.querySelector('.basket-interface');
+            if (basketInterface) {
+                basketInterface.style.display = 'block';
+            }
         } else {
+            console.log('❌ Usuário não autenticado');
             showAuthRequired();
         }
-    });
+    } catch (error) {
+        console.error('Erro na inicialização:', error);
+        showAuthRequired();
+    }
 });
 
 // Função para limpar toda a cesta
@@ -449,18 +504,29 @@ async function clearBasket() {
 
 // Adicionar botão de limpar cesta (opcional - pode ser adicionado no HTML)
 function addClearBasketButton() {
-    const basketSection = document.querySelector('.basket-section');
+    const basketInfo = document.querySelector('.basket-info');
+    if (!basketInfo) return;
+    
+    // Verifica se o botão já existe
+    if (document.querySelector('.clear-basket-btn')) return;
+    
     const clearButton = document.createElement('button');
     clearButton.textContent = '🗑️ Limpar Cesta';
-    clearButton.className = 'btn-secondary';
+    clearButton.className = 'btn-secondary clear-basket-btn';
     clearButton.style.marginTop = '10px';
     clearButton.onclick = clearBasket;
     
-    const basketInfo = document.querySelector('.basket-info');
     basketInfo.appendChild(clearButton);
 }
 
 // Inicializar botão de limpar cesta quando a página carregar
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(addClearBasketButton, 1000);
+});
+
+// Escuta mudanças de autenticação (opcional, para casos de logout em outras abas)
+window.addEventListener('authStateChange', (event) => {
+    if (!event.detail.isAuthenticated) {
+        showAuthRequired();
+    }
 });
