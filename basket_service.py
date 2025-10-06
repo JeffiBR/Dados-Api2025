@@ -19,13 +19,13 @@ class UserBasket(BaseModel):
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 
-class BasketCalculationRequest(BaseModel):
-    basket_id: int
-    cnpjs: List[str]
-
 class BasketUpdateRequest(BaseModel):
     basket_name: Optional[str] = None
     products: Optional[List[BasketProduct]] = None
+
+class BasketCalculationRequest(BaseModel):
+    basket_id: int
+    cnpjs: List[str]
 
 # Cria o roteador para a cesta básica
 basket_router = APIRouter(prefix="/api/basket", tags=["basket"])
@@ -81,17 +81,36 @@ async def get_user_basket(current_user: dict = Depends(lambda: get_current_user(
 @basket_router.get("/all")
 async def get_all_baskets(current_user: dict = Depends(lambda: get_current_user())):
     """
-    Retorna todas as cestas (apenas para administradores)
+    Retorna todas as cestas com informações dos usuários (apenas para administradores)
     """
     try:
         # Verifica se o usuário é admin
         if current_user.get('role') != 'admin':
             raise HTTPException(status_code=403, detail="Acesso não autorizado")
         
+        # Busca todas as cestas com informações dos usuários
         response = await asyncio.to_thread(
-            supabase.table('user_baskets').select('*').execute
+            supabase.table('user_baskets')
+            .select('*, users(email, user_metadata)')
+            .execute
         )
-        return response.data
+        
+        # Processa os dados para incluir informações do usuário
+        baskets_with_users = []
+        for basket in response.data:
+            user_info = basket.get('users', {})
+            basket_with_user = {
+                **basket,
+                'user_email': user_info.get('email', 'N/A'),
+                'user_name': user_info.get('user_metadata', {}).get('name', 'Usuário')
+            }
+            # Remove o objeto users original para evitar duplicação
+            if 'users' in basket_with_user:
+                del basket_with_user['users']
+            baskets_with_users.append(basket_with_user)
+        
+        return baskets_with_users
+        
     except HTTPException:
         raise
     except Exception as e:
@@ -120,7 +139,7 @@ async def update_user_basket(
             new_basket = {
                 'user_id': current_user.id,
                 'basket_name': basket_update.basket_name or 'Minha Cesta',
-                'products': basket_update.products or [],
+                'products': [product.dict() for product in basket_update.products] if basket_update.products else [],
                 'created_at': datetime.now().isoformat(),
                 'updated_at': datetime.now().isoformat()
             }
