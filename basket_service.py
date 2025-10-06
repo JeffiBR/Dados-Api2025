@@ -3,8 +3,7 @@ import logging
 import asyncio
 from datetime import datetime
 from typing import List, Optional, Dict, Any
-import pandas as pd
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 # Modelos Pydantic para a cesta básica
@@ -23,6 +22,10 @@ class UserBasket(BaseModel):
 class BasketCalculationRequest(BaseModel):
     basket_id: int
     cnpjs: List[str]
+
+class BasketUpdateRequest(BaseModel):
+    basket_name: Optional[str] = None
+    products: Optional[List[BasketProduct]] = None
 
 # Cria o roteador para a cesta básica
 basket_router = APIRouter(prefix="/api/basket", tags=["basket"])
@@ -49,6 +52,9 @@ def setup_basket_routes(app, supabase_client, supabase_admin_client, get_current
 # Endpoints da cesta básica
 @basket_router.get("/")
 async def get_user_basket(current_user: dict = Depends(lambda: get_current_user())):
+    """
+    Retorna a cesta do usuário atual
+    """
     try:
         response = await asyncio.to_thread(
             supabase.table('user_baskets').select('*').eq('user_id', current_user.id).execute
@@ -60,7 +66,9 @@ async def get_user_basket(current_user: dict = Depends(lambda: get_current_user(
             new_basket = {
                 'user_id': current_user.id,
                 'basket_name': 'Minha Cesta',
-                'products': []
+                'products': [],
+                'created_at': datetime.now().isoformat(),
+                'updated_at': datetime.now().isoformat()
             }
             create_response = await asyncio.to_thread(
                 supabase.table('user_baskets').insert(new_basket).execute
@@ -70,43 +78,201 @@ async def get_user_basket(current_user: dict = Depends(lambda: get_current_user(
         logging.error(f"Erro ao buscar cesta do usuário: {e}")
         raise HTTPException(status_code=500, detail="Erro ao carregar cesta")
 
-@basket_router.put("/")
-async def update_user_basket(basket: UserBasket, current_user: dict = Depends(lambda: get_current_user())):
+@basket_router.get("/all")
+async def get_all_baskets(current_user: dict = Depends(lambda: get_current_user())):
+    """
+    Retorna todas as cestas (apenas para administradores)
+    """
     try:
-        # Verifica se a cesta pertence ao usuário
+        # Verifica se o usuário é admin
+        if current_user.get('role') != 'admin':
+            raise HTTPException(status_code=403, detail="Acesso não autorizado")
+        
+        response = await asyncio.to_thread(
+            supabase.table('user_baskets').select('*').execute
+        )
+        return response.data
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Erro ao buscar todas as cestas: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao carregar cestas")
+
+@basket_router.put("/")
+async def update_user_basket(
+    basket_update: BasketUpdateRequest, 
+    current_user: dict = Depends(lambda: get_current_user())
+):
+    """
+    Atualiza a cesta do usuário atual
+    """
+    try:
+        # Busca a cesta existente do usuário
         existing_response = await asyncio.to_thread(
-            supabase.table('user_baskets').select('*').eq('id', basket.id).eq('user_id', current_user.id).execute
+            supabase.table('user_baskets')
+            .select('*')
+            .eq('user_id', current_user.id)
+            .execute
         )
         
         if not existing_response.data:
-            raise HTTPException(status_code=404, detail="Cesta não encontrada")
-        
-        # Atualiza a cesta
-        update_data = basket.dict(exclude={'id', 'user_id', 'created_at'})
-        update_data['updated_at'] = datetime.now().isoformat()
-        
-        response = await asyncio.to_thread(
-            supabase.table('user_baskets').update(update_data).eq('id', basket.id).execute
-        )
-        return response.data[0]
+            # Cria nova cesta se não existir
+            new_basket = {
+                'user_id': current_user.id,
+                'basket_name': basket_update.basket_name or 'Minha Cesta',
+                'products': basket_update.products or [],
+                'created_at': datetime.now().isoformat(),
+                'updated_at': datetime.now().isoformat()
+            }
+            response = await asyncio.to_thread(
+                supabase.table('user_baskets').insert(new_basket).execute
+            )
+            return response.data[0]
+        else:
+            # Atualiza cesta existente
+            basket_id = existing_response.data[0]['id']
+            update_data = {
+                'updated_at': datetime.now().isoformat()
+            }
+            
+            if basket_update.basket_name is not None:
+                update_data['basket_name'] = basket_update.basket_name
+                
+            if basket_update.products is not None:
+                update_data['products'] = [product.dict() for product in basket_update.products]
+            
+            response = await asyncio.to_thread(
+                supabase.table('user_baskets')
+                .update(update_data)
+                .eq('id', basket_id)
+                .eq('user_id', current_user.id)
+                .execute
+            )
+            
+            if response.data:
+                return response.data[0]
+            else:
+                raise HTTPException(status_code=500, detail="Erro ao atualizar cesta")
+                
     except HTTPException:
         raise
     except Exception as e:
         logging.error(f"Erro ao atualizar cesta: {e}")
         raise HTTPException(status_code=500, detail="Erro ao atualizar cesta")
 
-@basket_router.post("/calculate")
-async def calculate_basket_prices(request: BasketCalculationRequest, current_user: dict = Depends(lambda: get_current_user())):
+@basket_router.delete("/product/{barcode}")
+async def remove_product_from_basket(
+    barcode: str,
+    current_user: dict = Depends(lambda: get_current_user())
+):
+    """
+    Remove um produto específico da cesta do usuário
+    """
     try:
         # Busca a cesta do usuário
         basket_response = await asyncio.to_thread(
-            supabase.table('user_baskets').select('*').eq('id', request.basket_id).eq('user_id', current_user.id).execute
+            supabase.table('user_baskets')
+            .select('*')
+            .eq('user_id', current_user.id)
+            .execute
         )
         
         if not basket_response.data:
             raise HTTPException(status_code=404, detail="Cesta não encontrada")
         
         basket = basket_response.data[0]
+        current_products = basket.get('products', [])
+        
+        # Filtra o produto a ser removido
+        new_products = [p for p in current_products if p.get('product_barcode') != barcode]
+        
+        if len(new_products) == len(current_products):
+            raise HTTPException(status_code=404, detail="Produto não encontrado na cesta")
+        
+        # Atualiza a cesta
+        update_data = {
+            'products': new_products,
+            'updated_at': datetime.now().isoformat()
+        }
+        
+        response = await asyncio.to_thread(
+            supabase.table('user_baskets')
+            .update(update_data)
+            .eq('id', basket['id'])
+            .eq('user_id', current_user.id)
+            .execute
+        )
+        
+        return response.data[0]
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Erro ao remover produto da cesta: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao remover produto")
+
+@basket_router.delete("/clear")
+async def clear_user_basket(current_user: dict = Depends(lambda: get_current_user())):
+    """
+    Limpa todos os produtos da cesta do usuário
+    """
+    try:
+        # Busca a cesta do usuário
+        basket_response = await asyncio.to_thread(
+            supabase.table('user_baskets')
+            .select('*')
+            .eq('user_id', current_user.id)
+            .execute
+        )
+        
+        if not basket_response.data:
+            raise HTTPException(status_code=404, detail="Cesta não encontrada")
+        
+        # Limpa os produtos
+        update_data = {
+            'products': [],
+            'updated_at': datetime.now().isoformat()
+        }
+        
+        response = await asyncio.to_thread(
+            supabase.table('user_baskets')
+            .update(update_data)
+            .eq('id', basket_response.data[0]['id'])
+            .eq('user_id', current_user.id)
+            .execute
+        )
+        
+        return response.data[0]
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Erro ao limpar cesta: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao limpar cesta")
+
+@basket_router.post("/calculate")
+async def calculate_basket_prices(
+    request: BasketCalculationRequest, 
+    current_user: dict = Depends(lambda: get_current_user())
+):
+    """
+    Calcula os preços da cesta nos mercados selecionados
+    """
+    try:
+        # Busca a cesta pelo ID
+        basket_response = await asyncio.to_thread(
+            supabase.table('user_baskets').select('*').eq('id', request.basket_id).execute
+        )
+        
+        if not basket_response.data:
+            raise HTTPException(status_code=404, detail="Cesta não encontrada")
+        
+        basket = basket_response.data[0]
+        
+        # Verifica se a cesta pertence ao usuário (a menos que seja admin)
+        if current_user.get('role') != 'admin' and basket['user_id'] != current_user.id:
+            raise HTTPException(status_code=403, detail="Acesso não autorizado a esta cesta")
+        
         products = basket.get('products', [])
         
         if len(products) > 25:
@@ -132,7 +298,10 @@ async def calculate_basket_prices(request: BasketCalculationRequest, current_use
                 products_info[barcode] = product_response.data[0]['nome_produto']
         
         # Agora busca os preços
-        price_query = supabase.table('produtos').select('*').in_('codigo_barras', barcodes).in_('cnpj_supermercado', request.cnpjs)
+        price_query = supabase.table('produtos').select(
+            'codigo_barras,nome_produto,preco_produto,cnpj_supermercado,nome_supermercado'
+        ).in_('codigo_barras', barcodes).in_('cnpj_supermercado', request.cnpjs)
+        
         prices_response = await asyncio.to_thread(price_query.execute)
         
         if not prices_response.data:
