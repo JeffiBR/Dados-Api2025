@@ -14,6 +14,8 @@ async function authenticatedFetch(url, options = {}) {
     try {
         const session = await getSession();
         if (!session) {
+            // Se não houver sessão, redireciona para o login ou mostra a seção de login
+            showAuthRequired();
             throw new Error('Usuário não autenticado');
         }
 
@@ -25,16 +27,19 @@ async function authenticatedFetch(url, options = {}) {
             }
         };
 
-        const response = await fetch(url, { ...defaultOptions, ...options });
+        const response = await fetch(url, { ...options, ...defaultOptions });
         
         if (response.status === 401) {
+            // Tenta renovar o token e refazer a chamada
             await handleTokenRefresh();
-            return authenticatedFetch(url, options);
+            return authenticatedFetch(url, options); // Tenta novamente com o novo token
         }
         
         return response;
     } catch (error) {
         console.error('Erro no fetch autenticado:', error);
+        // Não mostra mensagem de erro aqui para não poluir a UI,
+        // a função que chamou deve tratar o erro.
         throw error;
     }
 }
@@ -43,7 +48,6 @@ async function authenticatedFetch(url, options = {}) {
 async function loadUserBasket() {
     try {
         console.log('🔍 Carregando cesta do usuário...');
-        
         const response = await authenticatedFetch('/api/basket');
         
         if (response.ok) {
@@ -51,38 +55,15 @@ async function loadUserBasket() {
             userBasket = basketData;
             console.log('✅ Cesta carregada:', userBasket);
             renderProducts();
-        } else if (response.status === 404) {
-            // Cria uma cesta vazia se não existir
-            await createUserBasket();
         } else {
-            console.error('❌ Erro ao carregar cesta:', response.status);
+            // Se a resposta não for OK, o erro será capturado pelo bloco catch
             const errorText = await response.text();
-            console.error('Detalhes do erro:', errorText);
+            throw new Error(`Erro ao carregar cesta: ${response.status} ${errorText}`);
         }
     } catch (error) {
-        console.error('💥 Erro ao carregar cesta:', error);
-        showMessage('Erro ao carregar sua cesta. Tente recarregar a página.', 'error');
-    }
-}
-
-// Cria uma nova cesta para o usuário
-async function createUserBasket() {
-    try {
-        const response = await authenticatedFetch('/api/basket', {
-            method: 'POST'
-        });
-        
-        if (response.ok) {
-            const basketData = await response.json();
-            userBasket = basketData;
-            console.log('✅ Cesta criada:', userBasket);
-            renderProducts();
-        } else {
-            throw new Error('Erro ao criar cesta');
-        }
-    } catch (error) {
-        console.error('Erro ao criar cesta:', error);
-        throw error;
+        console.error('💥 Erro fatal ao carregar cesta:', error);
+        showMessage('Não foi possível carregar sua cesta. Tente recarregar a página.', 'error');
+        showAuthRequired(); // Mostra a tela de login como fallback
     }
 }
 
@@ -103,235 +84,177 @@ async function loadAllBaskets() {
 
 // Renderiza todas as cestas (admin)
 function renderAllBaskets(baskets) {
-    const adminSection = document.getElementById('admin-section');
-    if (!adminSection) return;
+    const container = document.getElementById('admin-baskets-container');
+    if (!container) return;
 
     if (baskets.length === 0) {
-        adminSection.innerHTML = '<p>Nenhuma cesta encontrada.</p>';
+        container.innerHTML = '<p>Nenhuma cesta de usuário encontrada.</p>';
         return;
     }
 
-    adminSection.innerHTML = `
-        <div class="admin-baskets">
-            <h3><i class="fas fa-users"></i> Todas as Cestas dos Usuários</h3>
-            <div class="baskets-grid">
-                ${baskets.map(basket => `
-                    <div class="basket-card">
-                        <div class="basket-header">
-                            <h4>${basket.basket_name}</h4>
-                            <div class="user-info">
-                                <span class="user-badge">${basket.user_name || 'Usuário'}</span>
-                                <span class="user-email">${basket.user_email}</span>
-                            </div>
-                        </div>
-                        <div class="basket-info">
-                            <p><strong>Produtos:</strong> ${basket.products.length}</p>
-                            <p><strong>Criada:</strong> ${new Date(basket.created_at).toLocaleString('pt-BR')}</p>
-                            <p><strong>Atualizada:</strong> ${new Date(basket.updated_at).toLocaleString('pt-BR')}</p>
-                        </div>
-                        <div class="basket-products">
-                            <h5>Produtos na Cesta:</h5>
-                            ${basket.products.slice(0, 5).map(product => `
-                                <div class="product-preview">
-                                    <span class="product-name">${product.product_name || product.product_barcode}</span>
-                                    <span class="product-barcode">${product.product_barcode}</span>
-                                </div>
-                            `).join('')}
-                            ${basket.products.length > 5 ? `<p class="more-products">... e mais ${basket.products.length - 5} produtos</p>` : ''}
-                            ${basket.products.length === 0 ? '<p class="empty-basket">Cesta vazia</p>' : ''}
-                        </div>
+    container.innerHTML = `
+        <div class="baskets-grid">
+            ${baskets.map(basket => `
+                <div class="basket-card">
+                    <div class="basket-header">
+                        <h4>${basket.basket_name || 'Cesta sem nome'}</h4>
+                        <span class="user-badge">${basket.user_name || 'Usuário'}</span>
                     </div>
-                `).join('')}
-            </div>
+                    <div class="basket-info">
+                        <p><strong>Email:</strong> ${basket.user_email || 'N/A'}</p>
+                        <p><strong>Produtos:</strong> ${basket.products.length}</p>
+                        <p><strong>Atualizada em:</strong> ${new Date(basket.updated_at).toLocaleString('pt-BR')}</p>
+                    </div>
+                    <div class="basket-products">
+                        ${basket.products.slice(0, 5).map(product => `
+                            <div class="product-preview">
+                                <span class="product-name">${product.product_name || product.product_barcode}</span>
+                            </div>
+                        `).join('')}
+                        ${basket.products.length > 5 ? `<p style="font-size: 12px; color: var(--text-muted); margin-top: 5px;">... e mais ${basket.products.length - 5} produtos.</p>` : ''}
+                        ${basket.products.length === 0 ? '<p style="font-size: 12px; color: var(--text-muted);">Cesta vazia</p>' : ''}
+                    </div>
+                </div>
+            `).join('')}
         </div>
     `;
 }
 
-// Busca o nome do produto pelo código de barras - CORRIGIDO
+
+// Busca o nome do produto pelo código de barras
 async function getProductName(barcode) {
     try {
-        console.log(`🔍 Buscando produto: ${barcode}`);
-        
-        // CORREÇÃO: Use o endpoint correto para busca
-        const response = await authenticatedFetch(`/api/search?query=${encodeURIComponent(barcode)}`);
+        console.log(`🔍 Buscando nome para o produto: ${barcode}`);
+        const response = await authenticatedFetch(`/api/search?q=${encodeURIComponent(barcode)}`);
         
         if (response.ok) {
             const data = await response.json();
-            console.log('📦 Resultados da busca:', data);
-            
             if (data.results && data.results.length > 0) {
-                // Encontra produto com código exato
                 const exactMatch = data.results.find(p => p.codigo_barras === barcode);
-                if (exactMatch) {
-                    return exactMatch.nome_produto;
-                }
-                // Ou usa o primeiro resultado
-                return data.results[0].nome_produto;
+                return exactMatch ? exactMatch.nome_produto : data.results[0].nome_produto;
             }
-        } else if (response.status === 404) {
-            console.log('ℹ️ Produto não encontrado na base de dados');
-            return null;
-        } else {
-            console.warn('⚠️ Erro na busca do produto:', response.status);
-            // Tenta método alternativo de busca
-            return await alternativeProductSearch(barcode);
         }
-        return null;
+        console.log(`ℹ️ Nome não encontrado para ${barcode}, usando nome genérico.`);
+        return null; // Retorna null se não encontrar
     } catch (error) {
-        console.error('💥 Erro na busca do produto:', error);
-        // Fallback: busca alternativa
-        return await alternativeProductSearch(barcode);
+        console.error(`💥 Erro na busca do nome do produto ${barcode}:`, error);
+        return null; // Retorna null em caso de erro
     }
 }
 
-// Método alternativo de busca
-async function alternativeProductSearch(barcode) {
-    try {
-        // Tenta buscar diretamente na tabela produtos
-        const response = await authenticatedFetch(`/api/basket/debug/search?barcode=${encodeURIComponent(barcode)}`);
-        
-        if (response.ok) {
-            const data = await response.json();
-            if (data.found && data.results.length > 0) {
-                return data.results[0].nome_produto;
-            }
-        }
-        return null;
-    } catch (error) {
-        console.error('Erro na busca alternativa:', error);
-        return null;
-    }
-}
-
-// Adiciona produto à cesta - CORRIGIDO
+// Adiciona produto à cesta
 async function addProduct() {
     const barcodeInput = document.getElementById('product-barcode');
+    const addButton = barcodeInput.nextElementSibling;
     const barcode = barcodeInput.value.trim();
     
-    if (!barcode) {
-        showMessage('Por favor, digite um código de barras', 'warning');
-        return;
-    }
-    
-    if (!/^\d+$/.test(barcode)) {
-        showMessage('Código de barras deve conter apenas números', 'warning');
-        return;
-    }
-    
-    if (barcode.length < 8) {
-        showMessage('Código de barras muito curto (mínimo 8 dígitos)', 'warning');
+    if (!barcode || !/^\d{8,}$/.test(barcode)) {
+        showMessage('Código de barras inválido. Use apenas números (mínimo 8 dígitos).', 'warning');
         return;
     }
     
     if (userBasket.products.length >= 25) {
-        showMessage('Limite de 25 produtos atingido', 'warning');
+        showMessage('Limite de 25 produtos atingido.', 'warning');
         return;
     }
     
     if (userBasket.products.some(p => p.product_barcode === barcode)) {
-        showMessage('Este produto já está na cesta', 'warning');
+        showMessage('Este produto já está na cesta.', 'info');
         return;
     }
     
-    // Mostra loading
-    const originalText = barcodeInput.value;
-    barcodeInput.value = '🔄 Buscando produto...';
+    // UI de carregamento
     barcodeInput.disabled = true;
+    addButton.disabled = true;
+    addButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adicionando...';
     
     try {
         const productName = await getProductName(barcode);
         
+        // Adiciona o produto à cesta local
         userBasket.products.push({
             product_barcode: barcode,
-            product_name: productName || `Produto ${barcode}`
+            product_name: productName || `Produto ${barcode}` // Usa nome genérico se não encontrar
         });
         
-        // Salva no servidor
+        // Salva a cesta inteira no servidor
         await saveBasket();
-        renderProducts();
         
+        renderProducts();
         showMessage('✅ Produto adicionado com sucesso!', 'success');
         barcodeInput.value = '';
         
     } catch (error) {
         console.error('Erro ao adicionar produto:', error);
-        
-        // Remove o produto da lista local em caso de erro
+        // Reverte a adição local em caso de falha ao salvar
         userBasket.products = userBasket.products.filter(p => p.product_barcode !== barcode);
-        
-        showMessage('Erro ao adicionar produto. Tente novamente.', 'error');
-        barcodeInput.value = originalText;
+        showMessage('Erro ao salvar o produto na cesta. Tente novamente.', 'error');
     } finally {
+        // Restaura a UI
         barcodeInput.disabled = false;
+        addButton.disabled = false;
+        addButton.innerHTML = '<i class="fas fa-plus"></i> Adicionar Produto';
         barcodeInput.focus();
     }
 }
 
 // Remove produto específico
 async function removeProduct(barcode) {
-    if (confirm('Tem certeza que deseja remover este produto da cesta?')) {
+    showConfirmationModal('Tem certeza que deseja remover este produto?', async () => {
+        const originalProducts = [...userBasket.products];
+        userBasket.products = userBasket.products.filter(p => p.product_barcode !== barcode);
+        renderProducts(); // Atualiza a UI imediatamente
+
         try {
-            const response = await authenticatedFetch(`/api/basket/product/${barcode}`, {
-                method: 'DELETE'
-            });
-            
-            if (response.ok) {
-                // Atualiza a cesta local
-                userBasket.products = userBasket.products.filter(p => p.product_barcode !== barcode);
-                renderProducts();
-                showMessage('✅ Produto removido com sucesso!', 'success');
-            } else {
-                throw new Error('Erro ao remover produto');
-            }
+            await saveBasket();
+            showMessage('✅ Produto removido com sucesso!', 'success');
         } catch (error) {
-            console.error('Erro ao remover produto:', error);
-            showMessage('Erro ao remover produto', 'error');
+            userBasket.products = originalProducts; // Restaura em caso de erro
+            renderProducts();
+            showMessage('Erro ao remover o produto. Tente novamente.', 'error');
         }
-    }
+    });
 }
 
 // Limpa toda a cesta
 async function clearBasket() {
     if (userBasket.products.length === 0) {
-        showMessage('A cesta já está vazia', 'info');
+        showMessage('A cesta já está vazia.', 'info');
         return;
     }
     
-    if (confirm('Tem certeza que deseja limpar toda a cesta? Esta ação não pode ser desfeita.')) {
+    showConfirmationModal('Tem certeza que deseja limpar toda a cesta? Esta ação não pode ser desfeita.', async () => {
+        const originalProducts = [...userBasket.products];
+        userBasket.products = [];
+        renderProducts(); // Atualiza a UI imediatamente
+
         try {
-            const response = await authenticatedFetch('/api/basket/clear', {
-                method: 'DELETE'
-            });
-            
-            if (response.ok) {
-                userBasket.products = [];
-                renderProducts();
-                showMessage('✅ Cesta limpa com sucesso!', 'success');
-            } else {
-                throw new Error('Erro ao limpar cesta');
-            }
+            await saveBasket();
+            showMessage('✅ Cesta limpa com sucesso!', 'success');
         } catch (error) {
-            console.error('Erro ao limpar cesta:', error);
-            showMessage('Erro ao limpar cesta', 'error');
+            userBasket.products = originalProducts; // Restaura em caso de erro
+            renderProducts();
+            showMessage('Erro ao limpar a cesta. Tente novamente.', 'error');
         }
-    }
+    });
 }
 
 // Abre modal para editar produto
-function openEditModal(product) {
+function openEditModal(barcode) {
+    const product = userBasket.products.find(p => p.product_barcode === barcode);
+    if (!product) return;
+
     const modal = document.getElementById('edit-product-modal');
     document.getElementById('edit-barcode').value = product.product_barcode;
     document.getElementById('edit-name').value = product.product_name || '';
     
-    // Armazena o código de barras original para referência
     modal.setAttribute('data-original-barcode', product.product_barcode);
     modal.style.display = 'flex';
 }
 
 // Fecha modal de edição
 function closeEditModal() {
-    const modal = document.getElementById('edit-product-modal');
-    modal.style.display = 'none';
+    document.getElementById('edit-product-modal').style.display = 'none';
 }
 
 // Salva edição do produto
@@ -341,146 +264,117 @@ async function saveProductEdit() {
     const newBarcode = document.getElementById('edit-barcode').value.trim();
     const newName = document.getElementById('edit-name').value.trim();
     
-    if (!newBarcode) {
-        showMessage('Código de barras não pode estar vazio', 'warning');
+    if (!newBarcode || !/^\d{8,}$/.test(newBarcode)) {
+        showMessage('Código de barras inválido.', 'warning');
         return;
     }
-    
-    if (!/^\d+$/.test(newBarcode)) {
-        showMessage('Código de barras deve conter apenas números', 'warning');
-        return;
-    }
-    
+
+    const originalProducts = [...userBasket.products];
+    const productIndex = userBasket.products.findIndex(p => p.product_barcode === originalBarcode);
+
+    if (productIndex === -1) return;
+
+    userBasket.products[productIndex] = { product_barcode: newBarcode, product_name: newName };
+    renderProducts();
+    closeEditModal();
+
     try {
-        // Remove o produto antigo
-        userBasket.products = userBasket.products.filter(p => p.product_barcode !== originalBarcode);
-        
-        // Busca novo nome se necessário
-        let productName = newName;
-        if (!productName) {
-            productName = await getProductName(newBarcode);
-        }
-        
-        // Adiciona o produto atualizado
-        userBasket.products.push({
-            product_barcode: newBarcode,
-            product_name: productName || `Produto ${newBarcode}`
-        });
-        
         await saveBasket();
-        renderProducts();
-        closeEditModal();
         showMessage('✅ Produto atualizado com sucesso!', 'success');
-        
     } catch (error) {
-        console.error('Erro ao editar produto:', error);
-        showMessage('Erro ao editar produto', 'error');
+        userBasket.products = originalProducts; // Restaura em caso de erro
+        renderProducts();
+        showMessage('Erro ao salvar a alteração. Tente novamente.', 'error');
     }
 }
 
 // Salva a cesta no servidor - CORRIGIDO (usando PATCH)
 async function saveBasket() {
     try {
-        console.log('💾 Salvando cesta:', userBasket);
+        console.log('💾 Salvando cesta no servidor:', userBasket);
         
-        // CORREÇÃO: Use PATCH em vez de PUT
         const response = await authenticatedFetch('/api/basket', {
             method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-            },
             body: JSON.stringify({
                 products: userBasket.products
             })
         });
         
-        if (response.ok) {
-            const savedBasket = await response.json();
-            userBasket = savedBasket;
-            console.log('✅ Cesta salva com sucesso:', userBasket);
-            return true;
-        } else {
-            const errorText = await response.text();
-            console.error('❌ Erro ao salvar cesta:', response.status, errorText);
-            throw new Error(`Erro ${response.status}: ${errorText}`);
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`Erro ${response.status}: ${errorData.detail || 'Falha ao salvar'}`);
         }
+        
+        const savedBasket = await response.json();
+        userBasket = savedBasket; // Atualiza a cesta local com a resposta do servidor
+        console.log('✅ Cesta salva com sucesso:', userBasket);
+        
     } catch (error) {
-        console.error('💥 Erro ao salvar cesta:', error);
-        throw error;
+        console.error('💥 Erro CRÍTICO ao salvar cesta:', error);
+        throw error; // Propaga o erro para a função que chamou
     }
 }
 
 // Exporta a cesta para JSON
 function exportBasket() {
     if (userBasket.products.length === 0) {
-        showMessage('A cesta está vazia', 'warning');
+        showMessage('A cesta está vazia, não há nada para exportar.', 'info');
         return;
     }
     
-    const basketData = {
+    const dataStr = JSON.stringify({
         basket_name: userBasket.basket_name,
         products: userBasket.products,
-        export_date: new Date().toISOString(),
-        total_products: userBasket.products.length
-    };
+        export_date: new Date().toISOString()
+    }, null, 2);
     
-    const dataStr = JSON.stringify(basketData, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = URL.createObjectURL(dataBlob);
+    link.href = url;
     link.download = `cesta-basica-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
     
     showMessage('✅ Cesta exportada com sucesso!', 'success');
 }
 
-// Renderiza os produtos
+// Renderiza os produtos na grade
 function renderProducts() {
     const grid = document.getElementById('products-grid');
     const countElement = document.getElementById('product-count');
     const emptyState = document.getElementById('empty-state');
     
-    if (!grid) return;
+    if (!grid || !countElement || !emptyState) return;
     
     countElement.textContent = userBasket.products.length;
     
     if (userBasket.products.length === 0) {
-        grid.innerHTML = `
-            <div class="empty-state" id="empty-state">
-                <div class="icon"><i class="fas fa-shopping-basket"></i></div>
-                <h3>Sua cesta está vazia</h3>
-                <p>Adicione produtos usando o código de barras acima</p>
+        grid.innerHTML = '';
+        emptyState.style.display = 'block';
+    } else {
+        emptyState.style.display = 'none';
+        grid.innerHTML = userBasket.products.map(product => `
+            <div class="product-card">
+                <div class="product-content">
+                    <div class="product-actions">
+                        <button class="btn-icon edit-btn" onclick="openEditModal('${product.product_barcode}')" title="Editar produto">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-icon remove-btn" onclick="removeProduct('${product.product_barcode}')" title="Remover produto">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="product-info">
+                        <div class="product-name">${product.product_name || 'Produto não identificado'}</div>
+                        <div class="product-barcode">Código: ${product.product_barcode}</div>
+                    </div>
+                </div>
             </div>
-        `;
-        return;
+        `).join('');
     }
-    
-    if (emptyState) emptyState.style.display = 'none';
-    
-    grid.innerHTML = '';
-    
-    userBasket.products.forEach((product, index) => {
-        const productCard = document.createElement('div');
-        productCard.className = 'product-card';
-        productCard.innerHTML = `
-            <div class="product-content">
-                <div class="product-actions">
-                    <button class="btn-icon edit-btn" onclick="openEditModal(${JSON.stringify(product).replace(/"/g, '&quot;')})" title="Editar produto">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-icon remove-btn" onclick="removeProduct('${product.product_barcode}')" title="Remover produto">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="product-info">
-                    <div class="product-name">${product.product_name || 'Produto não identificado'}</div>
-                    <div class="product-barcode">Código: ${product.product_barcode}</div>
-                </div>
-            </div>
-        `;
-        grid.appendChild(productCard);
-    });
 }
 
 // Carrega mercados
@@ -491,103 +385,84 @@ async function loadMarkets() {
             allMarkets = await response.json();
             renderMarketSelection();
         } else {
-            document.getElementById('market-selection').innerHTML = 
-                '<p class="not-found">Erro ao carregar mercados</p>';
+            document.getElementById('market-selection').innerHTML = '<p class="error">Erro ao carregar mercados.</p>';
         }
     } catch (error) {
         console.error('Erro ao carregar mercados:', error);
-        document.getElementById('market-selection').innerHTML = 
-            '<p class="not-found">Erro ao carregar mercados</p>';
+        document.getElementById('market-selection').innerHTML = '<p class="error">Erro de conexão ao buscar mercados.</p>';
     }
 }
 
 // Renderiza seleção de mercados
-function renderMarketSelection() {
+function renderMarketSelection(filteredMarkets = allMarkets) {
     const container = document.getElementById('market-selection');
     if (!container) return;
     
-    if (!allMarkets || allMarkets.length === 0) {
-        container.innerHTML = '<p class="not-found">Nenhum mercado disponível</p>';
+    if (filteredMarkets.length === 0) {
+        container.innerHTML = '<p>Nenhum mercado encontrado.</p>';
         return;
     }
     
-    container.innerHTML = '';
-    
-    allMarkets.forEach(market => {
-        const marketCard = document.createElement('div');
-        marketCard.className = 'market-card';
-        if (selectedMarkets.has(market.cnpj)) {
-            marketCard.classList.add('selected');
-        }
-        marketCard.innerHTML = `
+    container.innerHTML = filteredMarkets.map(market => `
+        <div class="market-card ${selectedMarkets.has(market.cnpj) ? 'selected' : ''}" data-cnpj="${market.cnpj}">
             <div class="market-info">
                 <div class="market-name">${market.nome}</div>
                 <div class="market-address">${market.endereco || 'Endereço não disponível'}</div>
             </div>
-        `;
-        
-        marketCard.addEventListener('click', () => {
-            toggleMarket(market.cnpj);
-            marketCard.classList.toggle('selected');
+        </div>
+    `).join('');
+
+    // Adiciona os event listeners após renderizar
+    container.querySelectorAll('.market-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const cnpj = card.dataset.cnpj;
+            toggleMarket(cnpj);
+            card.classList.toggle('selected');
             updateSelectedMarketsCount();
         });
-        
-        container.appendChild(marketCard);
     });
-    
-    updateSelectedMarketsCount();
 }
 
 // Funções auxiliares de mercado
 function toggleMarket(cnpj) {
-    if (selectedMarkets.has(cnpj)) {
-        selectedMarkets.delete(cnpj);
-    } else {
-        selectedMarkets.add(cnpj);
-    }
+    selectedMarkets.has(cnpj) ? selectedMarkets.delete(cnpj) : selectedMarkets.add(cnpj);
 }
 
 function selectAllMarkets() {
     allMarkets.forEach(market => selectedMarkets.add(market.cnpj));
-    renderMarketSelection();
+    document.querySelectorAll('.market-card').forEach(card => card.classList.add('selected'));
+    updateSelectedMarketsCount();
 }
 
 function deselectAllMarkets() {
     selectedMarkets.clear();
-    renderMarketSelection();
+    document.querySelectorAll('.market-card').forEach(card => card.classList.remove('selected'));
+    updateSelectedMarketsCount();
 }
 
 function updateSelectedMarketsCount() {
     const countElement = document.getElementById('selectedMarketsCount');
-    if (countElement) {
-        countElement.textContent = selectedMarkets.size;
-    }
+    if (countElement) countElement.textContent = selectedMarkets.size;
 }
 
 function filterMarkets(searchTerm) {
-    const marketCards = document.querySelectorAll('.market-card');
     const term = searchTerm.toLowerCase();
-    
-    marketCards.forEach(card => {
-        const marketName = card.querySelector('.market-name').textContent.toLowerCase();
-        const marketAddress = card.querySelector('.market-address').textContent.toLowerCase();
-        if (marketName.includes(term) || marketAddress.includes(term)) {
-            card.style.display = 'flex';
-        } else {
-            card.style.display = 'none';
-        }
-    });
+    const filtered = allMarkets.filter(market => 
+        market.nome.toLowerCase().includes(term) || 
+        (market.endereco && market.endereco.toLowerCase().includes(term))
+    );
+    renderMarketSelection(filtered);
 }
 
 // Calcula preços da cesta
 async function calculateBasket() {
     if (userBasket.products.length === 0) {
-        alert('Adicione produtos à cesta antes de calcular');
+        showMessage('Adicione produtos à cesta antes de calcular.', 'warning');
         return;
     }
     
     if (selectedMarkets.size === 0) {
-        alert('Selecione pelo menos um mercado');
+        showMessage('Selecione pelo menos um mercado para comparar.', 'warning');
         return;
     }
     
@@ -596,14 +471,13 @@ async function calculateBasket() {
     
     calculateBtn.disabled = true;
     calculateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calculando...';
-    if (resultsSection) resultsSection.style.display = 'block';
+    resultsSection.style.display = 'block';
+    document.getElementById('complete-basket-details').innerHTML = '<div class="loading">Calculando...</div>';
+    document.getElementById('mixed-basket-details').innerHTML = '<div class="loading">Calculando...</div>';
     
     try {
         const response = await authenticatedFetch('/api/basket/calculate', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
             body: JSON.stringify({
                 basket_id: userBasket.id,
                 cnpjs: Array.from(selectedMarkets)
@@ -614,13 +488,12 @@ async function calculateBasket() {
             const results = await response.json();
             displayResults(results);
         } else {
-            const errorText = await response.text();
-            console.error('Erro ao calcular preços:', errorText);
-            alert('Erro ao calcular preços. Tente novamente.');
+            const errorData = await response.json();
+            showMessage(`Erro ao calcular: ${errorData.detail}`, 'error');
         }
     } catch (error) {
-        console.error('Erro:', error);
-        alert('Erro de conexão. Verifique sua internet e tente novamente.');
+        console.error('Erro ao calcular preços:', error);
+        showMessage('Erro de conexão ao calcular preços. Tente novamente.', 'error');
     } finally {
         calculateBtn.disabled = false;
         calculateBtn.innerHTML = '<i class="fas fa-calculator"></i> Calcular Melhores Preços';
@@ -629,47 +502,28 @@ async function calculateBasket() {
 
 // Exibe os resultados do cálculo
 function displayResults(results) {
-    displayCompleteBasket(results.best_complete_basket, results.complete_basket_results);
+    displayCompleteBasket(results.best_complete_basket);
     displayMixedBasket(results.mixed_basket_results);
 }
 
-function displayCompleteBasket(bestBasket, allBaskets) {
+function displayCompleteBasket(bestBasket) {
     const container = document.getElementById('complete-basket-details');
-    if (!container) return;
-    
     if (!bestBasket) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <div class="icon">😕</div>
-                <p>Nenhum mercado encontrou todos os produtos</p>
-                <p>Tente selecionar mais mercados ou verificar os códigos de barras</p>
-            </div>
-        `;
+        container.innerHTML = `<div class="empty-state"><p>Nenhum mercado encontrou todos os produtos.</p></div>`;
         return;
     }
-    
-    const productsFound = bestBasket.products_found;
-    const totalProducts = bestBasket.total_products;
-    const coveragePercent = Math.round((productsFound / totalProducts) * 100);
     
     container.innerHTML = `
         <div class="price-highlight">R$ ${bestBasket.total.toFixed(2)}</div>
         <div style="text-align: center; margin-bottom: 15px;">
             <p><strong>🏪 ${bestBasket.market_name}</strong></p>
-            <p>📊 ${productsFound}/${totalProducts} produtos encontrados (${coveragePercent}%)</p>
+            <p>📊 ${bestBasket.products_found}/${bestBasket.total_products} produtos encontrados</p>
         </div>
-        
         <div class="product-list">
-            <h4 style="margin-bottom: 10px;">📦 Produtos na Cesta:</h4>
-            ${bestBasket.products.map(product => `
-                <div class="product-item ${!product.found ? 'not-found' : ''}">
-                    <div class="product-info">
-                        <div class="product-name">${product.name}</div>
-                        <div class="product-barcode">${product.barcode}</div>
-                    </div>
-                    <div class="product-price">
-                        ${product.found ? `R$ ${product.price.toFixed(2)}` : '❌ Não encontrado'}
-                    </div>
+            ${bestBasket.products.map(p => `
+                <div class="product-item ${p.found ? '' : 'not-found'}">
+                    <div class="product-info"><div class="product-name">${p.name}</div></div>
+                    <div class="product-price">${p.found ? `R$ ${p.price.toFixed(2)}` : 'Não encontrado'}</div>
                 </div>
             `).join('')}
         </div>
@@ -679,162 +533,124 @@ function displayCompleteBasket(bestBasket, allBaskets) {
 function displayMixedBasket(mixedBasket) {
     const container = document.getElementById('mixed-basket-details');
     const breakdownContainer = document.getElementById('mixed-breakdown');
-    const marketBreakdown = document.getElementById('market-breakdown');
-    
-    if (!container) return;
-    
+    const marketBreakdownEl = document.getElementById('market-breakdown');
+
     const foundProducts = mixedBasket.products.filter(p => p.found).length;
-    const totalProducts = mixedBasket.products.length;
     
     container.innerHTML = `
         <div class="price-highlight">
             R$ ${mixedBasket.total.toFixed(2)}
-            ${mixedBasket.economy_percent > 0 ? 
-                `<span class="economy-badge">Economia de ${mixedBasket.economy_percent}%</span>` : 
-                ''}
+            ${mixedBasket.economy_percent > 0 ? `<span class="economy-badge">-${mixedBasket.economy_percent.toFixed(1)}%</span>` : ''}
         </div>
         <div style="text-align: center; margin-bottom: 15px;">
-            <p><strong>📊 ${foundProducts}/${totalProducts} produtos encontrados</strong></p>
-            <p>💰 Compre cada produto no mercado mais barato</p>
+            <p><strong>📊 ${foundProducts}/${mixedBasket.products.length} produtos encontrados</strong></p>
         </div>
-        
         <div class="product-list">
-            <h4 style="margin-bottom: 10px;">🛒 Produtos e Melhores Preços:</h4>
-            ${mixedBasket.products.map(product => `
-                <div class="product-item ${!product.found ? 'not-found' : ''}">
+            ${mixedBasket.products.map(p => `
+                <div class="product-item ${p.found ? '' : 'not-found'}">
                     <div class="product-info">
-                        <div class="product-name">${product.name}</div>
-                        <div class="product-barcode">${product.barcode}</div>
-                        ${product.found ? `<small>🏪 ${product.market_name}</small>` : ''}
+                        <div class="product-name">${p.name}</div>
+                        ${p.found ? `<small>🏪 ${p.market_name}</small>` : ''}
                     </div>
-                    <div class="product-price">
-                        ${product.found ? `R$ ${product.price.toFixed(2)}` : '❌ Não encontrado'}
-                    </div>
+                    <div class="product-price">${p.found ? `R$ ${p.price.toFixed(2)}` : 'Não encontrado'}</div>
                 </div>
             `).join('')}
         </div>
     `;
-    
-    // Mostra breakdown por mercado se houver economia e múltiplos mercados
-    if (mixedBasket.economy_percent > 0 && breakdownContainer && marketBreakdown && Object.keys(mixedBasket.market_breakdown).length > 1) {
+
+    if (mixedBasket.economy_percent > 0 && Object.keys(mixedBasket.market_breakdown).length > 1) {
         breakdownContainer.style.display = 'block';
-        marketBreakdown.innerHTML = Object.values(mixedBasket.market_breakdown).map(market => `
-            <div class="market-store">
-                <h4>🏪 ${market.market_name}</h4>
-                <div class="market-subtotal">Subtotal: R$ ${market.subtotal.toFixed(2)}</div>
+        marketBreakdownEl.innerHTML = Object.values(mixedBasket.market_breakdown).map(market => `
+            <div class="market-store" style="margin-bottom: 15px;">
+                <h4>🏪 ${market.market_name} - Total: R$ ${market.subtotal.toFixed(2)}</h4>
                 <div class="product-list">
-                    ${market.products.map(product => `
+                    ${market.products.map(p => `
                         <div class="product-item">
-                            <div class="product-info">
-                                <div class="product-name">${product.name}</div>
-                            </div>
-                            <div class="product-price">R$ ${product.price.toFixed(2)}</div>
+                            <div class="product-info"><div class="product-name">${p.name}</div></div>
+                            <div class="product-price">R$ ${p.price.toFixed(2)}</div>
                         </div>
                     `).join('')}
                 </div>
             </div>
         `).join('');
-    } else if (breakdownContainer) {
+    } else {
         breakdownContainer.style.display = 'none';
     }
 }
 
-// Função para mostrar mensagens
+// Funções de UI (Modais e Mensagens)
 function showMessage(message, type = 'info') {
-    const existingMessage = document.querySelector('.flash-message');
-    if (existingMessage) {
-        existingMessage.remove();
-    }
-    
+    const container = document.body;
     const messageDiv = document.createElement('div');
     messageDiv.className = `flash-message flash-${type}`;
-    messageDiv.innerHTML = `
-        <span>${message}</span>
-        <button onclick="this.parentElement.remove()">×</button>
-    `;
-    
-    document.body.appendChild(messageDiv);
-    
-    setTimeout(() => {
-        if (messageDiv.parentElement) {
-            messageDiv.remove();
-        }
-    }, 5000);
+    messageDiv.innerHTML = `<span>${message}</span><button onclick="this.parentElement.remove()">×</button>`;
+    container.appendChild(messageDiv);
+    setTimeout(() => messageDiv.remove(), 5000);
 }
 
-// Mostra seção de login necessária
-function showAuthRequired() {
-    const loginSection = document.getElementById('login-section');
-    const basketInterface = document.getElementById('basket-interface');
+function showConfirmationModal(message, onConfirm) {
+    const modal = document.getElementById('confirmation-modal');
+    document.getElementById('confirmation-message').textContent = message;
+    const confirmBtn = document.getElementById('confirm-action-btn');
     
-    if (loginSection) loginSection.style.display = 'block';
-    if (basketInterface) basketInterface.style.display = 'none';
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+    newConfirmBtn.addEventListener('click', () => {
+        onConfirm();
+        closeConfirmationModal();
+    });
+    
+    modal.style.display = 'flex';
+}
+
+function closeConfirmationModal() {
+    document.getElementById('confirmation-modal').style.display = 'none';
+}
+
+function showAuthRequired() {
+    document.getElementById('login-section').style.display = 'block';
+    document.getElementById('basket-interface').style.display = 'none';
 }
 
 // INICIALIZAÇÃO
-document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', async () => {
     console.log('🚀 Inicializando página da cesta...');
     
-    // Configura eventos
+    // Configura eventos de UI
     const barcodeInput = document.getElementById('product-barcode');
-    if (barcodeInput) {
-        barcodeInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                addProduct();
-            }
-        });
-    }
+    barcodeInput.addEventListener('keypress', e => e.key === 'Enter' && addProduct());
     
     const marketSearch = document.getElementById('marketSearch');
-    const clearMarketSearch = document.getElementById('clearMarketSearch');
-    
-    if (marketSearch) {
-        marketSearch.addEventListener('input', function() {
-            filterMarkets(this.value);
-        });
-    }
-    
-    if (clearMarketSearch) {
-        clearMarketSearch.addEventListener('click', function() {
-            marketSearch.value = '';
-            filterMarkets('');
-        });
-    }
+    marketSearch.addEventListener('input', () => filterMarkets(marketSearch.value));
+    document.getElementById('clearMarketSearch').addEventListener('click', () => {
+        marketSearch.value = '';
+        filterMarkets('');
+    });
     
     try {
         currentUser = await getAuthUser();
-        
         if (currentUser) {
             console.log('✅ Usuário autenticado:', currentUser.email);
             isAdmin = currentUser.role === 'admin';
             
-            // Mostra a interface da cesta
-            const loginSection = document.getElementById('login-section');
-            const basketInterface = document.getElementById('basket-interface');
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('basket-interface').style.display = 'block';
             
-            if (loginSection) loginSection.style.display = 'none';
-            if (basketInterface) basketInterface.style.display = 'block';
+            await Promise.all([loadUserBasket(), loadMarkets()]);
             
-            await Promise.all([
-                loadUserBasket(),
-                loadMarkets()
-            ]);
-            
-            // Se for admin, carrega todas as cestas e mostra a seção
             if (isAdmin) {
                 const adminSection = document.getElementById('admin-section');
-                if (adminSection) {
-                    adminSection.style.display = 'block';
-                    await loadAllBaskets();
-                }
+                adminSection.style.display = 'block';
+                await loadAllBaskets();
             }
-            
         } else {
-            console.log('❌ Usuário não autenticado');
+            console.log('❌ Usuário não autenticado. Exibindo tela de login.');
             showAuthRequired();
         }
     } catch (error) {
         console.error('💥 Erro na inicialização:', error);
-        showMessage('Erro ao carregar a página. Tente recarregar.', 'error');
+        showMessage('Erro ao carregar a página. Por favor, recarregue.', 'error');
+        showAuthRequired();
     }
 });
