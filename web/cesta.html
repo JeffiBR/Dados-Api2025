@@ -4,350 +4,200 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cesta Básica - Sistema de Preços</title>
-    <link rel="stylesheet" href="/styles.css">
-    <style>
-        .basket-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        
-        .basket-section {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .product-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 15px;
-            margin: 15px 0;
-        }
-        
-        .product-card {
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            padding: 15px;
-            position: relative;
-            background: #f9f9f9;
-        }
-        
-        .product-card .remove-btn {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            background: #ff4444;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            cursor: pointer;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .product-card .remove-btn:hover {
-            background: #cc0000;
-        }
-        
-        .add-product-form {
-            display: flex;
-            gap: 10px;
-            margin: 15px 0;
-            align-items: center;
-        }
-        
-        .add-product-form input {
-            flex: 1;
-            padding: 10px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        
-        .market-selection {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 10px;
-            margin: 15px 0;
-        }
-        
-        .market-checkbox {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            background: #f8f9fa;
-            cursor: pointer;
-        }
-        
-        .market-checkbox:hover {
-            background: #e9ecef;
-        }
-        
-        .market-checkbox input {
-            margin: 0;
-        }
-        
-        .results-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-top: 20px;
-        }
-        
-        .result-card {
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            padding: 20px;
-            background: white;
-        }
-        
-        .best-deal {
-            border-color: #4CAF50;
-            background: #f8fff8;
-            position: relative;
-        }
-        
-        .best-deal::before {
-            content: "⭐ MELHOR";
-            position: absolute;
-            top: -10px;
-            left: 20px;
-            background: #4CAF50;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        
-        .price-highlight {
-            font-size: 2em;
-            font-weight: bold;
-            color: #2E7D32;
-            margin: 15px 0;
-            text-align: center;
-        }
-        
-        .economy-badge {
-            background: #4CAF50;
-            color: white;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            font-weight: bold;
-            margin-left: 10px;
-        }
-        
-        .product-list {
-            margin-top: 15px;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        
-        .product-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-            align-items: center;
-        }
-        
-        .product-item:last-child {
-            border-bottom: none;
-        }
-        
-        .product-info {
-            flex: 1;
-        }
-        
-        .product-name {
-            font-weight: 500;
-            margin-bottom: 2px;
-        }
-        
-        .product-barcode {
-            font-size: 0.8em;
-            color: #666;
-        }
-        
-        .product-price {
-            font-weight: bold;
-            color: #2E7D32;
-            white-space: nowrap;
-            margin-left: 10px;
-        }
-        
-        .not-found {
-            color: #999;
-            font-style: italic;
-        }
-        
-        .market-breakdown {
-            margin-top: 20px;
-        }
-        
-        .market-store {
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            padding: 15px;
-            margin-bottom: 15px;
-        }
-        
-        .market-store h4 {
-            margin: 0 0 10px 0;
-            color: #333;
-        }
-        
-        .market-subtotal {
-            font-weight: bold;
-            color: #2E7D32;
-            margin: 10px 0;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #666;
-        }
-        
-        .loading::after {
-            content: "...";
-            animation: dots 1.5s steps(4, end) infinite;
-        }
-        
-        @keyframes dots {
-            0%, 20% { content: "."; }
-            40% { content: ".."; }
-            60%, 100% { content: "..."; }
-        }
-        
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: #666;
-        }
-        
-        .empty-state .icon {
-            font-size: 3em;
-            margin-bottom: 10px;
-            opacity: 0.5;
-        }
-        
-        @media (max-width: 768px) {
-            .results-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .product-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .add-product-form {
-                flex-direction: column;
-            }
-            
-            .add-product-form input {
-                width: 100%;
-            }
-        }
-    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth.js"></script>
+    <script src="user-menu.js"></script>
+    <script src="theme.js"></script>
 </head>
-<body>
-    <div id="app">
-        <header>
-            <nav class="navbar">
-                <div class="nav-brand">
-                    <h1>🛒 Cesta Básica</h1>
-                </div>
-                <div class="nav-links">
-                    <a href="/">🏠 Início</a>
-                    <a href="/pesquisa.html">🔍 Pesquisa</a>
-                    <a href="/comparar.html">📊 Comparar</a>
-                    <a href="/cesta.html" class="active">🛒 Cesta Básica</a>
-                    <div id="user-menu"></div>
-                </div>
-            </nav>
-        </header>
+<body class="theme-dark">
+    <script>routeGuard('cesta');</script>
 
-        <main class="basket-container">
-            <!-- Seção de Gerenciamento da Cesta -->
-            <section class="basket-section">
-                <h2>📦 Minha Cesta Básica</h2>
-                <p>Adicione até 25 produtos por código de barras para calcular os melhores preços</p>
-                
-                <div class="add-product-form">
-                    <input type="text" id="product-barcode" placeholder="Digite o código de barras do produto" maxlength="20">
-                    <button onclick="addProduct()" class="btn-primary">Adicionar Produto</button>
-                </div>
-                
-                <div id="products-grid" class="product-grid">
-                    <div class="empty-state" id="empty-state">
-                        <div class="icon">🛒</div>
-                        <p>Sua cesta está vazia</p>
-                        <p>Adicione produtos usando o código de barras acima</p>
-                    </div>
-                </div>
-                
-                <div class="basket-info">
-                    <p><strong>Total de produtos:</strong> <span id="product-count">0</span>/25</p>
-                </div>
-            </section>
-
-            <!-- Seção de Seleção de Mercados -->
-            <section class="basket-section">
-                <h2>🏪 Selecionar Mercados para Comparação</h2>
-                <p>Selecione os mercados onde você deseja comparar os preços da sua cesta</p>
-                
-                <div id="market-selection" class="market-selection">
-                    <div class="loading">Carregando mercados</div>
-                </div>
-                
-                <button onclick="calculateBasket()" class="btn-primary" id="calculate-btn" style="width: 100%; padding: 12px;">
-                    🧮 Calcular Melhores Preços
-                </button>
-            </section>
-
-            <!-- Seção de Resultados -->
-            <section class="basket-section" id="results-section" style="display: none;">
-                <h2>📊 Resultados da Comparação</h2>
-                
-                <div class="results-grid">
-                    <!-- Cesta Completa Mais Barata -->
-                    <div class="result-card" id="complete-basket-result">
-                        <h3>🛍️ Cesta Completa Mais Barata</h3>
-                        <p>Compre todos os produtos no mesmo mercado</p>
-                        <div id="complete-basket-details" class="loading">Calculando...</div>
-                    </div>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-bolt"></i>
+                <h1>Preços AL</h1>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="nav-header">ANÁLISE</li>
+                    <li><a href="/search.html"><i class="fas fa-search"></i> Busca</a></li>
+                    <li data-permission="compare"><a href="/compare.html"><i class="fas fa-chart-bar"></i> Comparador</a></li>
+                    <li data-permission="dashboard"><a href="/dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+                    <li><a href="/cesta.html"><i class="fas fa-shopping-basket"></i> Cesta Básica</a></li>
                     
-                    <!-- Cesta Mista Mais Barata -->
-                    <div class="result-card best-deal" id="mixed-basket-result">
-                        <h3>💰 Cesta Mista Mais Econômica</h3>
-                        <p>Compre cada produto no mercado mais barato</p>
-                        <div id="mixed-basket-details" class="loading">Calculando...</div>
+                    <li class="nav-header">ADMINISTRAÇÃO</li>
+                    <li data-permission="coleta"><a href="/admin.html"><i class="fas fa-database"></i> Coleta</a></li>
+                    <li data-permission="collections"><a href="/collections.html"><i class="fas fa-history"></i> Histórico de Coletas</a></li>
+                    <li data-permission="product_log"><a href="/product-log.html"><i class="fas fa-file-alt"></i> Log de Produtos</a></li>
+                    <li data-permission="user_logs"><a href="/user-logs.html"><i class="fas fa-user-clock"></i> Logs de Usuários</a></li>
+                    <li data-permission="prune"><a href="/prune.html"><i class="fas fa-broom"></i> Limpeza de Dados</a></li>
+                    
+
+                    <li class="nav-header">CONFIGURAÇÃO</li>
+                    <li data-permission="markets"><a href="/markets.html"><i class="fas fa-store"></i> Gerenciar Mercados</a></li>
+                    <li data-permission="users"><a href="/users.html"><i class="fas fa-users"></i> Gerenciar Usuários</a></li>
+                </ul>
+            </nav>
+            <div class="theme-switcher">
+                <span>Tema</span>
+                <button id="themeToggle"><i class="fas fa-moon"></i></button>
+            </div>
+        </aside>
+
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <div class="main-content">
+            <header class="top-bar">
+                <div class="top-bar-left">
+                    <button class="mobile-menu-btn" id="mobileMenuBtn">
+                        <span></span><span></span><span></span>
+                    </button>
+                </div>
+                <div class="top-bar-right">
+                    <div class="user-menu" id="userMenu">
+                        <button class="user-menu-btn" id="userMenuBtn">
+                            <div class="user-avatar">
+                                <img src="https://ui-avatars.com/api/?name=U" alt="User" id="userAvatar">
+                            </div>
+                            <div class="user-info">
+                                <span class="user-name">Usuário</span>
+                                <span class="user-role">...</span>
+                            </div>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="user-dropdown" id="userDropdown">
+                            <a href="/profile.html" class="dropdown-item">
+                                <i class="fas fa-user"></i>
+                                <span>Meu Perfil</span>
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="#" class="dropdown-item logout-btn" id="logoutBtn">
+                                <i class="fas fa-sign-out-alt"></i>
+                                <span>Sair</span>
+                            </a>
+                        </div>
                     </div>
                 </div>
-                
-                <!-- Detalhes da Cesta Mista por Mercado -->
-                <div class="basket-section" id="mixed-breakdown" style="display: none;">
-                    <h3>📋 Detalhes da Cesta Mista por Mercado</h3>
-                    <div id="market-breakdown"></div>
-                </div>
-            </section>
-        </main>
-    </div>
+            </header>
 
-    <script src="/auth.js"></script>
-    <script src="/cesta.js"></script>
+            <div class="page-content">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1><i class="fas fa-shopping-basket"></i> Cesta Básica</h1>
+                        <p>Monte sua cesta básica e compare preços entre mercados</p>
+                    </div>
+                </div>
+
+                <main class="basket-container">
+                    <!-- Seção de Gerenciamento da Cesta -->
+                    <section class="card basket-section">
+                        <div class="card-header">
+                            <h2><i class="fas fa-box"></i> Minha Cesta Básica</h2>
+                        </div>
+                        <div class="card-content">
+                            <p>Adicione até 25 produtos por código de barras para calcular os melhores preços</p>
+                            
+                            <div class="add-product-form">
+                                <div class="search-input-group">
+                                    <input type="text" id="product-barcode" placeholder="Digite o código de barras do produto" maxlength="20">
+                                    <button class="clear-search" onclick="document.getElementById('product-barcode').value = ''">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <button onclick="addProduct()" class="btn btn-primary">
+                                    <i class="fas fa-plus"></i> Adicionar Produto
+                                </button>
+                            </div>
+                            
+                            <div id="products-grid" class="product-grid">
+                                <div class="empty-state" id="empty-state">
+                                    <div class="icon"><i class="fas fa-shopping-basket"></i></div>
+                                    <h3>Sua cesta está vazia</h3>
+                                    <p>Adicione produtos usando o código de barras acima</p>
+                                </div>
+                            </div>
+                            
+                            <div class="basket-info">
+                                <p><strong>Total de produtos:</strong> <span id="product-count">0</span>/25</p>
+                                <button onclick="clearBasket()" class="btn btn-secondary" style="margin-top: 10px;">
+                                    <i class="fas fa-trash"></i> Limpar Cesta
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Seção de Seleção de Mercados -->
+                    <section class="card basket-section">
+                        <div class="card-header">
+                            <h2><i class="fas fa-store"></i> Selecionar Mercados para Comparação</h2>
+                        </div>
+                        <div class="card-content">
+                            <p>Selecione os mercados onde você deseja comparar os preços da sua cesta</p>
+                            
+                            <div id="market-selection" class="market-selection">
+                                <div class="loading">Carregando mercados</div>
+                            </div>
+                            
+                            <button onclick="calculateBasket()" class="btn btn-primary" id="calculate-btn" style="width: 100%; padding: 12px; margin-top: 15px;">
+                                <i class="fas fa-calculator"></i> Calcular Melhores Preços
+                            </button>
+                        </div>
+                    </section>
+
+                    <!-- Seção de Resultados -->
+                    <section class="card basket-section" id="results-section" style="display: none;">
+                        <div class="card-header">
+                            <h2><i class="fas fa-chart-bar"></i> Resultados da Comparação</h2>
+                        </div>
+                        <div class="card-content">
+                            <div class="results-grid">
+                                <!-- Cesta Completa Mais Barata -->
+                                <div class="card result-card" id="complete-basket-result">
+                                    <div class="card-header">
+                                        <h3><i class="fas fa-shopping-bag"></i> Cesta Completa Mais Barata</h3>
+                                    </div>
+                                    <div class="card-content">
+                                        <p>Compre todos os produtos no mesmo mercado</p>
+                                        <div id="complete-basket-details" class="loading">Calculando...</div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Cesta Mista Mais Barata -->
+                                <div class="card result-card best-deal" id="mixed-basket-result">
+                                    <div class="card-header">
+                                        <h3><i class="fas fa-money-bill-wave"></i> Cesta Mista Mais Econômica</h3>
+                                    </div>
+                                    <div class="card-content">
+                                        <p>Compre cada produto no mercado mais barato</p>
+                                        <div id="mixed-basket-details" class="loading">Calculando...</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Detalhes da Cesta Mista por Mercado -->
+                            <div class="card basket-section" id="mixed-breakdown" style="display: none;">
+                                <div class="card-header">
+                                    <h3><i class="fas fa-list-alt"></i> Detalhes da Cesta Mista por Mercado</h3>
+                                </div>
+                                <div class="card-content">
+                                    <div id="market-breakdown"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </main>
+            </div>
+        </div>
+    </div>
+    
+    <script src="mobile-menu.js"></script>
+    <script src="user-activity-monitor.js"></script>
+    <script src="cesta.js"></script>
 </body>
 </html>
