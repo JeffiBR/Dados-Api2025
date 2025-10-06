@@ -1,4 +1,4 @@
-// cesta.js - VERSÃO COMPLETA ATUALIZADA
+// cesta.js - VERSÃO COMPLETA CORRIGIDA
 let userBasket = { 
     id: null, 
     basket_name: "Minha Cesta", 
@@ -52,7 +52,8 @@ async function loadUserBasket() {
             console.log('✅ Cesta carregada:', userBasket);
             renderProducts();
         } else if (response.status === 404) {
-            await saveBasket();
+            // Cria uma cesta vazia se não existir
+            await createUserBasket();
         } else {
             console.error('❌ Erro ao carregar cesta:', response.status);
             const errorText = await response.text();
@@ -61,6 +62,27 @@ async function loadUserBasket() {
     } catch (error) {
         console.error('💥 Erro ao carregar cesta:', error);
         showMessage('Erro ao carregar sua cesta. Tente recarregar a página.', 'error');
+    }
+}
+
+// Cria uma nova cesta para o usuário
+async function createUserBasket() {
+    try {
+        const response = await authenticatedFetch('/api/basket', {
+            method: 'POST'
+        });
+        
+        if (response.ok) {
+            const basketData = await response.json();
+            userBasket = basketData;
+            console.log('✅ Cesta criada:', userBasket);
+            renderProducts();
+        } else {
+            throw new Error('Erro ao criar cesta');
+        }
+    } catch (error) {
+        console.error('Erro ao criar cesta:', error);
+        throw error;
     }
 }
 
@@ -166,12 +188,12 @@ async function getProductName(barcode) {
 async function alternativeProductSearch(barcode) {
     try {
         // Tenta buscar diretamente na tabela produtos
-        const response = await authenticatedFetch(`/api/products?barcode=${encodeURIComponent(barcode)}`);
+        const response = await authenticatedFetch(`/api/basket/debug/search?barcode=${encodeURIComponent(barcode)}`);
         
         if (response.ok) {
             const data = await response.json();
-            if (data && data.length > 0) {
-                return data[0].nome_produto;
+            if (data.found && data.results.length > 0) {
+                return data.results[0].nome_produto;
             }
         }
         return null;
@@ -181,7 +203,7 @@ async function alternativeProductSearch(barcode) {
     }
 }
 
-// Adiciona produto à cesta
+// Adiciona produto à cesta - CORRIGIDO
 async function addProduct() {
     const barcodeInput = document.getElementById('product-barcode');
     const barcode = barcodeInput.value.trim();
@@ -224,6 +246,7 @@ async function addProduct() {
             product_name: productName || `Produto ${barcode}`
         });
         
+        // Salva no servidor
         await saveBasket();
         renderProducts();
         
@@ -232,6 +255,10 @@ async function addProduct() {
         
     } catch (error) {
         console.error('Erro ao adicionar produto:', error);
+        
+        // Remove o produto da lista local em caso de erro
+        userBasket.products = userBasket.products.filter(p => p.product_barcode !== barcode);
+        
         showMessage('Erro ao adicionar produto. Tente novamente.', 'error');
         barcodeInput.value = originalText;
     } finally {
@@ -351,13 +378,14 @@ async function saveProductEdit() {
     }
 }
 
-// Salva a cesta no servidor
+// Salva a cesta no servidor - CORRIGIDO (usando PATCH)
 async function saveBasket() {
     try {
         console.log('💾 Salvando cesta:', userBasket);
         
+        // CORREÇÃO: Use PATCH em vez de PUT
         const response = await authenticatedFetch('/api/basket', {
-            method: 'PUT',
+            method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
             },
