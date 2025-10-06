@@ -1,4 +1,4 @@
-// cesta.js - Lógica da página da Cesta Básica (ATUALIZADO)
+// cesta.js - Lógica da página da Cesta Básica (COMPLETO ATUALIZADO)
 let userBasket = { products: [] };
 let allMarkets = [];
 let selectedMarkets = new Set();
@@ -105,7 +105,7 @@ function renderProducts() {
     });
 }
 
-// Renderiza a seleção de mercados
+// Renderiza a seleção de mercados NO ESTILO DA COMPARE.HTML
 function renderMarketSelection() {
     const container = document.getElementById('market-selection');
     if (!container) return;
@@ -117,56 +117,132 @@ function renderMarketSelection() {
     
     container.innerHTML = '';
     
+    // Adiciona o botão "Selecionar Todos" igual na compare.html
+    const selectAllContainer = document.createElement('div');
+    selectAllContainer.className = 'select-all-container';
+    selectAllContainer.innerHTML = `
+        <label class="market-checkbox compare-checkbox">
+            <input type="checkbox" id="select-all-markets" onchange="toggleAllMarkets(this.checked)">
+            <span class="checkmark"></span>
+            <div class="market-info-compare">
+                <div class="market-name">Selecionar Todos</div>
+                <div class="market-address">Marcar/desmarcar todos os mercados</div>
+            </div>
+        </label>
+    `;
+    container.appendChild(selectAllContainer);
+    
+    // Container para os mercados em grid
+    const marketsGrid = document.createElement('div');
+    marketsGrid.className = 'markets-grid';
+    
     allMarkets.forEach(market => {
-        const checkbox = document.createElement('label');
-        checkbox.className = 'market-checkbox';
-        checkbox.innerHTML = `
-            <input type="checkbox" value="${market.cnpj}" onchange="toggleMarket('${market.cnpj}')">
-            <span>${market.nome}</span>
+        const marketCard = document.createElement('div');
+        marketCard.className = 'market-card';
+        marketCard.innerHTML = `
+            <label class="market-checkbox compare-checkbox">
+                <input type="checkbox" value="${market.cnpj}" onchange="toggleMarket('${market.cnpj}', this)">
+                <span class="checkmark"></span>
+                <div class="market-info-compare">
+                    <div class="market-name">${market.nome}</div>
+                    <div class="market-address">${market.endereco || 'Endereço não disponível'}</div>
+                </div>
+            </label>
         `;
-        container.appendChild(checkbox);
+        marketsGrid.appendChild(marketCard);
     });
+    
+    container.appendChild(marketsGrid);
 }
 
-// Adiciona um produto à cesta
+// Seleciona/desmarca todos os mercados
+function toggleAllMarkets(checked) {
+    const checkboxes = document.querySelectorAll('#market-selection input[type="checkbox"]');
+    
+    checkboxes.forEach(checkbox => {
+        if (checkbox.id !== 'select-all-markets') {
+            checkbox.checked = checked;
+            toggleMarket(checkbox.value, checkbox);
+        }
+    });
+    
+    showNotification(checked ? 'Todos os mercados selecionados' : 'Todos os mercados desmarcados', 'info');
+}
+
+// Gerencia a seleção de mercados
+function toggleMarket(cnpj, checkboxElement) {
+    if (checkboxElement.checked) {
+        selectedMarkets.add(cnpj);
+    } else {
+        selectedMarkets.delete(cnpj);
+    }
+    
+    // Atualiza o estado do "Selecionar Todos"
+    updateSelectAllCheckbox();
+}
+
+// Atualiza o checkbox "Selecionar Todos"
+function updateSelectAllCheckbox() {
+    const selectAllCheckbox = document.getElementById('select-all-markets');
+    const allCheckboxes = document.querySelectorAll('#market-selection input[type="checkbox"]:not(#select-all-markets)');
+    
+    if (allCheckboxes.length === 0) return;
+    
+    const allChecked = Array.from(allCheckboxes).every(checkbox => checkbox.checked);
+    const someChecked = Array.from(allCheckboxes).some(checkbox => checkbox.checked);
+    
+    selectAllCheckbox.checked = allChecked;
+    selectAllCheckbox.indeterminate = someChecked && !allChecked;
+}
+
+// Adiciona um produto à cesta - VERSÃO CORRIGIDA
 async function addProduct() {
     const barcodeInput = document.getElementById('product-barcode');
     const barcode = barcodeInput.value.trim();
     
     if (!barcode) {
-        alert('Por favor, digite um código de barras');
+        showNotification('Por favor, digite um código de barras', 'error');
         return;
     }
     
     // Validação básica do código de barras
     if (!/^\d+$/.test(barcode)) {
-        alert('Código de barras deve conter apenas números');
+        showNotification('Código de barras deve conter apenas números', 'error');
         return;
     }
     
     if (barcode.length < 8) {
-        alert('Código de barras muito curto');
+        showNotification('Código de barras muito curto', 'error');
         return;
     }
     
     if (userBasket.products.length >= 25) {
-        alert('Limite de 25 produtos atingido');
+        showNotification('Limite de 25 produtos atingido', 'error');
         return;
     }
     
     // Verifica se o produto já existe
     if (userBasket.products.some(p => p.product_barcode === barcode)) {
-        alert('Este produto já está na cesta');
+        showNotification('Este produto já está na cesta', 'warning');
         return;
     }
     
+    // Adiciona produto temporariamente
+    const tempProduct = {
+        product_barcode: barcode,
+        product_name: 'Buscando nome...'
+    };
+    userBasket.products.push(tempProduct);
+    renderProducts();
+    
     // Busca o nome do produto
-    let productName = null;
     try {
         const response = await authenticatedFetch(`/api/search?q=${encodeURIComponent(barcode)}`);
         
         if (response.ok) {
             const data = await response.json();
+            let productName = `Produto ${barcode}`;
+            
             if (data.results && data.results.length > 0) {
                 // Encontra o produto com o código de barras exato
                 const exactProduct = data.results.find(p => p.codigo_barras === barcode);
@@ -176,22 +252,25 @@ async function addProduct() {
                     productName = data.results[0].nome_produto;
                 }
             }
+            
+            // Atualiza o nome do produto
+            const productIndex = userBasket.products.findIndex(p => p.product_barcode === barcode);
+            if (productIndex !== -1) {
+                userBasket.products[productIndex].product_name = productName;
+                renderProducts();
+            }
         }
     } catch (error) {
         console.error('Erro ao buscar nome do produto:', error);
+        // Mantém o nome padrão se houver erro
     }
     
-    // Adiciona à cesta local
-    userBasket.products.push({
-        product_barcode: barcode,
-        product_name: productName
-    });
-    
-    // Salva no servidor
+    // Salva a cesta no servidor
     await saveBasket();
-    renderProducts();
     barcodeInput.value = '';
     barcodeInput.focus();
+    
+    showNotification('Produto adicionado à cesta', 'success');
 }
 
 // Remove um produto da cesta
@@ -200,51 +279,88 @@ async function removeProduct(index) {
         userBasket.products.splice(index, 1);
         await saveBasket();
         renderProducts();
+        showNotification('Produto removido da cesta', 'success');
     }
 }
 
-// Salva a cesta no servidor
+// Salva a cesta no servidor - VERSÃO CORRIGIDA
 async function saveBasket() {
     try {
+        console.log('Salvando cesta:', userBasket);
+        
         const response = await authenticatedFetch('/api/basket', {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(userBasket)
+            body: JSON.stringify({
+                id: userBasket.id,
+                user_id: userBasket.user_id,
+                basket_name: userBasket.basket_name || 'Minha Cesta',
+                products: userBasket.products
+            })
         });
         
-        if (!response.ok) {
-            console.error('Erro ao salvar cesta');
-            alert('Erro ao salvar cesta. Tente novamente.');
+        if (response.ok) {
+            const savedBasket = await response.json();
+            userBasket.id = savedBasket.id; // Garante que temos o ID
+            userBasket.user_id = savedBasket.user_id; // Garante que temos o user_id
+            console.log('Cesta salva com sucesso:', savedBasket);
+        } else {
+            const errorText = await response.text();
+            console.error('Erro ao salvar cesta:', response.status, errorText);
+            
+            if (response.status === 404) {
+                // Cesta não existe, vamos criar uma nova
+                await createNewBasket();
+            } else {
+                showNotification('Erro ao salvar cesta. Tente novamente.', 'error');
+            }
         }
     } catch (error) {
-        console.error('Erro:', error);
-        alert('Erro de conexão. Tente novamente.');
+        console.error('Erro na requisição saveBasket:', error);
+        showNotification('Erro de conexão. Tente novamente.', 'error');
     }
 }
 
-// Gerencia a seleção de mercados
-function toggleMarket(cnpj) {
-    const checkboxes = document.querySelectorAll(`input[value="${cnpj}"]`);
-    const checkbox = checkboxes[0];
-    
-    if (checkbox.checked) {
-        selectedMarkets.add(cnpj);
-    } else {
-        selectedMarkets.delete(cnpj);
+// Cria uma nova cesta quando não existe
+async function createNewBasket() {
+    try {
+        const response = await authenticatedFetch('/api/basket', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                basket_name: 'Minha Cesta',
+                products: userBasket.products
+            })
+        });
+        
+        if (response.ok) {
+            const newBasket = await response.json();
+            userBasket = newBasket;
+            console.log('Nova cesta criada:', newBasket);
+            showNotification('Nova cesta criada com sucesso', 'success');
+        } else {
+            console.error('Erro ao criar nova cesta:', response.status);
+            showNotification('Erro ao criar nova cesta', 'error');
+        }
+    } catch (error) {
+        console.error('Erro ao criar nova cesta:', error);
+        showNotification('Erro ao criar nova cesta', 'error');
     }
 }
 
 // Calcula os preços da cesta
 async function calculateBasket() {
     if (userBasket.products.length === 0) {
-        alert('Adicione produtos à cesta antes de calcular');
+        showNotification('Adicione produtos à cesta antes de calcular', 'warning');
         return;
     }
     
     if (selectedMarkets.size === 0) {
-        alert('Selecione pelo menos um mercado');
+        showNotification('Selecione pelo menos um mercado', 'warning');
         return;
     }
     
@@ -260,8 +376,8 @@ async function calculateBasket() {
     const mixedBasketDetails = document.getElementById('mixed-basket-details');
     const mixedBreakdown = document.getElementById('mixed-breakdown');
     
-    if (completeBasketDetails) completeBasketDetails.innerHTML = '<div class="loading">Buscando preços</div>';
-    if (mixedBasketDetails) mixedBasketDetails.innerHTML = '<div class="loading">Buscando preços</div>';
+    if (completeBasketDetails) completeBasketDetails.innerHTML = '<div class="loading">Buscando preços...</div>';
+    if (mixedBasketDetails) mixedBasketDetails.innerHTML = '<div class="loading">Buscando preços...</div>';
     if (mixedBreakdown) mixedBreakdown.style.display = 'none';
     
     try {
@@ -279,17 +395,18 @@ async function calculateBasket() {
         if (response.ok) {
             const results = await response.json();
             displayResults(results);
+            showNotification('Cálculo concluído com sucesso', 'success');
         } else {
             const errorText = await response.text();
             console.error('Erro ao calcular preços:', errorText);
-            alert('Erro ao calcular preços. Tente novamente.');
+            showNotification('Erro ao calcular preços. Tente novamente.', 'error');
             
             if (completeBasketDetails) completeBasketDetails.innerHTML = '<p class="not-found">Erro no cálculo</p>';
             if (mixedBasketDetails) mixedBasketDetails.innerHTML = '<p class="not-found">Erro no cálculo</p>';
         }
     } catch (error) {
         console.error('Erro:', error);
-        alert('Erro de conexão. Verifique sua internet e tente novamente.');
+        showNotification('Erro de conexão. Verifique sua internet e tente novamente.', 'error');
         
         if (completeBasketDetails) completeBasketDetails.innerHTML = '<p class="not-found">Erro de conexão</p>';
         if (mixedBasketDetails) mixedBasketDetails.innerHTML = '<p class="not-found">Erro de conexão</p>';
@@ -450,6 +567,51 @@ function showAuthRequired() {
     if (basketInterface) basketInterface.style.display = 'none';
 }
 
+// Função para mostrar notificações
+function showNotification(message, type = 'info') {
+    // Remove notificação anterior se existir
+    const existingNotification = document.querySelector('.notification');
+    if (existingNotification) {
+        existingNotification.remove();
+    }
+    
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `
+        <div class="notification-content">
+            <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation-triangle' : type === 'warning' ? 'exclamation-circle' : 'info'}"></i>
+            <span>${message}</span>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Mostra a notificação
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 100);
+    
+    // Remove após 3 segundos
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 300);
+    }, 3000);
+}
+
+// Função para limpar toda a cesta
+async function clearBasket() {
+    if (confirm('Tem certeza que deseja limpar toda a cesta? Esta ação não pode ser desfeita.')) {
+        userBasket.products = [];
+        await saveBasket();
+        renderProducts();
+        showNotification('Cesta limpa com sucesso!', 'success');
+    }
+}
+
 // Permitir adicionar produto com Enter
 document.addEventListener('DOMContentLoaded', async function() {
     const barcodeInput = document.getElementById('product-barcode');
@@ -490,38 +652,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.error('Erro na inicialização:', error);
         showAuthRequired();
     }
-});
-
-// Função para limpar toda a cesta
-async function clearBasket() {
-    if (confirm('Tem certeza que deseja limpar toda a cesta? Esta ação não pode ser desfeita.')) {
-        userBasket.products = [];
-        await saveBasket();
-        renderProducts();
-        alert('Cesta limpa com sucesso!');
-    }
-}
-
-// Adicionar botão de limpar cesta (opcional - pode ser adicionado no HTML)
-function addClearBasketButton() {
-    const basketInfo = document.querySelector('.basket-info');
-    if (!basketInfo) return;
-    
-    // Verifica se o botão já existe
-    if (document.querySelector('.clear-basket-btn')) return;
-    
-    const clearButton = document.createElement('button');
-    clearButton.textContent = '🗑️ Limpar Cesta';
-    clearButton.className = 'btn-secondary clear-basket-btn';
-    clearButton.style.marginTop = '10px';
-    clearButton.onclick = clearBasket;
-    
-    basketInfo.appendChild(clearButton);
-}
-
-// Inicializar botão de limpar cesta quando a página carregar
-document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(addClearBasketButton, 1000);
 });
 
 // Escuta mudanças de autenticação (opcional, para casos de logout em outras abas)
