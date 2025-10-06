@@ -43,9 +43,6 @@ if not all([SUPABASE_URL, SUPABASE_KEY, SERVICE_ROLE_KEY, ECONOMIZA_ALAGOAS_TOKE
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 supabase_admin: Client = create_client(SUPABASE_URL, SERVICE_ROLE_KEY)
 
-# Cliente assíncrono (usaremos uma abordagem diferente)
-# Para operações assíncronas, vamos usar o cliente síncrono com asyncio.to_thread
-
 # --------------------------------------------------------------------------
 # --- 2. TRATAMENTO DE ERROS CENTRALIZADO ---
 # --------------------------------------------------------------------------
@@ -856,7 +853,6 @@ async def log_page_access_endpoint(
     
     background_tasks.add_task(log_page_access, page_key, current_user)
     return {"message": "Log de acesso registrado"}
-}
 
 @app.post("/api/log-custom-action")
 async def log_custom_action(
@@ -866,7 +862,6 @@ async def log_custom_action(
 ):
     background_tasks.add_task(log_custom_action_internal, request, current_user)
     return {"message": "Ação customizada registrada"}
-}
 
 @app.get("/api/usage-statistics")
 async def get_usage_statistics(
@@ -916,17 +911,7 @@ async def get_usage_statistics(
         logging.error(f"Erro ao buscar estatísticas de uso: {e}")
         raise HTTPException(status_code=500, detail="Erro ao buscar estatísticas de uso")
 
-# --- Endpoints Públicos e de Usuário Logado ---
-@app.get("/api/products-log")
-async def get_products_log(page: int = 1, page_size: int = 50, user: UserProfile = Depends(require_page_access('product_log'))):
-    start_index = (page - 1) * page_size
-    end_index = start_index + page_size - 1
-    response = await asyncio.to_thread(
-        supabase.table('produtos').select('*', count='exact').order('created_at', desc=True).range(start_index, end_index).execute
-    )
-    return {"data": response.data, "total_count": response.count}
-
-# NOVO ENDPOINT: Busca específica por código de barras
+# --- NOVO ENDPOINT PARA BUSCA ESPECÍFICA POR CÓDIGO DE BARRAS ---
 @app.get("/api/search-product")
 async def search_product_by_barcode(
     barcode: str = Query(..., description="Código de barras do produto"),
@@ -959,6 +944,16 @@ async def search_product_by_barcode(
     except Exception as e:
         logging.error(f"Erro na busca por código de barras {barcode}: {e}")
         raise HTTPException(status_code=500, detail="Erro na busca do produto")
+
+# --- Endpoints Públicos e de Usuário Logado ---
+@app.get("/api/products-log")
+async def get_products_log(page: int = 1, page_size: int = 50, user: UserProfile = Depends(require_page_access('product_log'))):
+    start_index = (page - 1) * page_size
+    end_index = start_index + page_size - 1
+    response = await asyncio.to_thread(
+        supabase.table('produtos').select('*', count='exact').order('created_at', desc=True).range(start_index, end_index).execute
+    )
+    return {"data": response.data, "total_count": response.count}
 
 @app.get("/api/search")
 async def search_products(
