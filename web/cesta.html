@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -140,9 +141,38 @@
                         <div class="card-content">
                             <p>Selecione os mercados onde você deseja comparar os preços da sua cesta</p>
                             
-                            <div id="market-selection" class="market-selection">
-                                <div class="loading">Carregando mercados</div>
-                            </div>
+                            <!-- Filtro de mercados (estilo do style.css) -->
+                            <details class="market-filters" id="marketFilters">
+                                <summary>
+                                    <div class="summary-content">
+                                        <i class="fas fa-store"></i>
+                                        <span>Mercados Selecionados</span>
+                                        <span class="selection-count" id="selectedMarketsCount">0</span>
+                                    </div>
+                                </summary>
+                                <div class="filters-container">
+                                    <div class="market-search-controls">
+                                        <div class="search-box">
+                                            <i class="fas fa-search"></i>
+                                            <input type="text" id="marketSearch" placeholder="Buscar mercado...">
+                                            <button class="clear-btn" id="clearMarketSearch">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                        <div class="selection-actions">
+                                            <button class="btn small outline" onclick="selectAllMarkets()">
+                                                <i class="fas fa-check-double"></i> Selecionar Todos
+                                            </button>
+                                            <button class="btn small outline" onclick="deselectAllMarkets()">
+                                                <i class="fas fa-times"></i> Desmarcar Todos
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="supermarket-grid" id="market-selection">
+                                        <div class="loading">Carregando mercados</div>
+                                    </div>
+                                </div>
+                            </details>
                             
                             <button onclick="calculateBasket()" class="btn btn-primary" id="calculate-btn" style="width: 100%; padding: 12px; margin-top: 15px;">
                                 <i class="fas fa-calculator"></i> Calcular Melhores Preços
