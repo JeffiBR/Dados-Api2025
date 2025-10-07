@@ -1,4 +1,4 @@
-// cesta.js - VERSÃO CORRIGIDA E MELHORADA
+// cesta.js - VERSÃO COMPLETA E CORRIGIDA
 let userBasket = { 
     id: null, 
     basket_name: "Minha Cesta", 
@@ -8,6 +8,73 @@ let allMarkets = [];
 let selectedMarkets = new Set();
 let currentUser = null;
 let isAdmin = false;
+
+// =============================================
+// FUNÇÕES DE CONTROLE DE INTERFACE
+// =============================================
+
+// Mostra/oculta seções baseado no estado da cesta
+function updateInterfaceState() {
+    const productCount = userBasket.products.length;
+    const marketSection = document.getElementById('market-selection-section');
+    const progressAlert = document.getElementById('progress-alert');
+    const resultsSection = document.getElementById('results-section');
+    const calculateBtn = document.getElementById('calculate-btn');
+    const createBasketSection = document.getElementById('create-basket-section');
+    const addProductSection = document.getElementById('add-product-section');
+    
+    // Se não tem cesta criada
+    if (!userBasket.id) {
+        createBasketSection.style.display = 'block';
+        addProductSection.style.display = 'none';
+        marketSection.style.display = 'none';
+        resultsSection.style.display = 'none';
+        return;
+    }
+    
+    // Se tem cesta criada
+    createBasketSection.style.display = 'none';
+    addProductSection.style.display = 'block';
+    
+    // Mostra/oculta seção de mercados baseado no número de produtos
+    if (productCount >= 5) {
+        marketSection.style.display = 'block';
+        if (progressAlert) progressAlert.style.display = 'flex';
+        if (calculateBtn) calculateBtn.disabled = false;
+    } else {
+        marketSection.style.display = 'none';
+        if (progressAlert) progressAlert.style.display = 'none';
+        resultsSection.style.display = 'none';
+        if (calculateBtn) calculateBtn.disabled = true;
+    }
+    
+    // Atualiza contador de produtos
+    document.getElementById('product-count').textContent = productCount;
+}
+
+// Função para mostrar instruções passo a passo
+function showStepInstructions() {
+    if (!userBasket.id) {
+        showMessage('📝 Clique em "Criar Minha Cesta Básica" para começar', 'info');
+        return;
+    }
+    
+    const productCount = userBasket.products.length;
+    
+    if (productCount === 0) {
+        showMessage('🔍 Comece adicionando produtos à sua cesta usando o código de barras', 'info');
+    } else if (productCount < 5) {
+        showMessage(`📝 Continue adicionando produtos (${productCount}/5) para desbloquear a comparação`, 'info');
+    } else if (productCount >= 5 && selectedMarkets.size === 0) {
+        showMessage('🏪 Agora selecione os mercados para comparar os preços', 'success');
+    } else if (productCount >= 5 && selectedMarkets.size > 0) {
+        showMessage('✅ Pronto! Clique em "Comparar Preços" para ver os resultados', 'success');
+    }
+}
+
+// =============================================
+// FUNÇÕES PRINCIPAIS
+// =============================================
 
 // Função para fetch autenticado
 async function authenticatedFetch(url, options = {}) {
@@ -28,14 +95,8 @@ async function authenticatedFetch(url, options = {}) {
         const response = await fetch(url, { ...defaultOptions, ...options });
         
         if (response.status === 401) {
-            console.log('🔐 Token expirado, tentando refresh...');
             await handleTokenRefresh();
             return authenticatedFetch(url, options);
-        }
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
         
         return response;
@@ -112,8 +173,37 @@ async function createUserBasket() {
     }
 }
 
+// Busca o nome do produto pelo código de barras
+async function getProductName(barcode) {
+    try {
+        console.log(`🔍 Buscando produto: ${barcode}`);
+        
+        const response = await authenticatedFetch(`/api/search-product?barcode=${encodeURIComponent(barcode)}`);
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log('📦 Resultado da busca:', data);
+            
+            if (data.found && data.product) {
+                return data.product.nome_produto;
+            }
+        } else if (response.status === 404) {
+            console.log('ℹ️ Produto não encontrado na base de dados');
+            return null;
+        } else {
+            console.warn('⚠️ Erro na busca do produto:', response.status);
+            return null;
+        }
+        return null;
+    } catch (error) {
+        console.error('💥 Erro na busca do produto:', error);
+        return null;
+    }
+}
+
 // Adiciona produto à cesta
 async function addProduct() {
+    // Verifica se a cesta existe
     if (!userBasket.id) {
         showMessage('❌ Crie sua cesta básica primeiro', 'warning');
         return;
@@ -153,7 +243,6 @@ async function addProduct() {
     barcodeInput.disabled = true;
     
     try {
-        // Busca o nome do produto
         const productName = await getProductName(barcode);
         
         if (!productName) {
@@ -193,34 +282,6 @@ async function addProduct() {
     } finally {
         barcodeInput.disabled = false;
         barcodeInput.focus();
-    }
-}
-
-// Busca o nome do produto pelo código de barras
-async function getProductName(barcode) {
-    try {
-        console.log(`🔍 Buscando produto: ${barcode}`);
-        
-        const response = await authenticatedFetch(`/api/search-product?barcode=${encodeURIComponent(barcode)}`);
-        
-        if (response.ok) {
-            const data = await response.json();
-            console.log('📦 Resultado da busca:', data);
-            
-            if (data.found && data.product) {
-                return data.product.nome_produto;
-            }
-        } else if (response.status === 404) {
-            console.log('ℹ️ Produto não encontrado na base de dados');
-            return null;
-        } else {
-            console.warn('⚠️ Erro na busca do produto:', response.status);
-            return null;
-        }
-        return null;
-    } catch (error) {
-        console.error('💥 Erro na busca do produto:', error);
-        return null;
     }
 }
 
@@ -341,68 +402,483 @@ function renderProducts() {
     }
 }
 
-// Atualiza interface
-function updateInterfaceState() {
-    const productCount = userBasket.products.length;
-    const marketSection = document.getElementById('market-selection-section');
-    const progressAlert = document.getElementById('progress-alert');
-    const resultsSection = document.getElementById('results-section');
-    const calculateBtn = document.getElementById('calculate-btn');
-    const createBasketSection = document.getElementById('create-basket-section');
-    const addProductSection = document.getElementById('add-product-section');
+// Abre modal para editar produto
+function openEditModal(product) {
+    const modal = document.getElementById('edit-product-modal');
+    document.getElementById('edit-barcode').value = product.product_barcode;
+    document.getElementById('edit-name').value = product.product_name || '';
     
-    // Se não tem cesta criada
-    if (!userBasket.id) {
-        createBasketSection.style.display = 'block';
-        addProductSection.style.display = 'none';
-        marketSection.style.display = 'none';
-        resultsSection.style.display = 'none';
+    modal.setAttribute('data-original-barcode', product.product_barcode);
+    modal.style.display = 'flex';
+}
+
+// Fecha modal de edição
+function closeEditModal() {
+    const modal = document.getElementById('edit-product-modal');
+    modal.style.display = 'none';
+}
+
+// Salva edição do produto
+async function saveProductEdit() {
+    const modal = document.getElementById('edit-product-modal');
+    const originalBarcode = modal.getAttribute('data-original-barcode');
+    const newBarcode = document.getElementById('edit-barcode').value.trim();
+    const newName = document.getElementById('edit-name').value.trim();
+    
+    if (!newBarcode) {
+        showMessage('Código de barras não pode estar vazio', 'warning');
         return;
     }
     
-    // Se tem cesta criada
-    createBasketSection.style.display = 'none';
-    addProductSection.style.display = 'block';
+    if (!/^\d+$/.test(newBarcode)) {
+        showMessage('Código de barras deve conter apenas números', 'warning');
+        return;
+    }
     
-    // Mostra/oculta seção de mercados baseado no número de produtos
-    if (productCount >= 5) {
-        marketSection.style.display = 'block';
-        if (progressAlert) progressAlert.style.display = 'flex';
-        if (calculateBtn) calculateBtn.disabled = false;
+    try {
+        userBasket.products = userBasket.products.filter(p => p.product_barcode !== originalBarcode);
+        
+        let productName = newName;
+        if (!productName) {
+            productName = await getProductName(newBarcode);
+        }
+        
+        userBasket.products.push({
+            product_barcode: newBarcode,
+            product_name: productName || `Produto ${newBarcode}`
+        });
+        
+        await saveBasket();
+        renderProducts();
+        updateInterfaceState();
+        closeEditModal();
+        showMessage('✅ Produto atualizado com sucesso!', 'success');
+        
+    } catch (error) {
+        console.error('Erro ao editar produto:', error);
+        showMessage('Erro ao editar produto', 'error');
+    }
+}
+
+// Salva a cesta no servidor
+async function saveBasket() {
+    try {
+        console.log('💾 Salvando cesta:', userBasket);
+        
+        const response = await authenticatedFetch('/api/basket/', {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                products: userBasket.products
+            })
+        });
+        
+        if (response.ok) {
+            const savedBasket = await response.json();
+            userBasket = savedBasket;
+            console.log('✅ Cesta salva com sucesso:', userBasket);
+            return true;
+        } else {
+            const errorText = await response.text();
+            console.error('❌ Erro ao salvar cesta:', response.status, errorText);
+            throw new Error(`Erro ${response.status}: ${errorText}`);
+        }
+    } catch (error) {
+        console.error('💥 Erro ao salvar cesta:', error);
+        throw error;
+    }
+}
+
+// Carrega mercados
+async function loadMarkets() {
+    try {
+        const response = await fetch('/api/supermarkets/public');
+        if (response.ok) {
+            allMarkets = await response.json();
+            renderMarketSelection();
+        } else {
+            document.getElementById('market-selection').innerHTML = 
+                '<p class="not-found">Erro ao carregar mercados</p>';
+        }
+    } catch (error) {
+        console.error('Erro ao carregar mercados:', error);
+        document.getElementById('market-selection').innerHTML = 
+            '<p class="not-found">Erro ao carregar mercados</p>';
+    }
+}
+
+// Renderiza seleção de mercados
+function renderMarketSelection() {
+    const container = document.getElementById('market-selection');
+    if (!container) return;
+    
+    if (!allMarkets || allMarkets.length === 0) {
+        container.innerHTML = '<p class="not-found">Nenhum mercado disponível</p>';
+        return;
+    }
+    
+    container.innerHTML = '';
+    
+    allMarkets.forEach(market => {
+        const marketCard = document.createElement('div');
+        marketCard.className = 'market-card';
+        if (selectedMarkets.has(market.cnpj)) {
+            marketCard.classList.add('selected');
+        }
+        marketCard.innerHTML = `
+            <div class="market-info">
+                <div class="market-name">${market.nome}</div>
+                <div class="market-address">${market.endereco || 'Endereço não disponível'}</div>
+            </div>
+        `;
+        
+        marketCard.addEventListener('click', () => {
+            toggleMarket(market.cnpj);
+            marketCard.classList.toggle('selected');
+            updateSelectedMarketsCount();
+            updateInterfaceState();
+            showStepInstructions();
+        });
+        
+        container.appendChild(marketCard);
+    });
+    
+    updateSelectedMarketsCount();
+}
+
+// Funções auxiliares de mercado
+function toggleMarket(cnpj) {
+    if (selectedMarkets.has(cnpj)) {
+        selectedMarkets.delete(cnpj);
     } else {
-        marketSection.style.display = 'none';
-        if (progressAlert) progressAlert.style.display = 'none';
-        resultsSection.style.display = 'none';
-        if (calculateBtn) calculateBtn.disabled = true;
+        selectedMarkets.add(cnpj);
     }
-    
-    // Atualiza contador de produtos
-    document.getElementById('product-count').textContent = productCount;
 }
 
-// Mostra instruções passo a passo
-function showStepInstructions() {
+function selectAllMarkets() {
+    allMarkets.forEach(market => selectedMarkets.add(market.cnpj));
+    renderMarketSelection();
+    updateInterfaceState();
+    showStepInstructions();
+}
+
+function deselectAllMarkets() {
+    selectedMarkets.clear();
+    renderMarketSelection();
+    updateInterfaceState();
+    showStepInstructions();
+}
+
+function updateSelectedMarketsCount() {
+    const countElement = document.getElementById('selectedMarketsCount');
+    if (countElement) {
+        countElement.textContent = selectedMarkets.size;
+    }
+}
+
+function filterMarkets(searchTerm) {
+    const marketCards = document.querySelectorAll('.market-card');
+    const term = searchTerm.toLowerCase();
+    
+    marketCards.forEach(card => {
+        const marketName = card.querySelector('.market-name').textContent.toLowerCase();
+        const marketAddress = card.querySelector('.market-address').textContent.toLowerCase();
+        if (marketName.includes(term) || marketAddress.includes(term)) {
+            card.style.display = 'flex';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+// Calcula preços da cesta
+async function calculateBasket() {
     if (!userBasket.id) {
-        showMessage('📝 Clique em "Criar Minha Cesta Básica" para começar', 'info');
+        showMessage('❌ Crie sua cesta básica primeiro', 'warning');
         return;
     }
     
-    const productCount = userBasket.products.length;
+    if (userBasket.products.length < 5) {
+        showMessage('❌ Adicione pelo menos 5 produtos antes de calcular', 'warning');
+        return;
+    }
     
-    if (productCount === 0) {
-        showMessage('🔍 Comece adicionando produtos à sua cesta usando o código de barras', 'info');
-    } else if (productCount < 5) {
-        showMessage(`📝 Continue adicionando produtos (${productCount}/5) para desbloquear a comparação`, 'info');
-    } else if (productCount >= 5 && selectedMarkets.size === 0) {
-        showMessage('🏪 Agora selecione os mercados para comparar os preços', 'success');
-    } else if (productCount >= 5 && selectedMarkets.size > 0) {
-        showMessage('✅ Pronto! Clique em "Comparar Preços" para ver os resultados', 'success');
+    if (selectedMarkets.size === 0) {
+        showMessage('❌ Selecione pelo menos um mercado', 'warning');
+        return;
+    }
+    
+    const calculateBtn = document.getElementById('calculate-btn');
+    const resultsSection = document.getElementById('results-section');
+    
+    calculateBtn.disabled = true;
+    calculateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calculando...';
+    if (resultsSection) resultsSection.style.display = 'block';
+    
+    try {
+        const response = await authenticatedFetch('/api/basket/calculate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                basket_id: userBasket.id,
+                cnpjs: Array.from(selectedMarkets)
+            })
+        });
+        
+        if (response.ok) {
+            const results = await response.json();
+            displayResults(results);
+        } else {
+            const errorText = await response.text();
+            console.error('Erro ao calcular preços:', errorText);
+            showMessage('Erro ao calcular preços: ' + errorText, 'error');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        showMessage('Erro de conexão: ' + error.message, 'error');
+    } finally {
+        calculateBtn.disabled = false;
+        calculateBtn.innerHTML = '<i class="fas fa-calculator"></i> Comparar Preços da Cesta';
     }
 }
 
-// [Mantenha as outras funções: openEditModal, closeEditModal, saveProductEdit, saveBasket, loadMarkets, etc.]
+// Exibe os resultados do cálculo
+function displayResults(results) {
+    displayCompleteBasket(results.best_complete_basket, results.complete_basket_results);
+    displayMixedBasket(results.mixed_basket_results);
+}
 
-// Inicialização
+function displayCompleteBasket(bestBasket, allBaskets) {
+    const container = document.getElementById('complete-basket-details');
+    if (!container) return;
+    
+    if (!bestBasket) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="icon">😕</div>
+                <p>Nenhum mercado encontrou todos os produtos</p>
+                <p>Tente selecionar mais mercados ou verificar os códigos de barras</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const productsFound = bestBasket.products_found;
+    const totalProducts = bestBasket.total_products;
+    const coveragePercent = Math.round((productsFound / totalProducts) * 100);
+    
+    container.innerHTML = `
+        <div class="price-highlight">R$ ${bestBasket.total.toFixed(2)}</div>
+        <div style="text-align: center; margin-bottom: 15px;">
+            <p><strong>🏪 ${bestBasket.market_name}</strong></p>
+            <p>📊 ${productsFound}/${totalProducts} produtos encontrados (${coveragePercent}%)</p>
+        </div>
+        
+        <div class="product-list">
+            <h4 style="margin-bottom: 10px;">📦 Produtos na Cesta:</h4>
+            ${bestBasket.products.map(product => `
+                <div class="product-item ${!product.found ? 'not-found' : ''}">
+                    <div class="product-info">
+                        <div class="product-name">${product.name}</div>
+                        <div class="product-barcode">${product.barcode}</div>
+                    </div>
+                    <div class="product-price">
+                        ${product.found ? `R$ ${product.price.toFixed(2)}` : '❌ Não encontrado'}
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function displayMixedBasket(mixedBasket) {
+    const container = document.getElementById('mixed-basket-details');
+    const breakdownContainer = document.getElementById('mixed-breakdown');
+    const marketBreakdown = document.getElementById('market-breakdown');
+    
+    if (!container) return;
+    
+    const foundProducts = mixedBasket.products.filter(p => p.found).length;
+    const totalProducts = mixedBasket.products.length;
+    
+    container.innerHTML = `
+        <div class="price-highlight">
+            R$ ${mixedBasket.total.toFixed(2)}
+            ${mixedBasket.economy_percent > 0 ? 
+                `<span class="economy-badge">Economia de ${mixedBasket.economy_percent}%</span>` : 
+                ''}
+        </div>
+        <div style="text-align: center; margin-bottom: 15px;">
+            <p><strong>📊 ${foundProducts}/${totalProducts} produtos encontrados</strong></p>
+            <p>💰 Compre cada produto no mercado mais barato</p>
+        </div>
+        
+        <div class="product-list">
+            <h4 style="margin-bottom: 10px;">🛒 Produtos e Melhores Preços:</h4>
+            ${mixedBasket.products.map(product => `
+                <div class="product-item ${!product.found ? 'not-found' : ''}">
+                    <div class="product-info">
+                        <div class="product-name">${product.name}</div>
+                        <div class="product-barcode">${product.barcode}</div>
+                        ${product.found ? `<small>🏪 ${product.market_name}</small>` : ''}
+                    </div>
+                    <div class="product-price">
+                        ${product.found ? `R$ ${product.price.toFixed(2)}` : '❌ Não encontrado'}
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+    
+    if (mixedBasket.economy_percent > 0 && breakdownContainer && marketBreakdown && Object.keys(mixedBasket.market_breakdown).length > 1) {
+        breakdownContainer.style.display = 'block';
+        marketBreakdown.innerHTML = Object.values(mixedBasket.market_breakdown).map(market => `
+            <div class="market-store">
+                <h4>🏪 ${market.market_name}</h4>
+                <div class="market-subtotal">Subtotal: R$ ${market.subtotal.toFixed(2)}</div>
+                <div class="product-list">
+                    ${market.products.map(product => `
+                        <div class="product-item">
+                            <div class="product-info">
+                                <div class="product-name">${product.name}</div>
+                            </div>
+                            <div class="product-price">R$ ${product.price.toFixed(2)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `).join('');
+    } else if (breakdownContainer) {
+        breakdownContainer.style.display = 'none';
+    }
+}
+
+// Carrega todas as cestas (apenas admin)
+async function loadAllBaskets() {
+    try {
+        const response = await authenticatedFetch('/api/basket/all');
+        if (response.ok) {
+            const allBaskets = await response.json();
+            renderAllBaskets(allBaskets);
+        } else {
+            console.error('Erro ao carregar todas as cestas');
+        }
+    } catch (error) {
+        console.error('Erro ao carregar todas as cestas:', error);
+    }
+}
+
+// Renderiza todas as cestas (admin)
+function renderAllBaskets(baskets) {
+    const adminSection = document.getElementById('admin-baskets-content');
+    if (!adminSection) return;
+
+    if (baskets.length === 0) {
+        adminSection.innerHTML = '<p>Nenhuma cesta encontrada.</p>';
+        return;
+    }
+
+    adminSection.innerHTML = `
+        <div class="admin-baskets">
+            <h3><i class="fas fa-users"></i> Todas as Cestas dos Usuários</h3>
+            <div class="baskets-grid">
+                ${baskets.map(basket => `
+                    <div class="basket-card">
+                        <div class="basket-header">
+                            <h4>${basket.basket_name}</h4>
+                            <div class="user-info">
+                                <span class="user-badge">${basket.user_name || 'Usuário'}</span>
+                                <span class="user-email">${basket.user_email}</span>
+                            </div>
+                        </div>
+                        <div class="basket-info">
+                            <p><strong>Produtos:</strong> ${basket.products.length}</p>
+                            <p><strong>Criada:</strong> ${new Date(basket.created_at).toLocaleString('pt-BR')}</p>
+                            <p><strong>Atualizada:</strong> ${new Date(basket.updated_at).toLocaleString('pt-BR')}</p>
+                        </div>
+                        <div class="basket-products">
+                            <h5>Produtos na Cesta:</h5>
+                            ${basket.products.slice(0, 5).map(product => `
+                                <div class="product-preview">
+                                    <span class="product-name">${product.product_name || product.product_barcode}</span>
+                                    <span class="product-barcode">${product.product_barcode}</span>
+                                </div>
+                            `).join('')}
+                            ${basket.products.length > 5 ? `<p class="more-products">... e mais ${basket.products.length - 5} produtos</p>` : ''}
+                            ${basket.products.length === 0 ? '<p class="empty-basket">Cesta vazia</p>' : ''}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+// Função para mostrar mensagens
+function showMessage(message, type = 'info') {
+    const existingMessage = document.querySelector('.flash-message');
+    if (existingMessage) {
+        existingMessage.remove();
+    }
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `flash-message flash-${type}`;
+    messageDiv.innerHTML = `
+        <span>${message}</span>
+        <button onclick="this.parentElement.remove()">×</button>
+    `;
+    
+    document.body.appendChild(messageDiv);
+    
+    setTimeout(() => {
+        if (messageDiv.parentElement) {
+            messageDiv.remove();
+        }
+    }, 5000);
+}
+
+// Mostra seção de login necessária
+function showAuthRequired() {
+    const loginSection = document.getElementById('login-section');
+    const basketInterface = document.getElementById('basket-interface');
+    
+    if (loginSection) loginSection.style.display = 'block';
+    if (basketInterface) basketInterface.style.display = 'none';
+}
+
+// Exporta a cesta para JSON
+function exportBasket() {
+    if (userBasket.products.length === 0) {
+        showMessage('A cesta está vazia', 'warning');
+        return;
+    }
+    
+    const basketData = {
+        basket_name: userBasket.basket_name,
+        products: userBasket.products,
+        export_date: new Date().toISOString(),
+        total_products: userBasket.products.length
+    };
+    
+    const dataStr = JSON.stringify(basketData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(dataBlob);
+    link.download = `cesta-basica-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    
+    showMessage('✅ Cesta exportada com sucesso!', 'success');
+}
+
+// =============================================
+// INICIALIZAÇÃO
+// =============================================
+
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('🚀 Inicializando página da cesta...');
     
@@ -413,6 +889,22 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (e.key === 'Enter') {
                 addProduct();
             }
+        });
+    }
+    
+    const marketSearch = document.getElementById('marketSearch');
+    const clearMarketSearch = document.getElementById('clearMarketSearch');
+    
+    if (marketSearch) {
+        marketSearch.addEventListener('input', function() {
+            filterMarkets(this.value);
+        });
+    }
+    
+    if (clearMarketSearch) {
+        clearMarketSearch.addEventListener('click', function() {
+            marketSearch.value = '';
+            filterMarkets('');
         });
     }
     
