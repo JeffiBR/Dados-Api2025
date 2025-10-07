@@ -209,7 +209,7 @@ async def update_user_basket(
 async def remove_product_from_basket(
     barcode: str,
     current_user: dict = Depends(get_current_user)):
-):
+        
     """
     Remove um produto específico da cesta do usuário
     """
