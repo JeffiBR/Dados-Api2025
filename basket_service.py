@@ -33,46 +33,45 @@ basket_router = APIRouter(prefix="/api/basket", tags=["basket"])
 # Variáveis globais que serão configuradas posteriormente
 supabase = None
 supabase_admin = None
-get_current_user = None
-get_current_user_optional = None
+get_current_user_dependency = None
+get_current_user_optional_dependency = None
 
 def setup_basket_routes(app, supabase_client, supabase_admin_client, get_current_user_dep, get_current_user_optional_dep):
     """
     Configura as rotas da cesta básica com as dependências do main.py
     """
-    global supabase, supabase_admin, get_current_user, get_current_user_optional
+    global supabase, supabase_admin, get_current_user_dependency, get_current_user_optional_dependency
     supabase = supabase_client
     supabase_admin = supabase_admin_client
-    get_current_user = get_current_user_dep
-    get_current_user_optional = get_current_user_optional_dep
+    get_current_user_dependency = get_current_user_dep
+    get_current_user_optional_dependency = get_current_user_optional_dep
     
     # Inclui o roteador no app principal
     app.include_router(basket_router)
 
-# Função auxiliar para verificar se as dependências foram configuradas
-def get_configured_current_user():
-    if get_current_user is None:
+# Funções auxiliares para obter o usuário atual
+async def get_current_user():
+    if get_current_user_dependency is None:
         raise HTTPException(
             status_code=500, 
             detail="Dependência não configurada. Chame setup_basket_routes primeiro."
         )
-    return get_current_user
+    return await get_current_user_dependency()
 
-def get_configured_current_user_optional():
-    if get_current_user_optional is None:
-        # Se não configurado, retorna uma função que retorna None
-        async def default_optional_user():
-            return None
-        return default_optional_user
-    return get_current_user_optional
+async def get_current_user_optional():
+    if get_current_user_optional_dependency is None:
+        return None
+    return await get_current_user_optional_dependency()
 
 # Endpoints da cesta básica
 @basket_router.get("/")
-async def get_user_basket(current_user: dict = Depends(get_configured_current_user)):
+async def get_user_basket(current_user: dict = Depends(get_current_user)):
     """
     Retorna a cesta do usuário atual
     """
     try:
+        print(f"🔍 Buscando cesta para usuário: {current_user.id}")
+        
         response = await asyncio.to_thread(
             lambda: supabase.table('user_baskets').select('*').eq('user_id', current_user.id).execute()
         )
@@ -82,16 +81,20 @@ async def get_user_basket(current_user: dict = Depends(get_configured_current_us
         else:
             raise HTTPException(status_code=404, detail="Cesta não encontrada")
             
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"Erro ao buscar cesta do usuário: {e}")
         raise HTTPException(status_code=500, detail="Erro ao carregar cesta")
 
 @basket_router.post("/")
-async def create_user_basket(current_user: dict = Depends(get_configured_current_user)):
+async def create_user_basket(current_user: dict = Depends(get_current_user)):
     """
     Cria uma nova cesta para o usuário
     """
     try:
+        print(f"🆕 Criando cesta para usuário: {current_user.id}")
+        
         # Verifica se já existe uma cesta
         existing_response = await asyncio.to_thread(
             lambda: supabase.table('user_baskets')
@@ -101,6 +104,7 @@ async def create_user_basket(current_user: dict = Depends(get_configured_current
         )
         
         if existing_response.data:
+            print(f"✅ Cesta já existe para usuário: {current_user.id}")
             return existing_response.data[0]
         
         # Cria nova cesta
@@ -112,11 +116,14 @@ async def create_user_basket(current_user: dict = Depends(get_configured_current
             'updated_at': datetime.now().isoformat()
         }
         
+        print(f"📝 Inserindo nova cesta: {new_basket}")
+        
         create_response = await asyncio.to_thread(
             lambda: supabase.table('user_baskets').insert(new_basket).execute()
         )
         
         if create_response.data:
+            print(f"✅ Cesta criada com sucesso: {create_response.data[0]}")
             return create_response.data[0]
         else:
             raise HTTPException(status_code=500, detail="Erro ao criar cesta")
@@ -128,7 +135,7 @@ async def create_user_basket(current_user: dict = Depends(get_configured_current
         raise HTTPException(status_code=500, detail="Erro ao criar cesta")
 
 @basket_router.get("/all")
-async def get_all_baskets(current_user: dict = Depends(get_configured_current_user)):
+async def get_all_baskets(current_user: dict = Depends(get_current_user)):
     """
     Retorna todas as cestas com informações dos usuários (apenas para administradores)
     """
@@ -171,7 +178,7 @@ async def get_all_baskets(current_user: dict = Depends(get_configured_current_us
 @basket_router.patch("/")
 async def update_user_basket(
     basket_update: BasketUpdateRequest, 
-    current_user: dict = Depends(get_configured_current_user)):
+    current_user: dict = Depends(get_current_user)):
         
     """
     Atualiza a cesta do usuário atual - USANDO PATCH
@@ -222,7 +229,7 @@ async def update_user_basket(
 @basket_router.delete("/product/{barcode}")
 async def remove_product_from_basket(
     barcode: str,
-    current_user: dict = Depends(get_configured_current_user)):
+    current_user: dict = Depends(get_current_user)):
         
     """
     Remove um produto específico da cesta do usuário
@@ -274,7 +281,7 @@ async def remove_product_from_basket(
         raise HTTPException(status_code=500, detail="Erro ao remover produto")
 
 @basket_router.delete("/clear")
-async def clear_user_basket(current_user: dict = Depends(get_configured_current_user)):
+async def clear_user_basket(current_user: dict = Depends(get_current_user)):
     """
     Limpa todos os produtos da cesta do usuário
     """
@@ -318,7 +325,7 @@ async def clear_user_basket(current_user: dict = Depends(get_configured_current_
 @basket_router.post("/calculate")
 async def calculate_basket_prices(
     request: BasketCalculationRequest, 
-    current_user: dict = Depends(get_configured_current_user)):
+    current_user: dict = Depends(get_current_user)):
     """
     Calcula os preços da cesta nos mercados selecionados
     """
