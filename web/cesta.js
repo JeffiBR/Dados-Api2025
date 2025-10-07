@@ -1,495 +1,555 @@
-// cesta.js - VERSÃO FOCADA NAS FUNÇÕES ESSENCIAIS
-let userBasket = { 
-    id: null, 
-    basket_name: "Minha Cesta", 
-    products: [] 
-};
-let currentUser = null;
-let isAdmin = false;
+// cesta.js
+// Depende de 'auth.js' para as funções routeGuard e authenticatedFetch
 
-// =============================================
-// FUNÇÕES PRINCIPAIS
-// =============================================
+// Variáveis de estado globais
+let allBaskets = [];
+let currentBasketId = null;
+let currentBasketProducts = [];
+let allSupermarkets = [];
 
-async function authenticatedFetch(url, options = {}) {
+document.addEventListener('DOMContentLoaded', async () => {
+    // 1. Proteger a rota e exigir permissão 'baskets'
+    await routeGuard('baskets');
+    
+    // 2. Carregar lista de mercados (necessário para a busca de preços)
+    await fetchSupermarkets();
+
+    // 3. Carregar cestas do usuário
+    await loadBaskets();
+    
+    // 4. Adicionar event listeners
+    document.getElementById('createBasketForm').addEventListener('submit', handleCreateBasket);
+    document.getElementById('addProductForm').addEventListener('submit', handleAddProduct);
+    document.getElementById('btnClearBasket').addEventListener('click', handleClearBasket);
+    document.getElementById('btnSearchPrices').addEventListener('click', handleSearchPrices);
+    document.getElementById('editProductForm').addEventListener('submit', handleEditProductSubmit);
+    // Usa delegação de evento para botões de Gerenciar/Excluir nos cards
+    document.getElementById('basketsList').addEventListener('click', handleBasketActions);
+});
+
+/**
+ * Carrega a lista de supermercados para o modal de busca de preços.
+ */
+async function fetchSupermarkets() {
     try {
-        const session = await getSession();
-        if (!session) {
-            throw new Error('Usuário não autenticado');
-        }
-
-        const defaultOptions = {
-            headers: {
-                'Authorization': `Bearer ${session.access_token}`,
-                'Content-Type': 'application/json',
-                ...options.headers
-            }
-        };
-
-        const response = await fetch(url, { ...defaultOptions, ...options });
-        
-        if (response.status === 401) {
-            await handleTokenRefresh();
-            return authenticatedFetch(url, options);
-        }
-        
-        return response;
+        const response = await authenticatedFetch('/api/supermarkets/public');
+        if (!response.ok) throw new Error('Falha ao carregar mercados');
+        allSupermarkets = await response.json();
     } catch (error) {
-        console.error('Erro no fetch autenticado:', error);
-        throw error;
+        console.error("Erro ao carregar mercados:", error);
+        alert('Erro ao carregar lista de supermercados.');
     }
 }
 
-// Carrega a cesta do usuário - CRIA AUTOMATICAMENTE SE NÃO EXISTIR
-async function loadUserBasket() {
+/**
+ * Carrega a lista de cestas básicas do usuário.
+ */
+async function loadBaskets() {
     try {
-        console.log('🔍 Carregando cesta do usuário...');
-        
-        const response = await authenticatedFetch('/api/basket/');
-        
-        if (response.ok) {
-            const basketData = await response.json();
-            userBasket = basketData;
-            console.log('✅ Cesta carregada:', userBasket);
-            renderProducts();
-            updateProductCount();
-            return;
-        } 
-        
-        console.error('❌ Erro ao carregar cesta:', response.status);
-        showMessage('Erro ao carregar sua cesta', 'error');
-        
+        // O backend cuida da permissão (usuário normal só vê as suas)
+        const response = await authenticatedFetch('/api/baskets');
+        if (!response.ok) throw new Error('Falha ao carregar cestas');
+        allBaskets = await response.json();
+        renderBaskets();
     } catch (error) {
-        console.error('💥 Erro ao carregar cesta:', error);
-        showMessage('Erro ao carregar cesta: ' + error.message, 'error');
+        console.error("Erro ao carregar cestas:", error);
+        document.getElementById('basketsList').innerHTML = '<p class="text-danger">Não foi possível carregar suas cestas.</p>';
     }
 }
 
-// Cria uma nova cesta para o usuário (substitui a existente)
-async function createUserBasket() {
+/**
+ * Renderiza os cards das cestas na tela.
+ */
+function renderBaskets() {
+    const listElement = document.getElementById('basketsList');
+    listElement.innerHTML = '';
+    
+    if (allBaskets.length === 0) {
+        listElement.innerHTML = '<div class="col-12"><p>Você ainda não tem cestas básicas cadastradas. Crie uma!</p></div>';
+        return;
+    }
+
+    allBaskets.forEach(basket => {
+        const productCount = (basket.produtos || []).length;
+        const cardHtml = `
+            <div class="col-md-4 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">${basket.nome}</h5>
+                        <p class="card-text small text-muted">ID: ${basket.id} | Produtos: ${productCount} de 25</p>
+                        <div class="btn-group w-100" role="group">
+                            <button class="btn btn-sm btn-info btn-manage-products" data-basket-id="${basket.id}" data-basket-name="${basket.nome}">Gerenciar Produtos</button>
+                            <button class="btn btn-sm btn-danger btn-delete-basket" data-basket-id="${basket.id}" data-basket-name="${basket.nome}">Excluir Cesta</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        listElement.innerHTML += cardHtml;
+    });
+
+    // Gerenciar limite do botão de criação
+    const btnCreate = document.getElementById('btnCreateBasket');
+    if (allBaskets.length >= 3) {
+        btnCreate.disabled = true;
+        btnCreate.textContent = `Limite de 3 cestas atingido.`;
+    } else {
+        btnCreate.disabled = false;
+        btnCreate.textContent = 'Criar Nova Cesta';
+    }
+}
+
+/**
+ * Lida com o envio do formulário de criação de nova cesta.
+ */
+async function handleCreateBasket(event) {
+    event.preventDefault();
+    const basketName = document.getElementById('basketName').value.trim();
+    const btn = document.getElementById('btnSaveNewBasket');
+    
+    if (!basketName) return;
+    
+    btn.disabled = true;
+    btn.textContent = 'Criando...';
+
     try {
-        console.log('🆕 Criando nova cesta...');
-        const response = await authenticatedFetch('/api/basket/', {
-            method: 'POST'
+        const response = await authenticatedFetch('/api/baskets', {
+            method: 'POST',
+            body: JSON.stringify({ nome: basketName, produtos: [] })
         });
-        
-        if (response.ok) {
-            const basketData = await response.json();
-            userBasket = basketData;
-            console.log('✅ Cesta criada:', userBasket);
-            renderProducts();
-            updateProductCount();
-            showMessage('✅ Nova cesta criada com sucesso!', 'success');
-            return basketData;
-        } else {
-            const errorText = await response.text();
-            console.error('❌ Erro ao criar cesta:', response.status, errorText);
-            throw new Error(`Erro ${response.status}: ${errorText}`);
-        }
-    } catch (error) {
-        console.error('💥 Erro ao criar cesta:', error);
-        showMessage('Erro ao criar cesta: ' + error.message, 'error');
-        throw error;
-    }
-}
 
-// Busca o nome do produto pelo código de barras
-async function getProductName(barcode) {
-    try {
-        console.log(`🔍 Buscando produto: ${barcode}`);
-        
-        const response = await authenticatedFetch(`/api/search-product?barcode=${encodeURIComponent(barcode)}`);
-        
-        if (response.ok) {
-            const data = await response.json();
-            console.log('📦 Resultado da busca:', data);
-            
-            if (data.found && data.product) {
-                return data.product.nome_produto;
-            }
-        }
-        return null;
-    } catch (error) {
-        console.error('💥 Erro na busca do produto:', error);
-        return null;
-    }
-}
-
-// Adiciona produto à cesta
-async function addProduct() {
-    const barcodeInput = document.getElementById('product-barcode');
-    const barcode = barcodeInput.value.trim();
-    
-    if (!barcode) {
-        showMessage('Por favor, digite um código de barras', 'warning');
-        return;
-    }
-    
-    if (!/^\d+$/.test(barcode)) {
-        showMessage('Código de barras deve conter apenas números', 'warning');
-        return;
-    }
-    
-    if (barcode.length < 8) {
-        showMessage('Código de barras muito curto (mínimo 8 dígitos)', 'warning');
-        return;
-    }
-    
-    if (userBasket.products.length >= 25) {
-        showMessage('Limite de 25 produtos atingido', 'warning');
-        return;
-    }
-    
-    if (userBasket.products.some(p => p.product_barcode === barcode)) {
-        showMessage('Este produto já está na cesta', 'warning');
-        return;
-    }
-    
-    // Mostra loading
-    const originalText = barcodeInput.value;
-    barcodeInput.value = '🔄 Buscando produto...';
-    barcodeInput.disabled = true;
-    
-    try {
-        const productName = await getProductName(barcode);
-        
-        if (!productName) {
-            // Se não encontrou o produto, permite adicionar com nome personalizado
-            const customName = prompt(`Produto com código ${barcode} não encontrado.\n\nDigite o nome do produto:`, `Produto ${barcode}`);
-            
-            if (customName !== null) { // Usuário não cancelou
-                userBasket.products.push({
-                    product_barcode: barcode,
-                    product_name: customName || `Produto ${barcode}`
-                });
-                
-                await saveBasket();
-                renderProducts();
-                updateProductCount();
-                showMessage('✅ Produto adicionado com nome personalizado!', 'success');
-                barcodeInput.value = '';
-            } else {
-                barcodeInput.value = originalText;
-            }
-        } else {
-            // Produto encontrado, adiciona com o nome correto
-            userBasket.products.push({
-                product_barcode: barcode,
-                product_name: productName
-            });
-            
-            await saveBasket();
-            renderProducts();
-            updateProductCount();
-            showMessage('✅ Produto adicionado com sucesso!', 'success');
-            barcodeInput.value = '';
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Falha ao criar a cesta.');
         }
         
+        alert('Cesta criada com sucesso!');
+        // Fechar o modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('createBasketModal'));
+        if (modal) modal.hide();
+        
+        await loadBaskets();
+        document.getElementById('createBasketForm').reset();
     } catch (error) {
-        console.error('Erro ao adicionar produto:', error);
-        showMessage('Erro ao adicionar produto: ' + error.message, 'error');
-        barcodeInput.value = originalText;
+        console.error("Erro ao criar cesta:", error);
+        alert(`Erro: ${error.message}`);
     } finally {
-        barcodeInput.disabled = false;
-        barcodeInput.focus();
+        btn.disabled = false;
+        btn.textContent = 'Criar Cesta';
     }
 }
 
-// Remove produto específico
-async function removeProduct(barcode) {
-    if (confirm('Tem certeza que deseja remover este produto da cesta?')) {
-        try {
-            const response = await authenticatedFetch(`/api/basket/product/${barcode}`, {
-                method: 'DELETE'
-            });
-            
-            if (response.ok) {
-                userBasket.products = userBasket.products.filter(p => p.product_barcode !== barcode);
-                renderProducts();
-                updateProductCount();
-                showMessage('✅ Produto removido com sucesso!', 'success');
-            } else {
-                throw new Error('Erro ao remover produto');
+/**
+ * Lida com as ações de Gerenciar Produtos e Excluir Cesta.
+ */
+async function handleBasketActions(event) {
+    const target = event.target;
+    const basketId = target.dataset.basketId;
+    const basketName = target.dataset.basketName;
+    
+    if (!basketId) return;
+
+    // Gerenciar Produtos
+    if (target.classList.contains('btn-manage-products')) {
+        currentBasketId = parseInt(basketId);
+        const basket = allBaskets.find(b => b.id === currentBasketId);
+        if (basket) {
+            currentBasketProducts = basket.produtos || [];
+            document.getElementById('currentBasketName').textContent = basketName;
+            renderProductsList();
+            const modal = new bootstrap.Modal(document.getElementById('manageProductsModal'));
+            modal.show();
+        }
+        
+    } 
+    // Excluir Cesta
+    else if (target.classList.contains('btn-delete-basket')) {
+        if (confirm(`Tem certeza que deseja excluir a cesta "${basketName || basketId}"?`)) {
+            try {
+                const response = await authenticatedFetch(`/api/baskets/${basketId}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Falha ao excluir a cesta.');
+                }
+
+                alert('Cesta excluída com sucesso!');
+                await loadBaskets();
+            } catch (error) {
+                console.error("Erro ao excluir cesta:", error);
+                alert(`Erro: ${error.message}`);
             }
-        } catch (error) {
-            console.error('Erro ao remover produto:', error);
-            showMessage('Erro ao remover produto: ' + error.message, 'error');
         }
     }
 }
 
-// Limpa toda a cesta
-async function clearBasket() {
-    if (userBasket.products.length === 0) {
-        showMessage('A cesta já está vazia', 'info');
+/**
+ * Renderiza a lista de produtos dentro do modal de gerenciamento.
+ */
+function renderProductsList() {
+    const listElement = document.getElementById('productsList');
+    listElement.innerHTML = '';
+    
+    document.getElementById('productCountAlert').textContent = 
+        `${currentBasketProducts.length} de 25 produtos.`;
+
+    // Desabilitar adição se o limite for atingido
+    const btnAdd = document.getElementById('btnAddProduct');
+    const inputName = document.getElementById('productName');
+    if (currentBasketProducts.length >= 25) {
+        btnAdd.disabled = true;
+        inputName.disabled = true;
+        btnAdd.textContent = 'Limite Atingido';
+    } else {
+        btnAdd.disabled = false;
+        inputName.disabled = false;
+        btnAdd.textContent = 'Adicionar';
+    }
+
+    if (currentBasketProducts.length === 0) {
+        listElement.innerHTML = '<li class="list-group-item text-muted">Nenhum produto adicionado.</li>';
         return;
     }
-    
-    if (confirm('Tem certeza que deseja limpar toda a cesta? Esta ação não pode ser desfeita.')) {
-        try {
-            const response = await authenticatedFetch('/api/basket/clear', {
-                method: 'DELETE'
-            });
-            
-            if (response.ok) {
-                userBasket.products = [];
-                renderProducts();
-                updateProductCount();
-                showMessage('✅ Cesta limpa com sucesso!', 'success');
-            } else {
-                throw new Error('Erro ao limpar cesta');
-            }
-        } catch (error) {
-            console.error('Erro ao limpar cesta:', error);
-            showMessage('Erro ao limpar cesta: ' + error.message, 'error');
-        }
-    }
-}
 
-// Função para editar produto
-async function editProduct(barcode) {
-    const product = userBasket.products.find(p => p.product_barcode === barcode);
-    if (!product) return;
-    
-    const newName = prompt('Editar nome do produto:', product.product_name || '');
-    if (newName !== null) {
-        try {
-            // Atualiza o nome localmente
-            product.product_name = newName;
-            
-            // Salva no servidor
-            await saveBasket();
-            renderProducts();
-            showMessage('✅ Produto atualizado com sucesso!', 'success');
-        } catch (error) {
-            console.error('Erro ao editar produto:', error);
-            showMessage('Erro ao editar produto', 'error');
-        }
-    }
-}
-
-// Renderiza os produtos
-function renderProducts() {
-    const grid = document.getElementById('products-grid');
-    if (!grid) return;
-    
-    if (userBasket.products.length === 0) {
-        grid.innerHTML = `
-            <div class="empty-state">
-                <div class="icon"><i class="fas fa-shopping-basket"></i></div>
-                <h3>Sua cesta está vazia</h3>
-                <p>Adicione produtos usando o código de barras acima</p>
-            </div>
-        `;
-        return;
-    }
-    
-    grid.innerHTML = '';
-    
-    userBasket.products.forEach((product) => {
-        const productCard = document.createElement('div');
-        productCard.className = 'product-card';
-        productCard.innerHTML = `
-            <div class="product-content">
-                <div class="product-actions">
-                    <button class="btn-icon edit-btn" onclick="editProduct('${product.product_barcode}')" title="Editar produto">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-icon remove-btn" onclick="removeProduct('${product.product_barcode}')" title="Remover produto">
-                        <i class="fas fa-times"></i>
-                    </button>
+    currentBasketProducts.forEach((product, index) => {
+        const itemHtml = `
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>${index + 1}. ${product.nome_produto}</strong>
+                    <small class="text-muted d-block">Código: ${product.codigo_barras || 'N/A'}</small>
                 </div>
-                <div class="product-info">
-                    <div class="product-name">${product.product_name || 'Produto não identificado'}</div>
-                    <div class="product-barcode">Código: ${product.product_barcode}</div>
+                <div>
+                    <button class="btn btn-sm btn-outline-secondary me-2 btn-edit-product" data-product-index="${index}">Editar</button>
+                    <button class="btn btn-sm btn-outline-danger btn-remove-product" data-product-index="${index}">Excluir</button>
                 </div>
-            </div>
+            </li>
         `;
-        grid.appendChild(productCard);
+        listElement.innerHTML += itemHtml;
+    });
+    
+    // Adicionar listeners para os botões de produto recém-criados
+    listElement.querySelectorAll('.btn-remove-product').forEach(btn => {
+        btn.addEventListener('click', handleRemoveProduct);
+    });
+    listElement.querySelectorAll('.btn-edit-product').forEach(btn => {
+        btn.addEventListener('click', openEditProductModal);
     });
 }
 
-// Atualiza contador de produtos
-function updateProductCount() {
-    const countElement = document.getElementById('product-count');
-    if (countElement) {
-        countElement.textContent = userBasket.products.length;
-    }
-}
+/**
+ * Adiciona um novo produto à cesta.
+ */
+async function handleAddProduct(event) {
+    event.preventDefault();
+    
+    const productName = document.getElementById('productName').value.trim();
+    const productBarcode = document.getElementById('productBarcode').value.trim();
+    const btn = document.getElementById('btnAddProduct');
+    
+    if (!productName || !currentBasketId) return;
 
-// Salva a cesta no servidor
-async function saveBasket() {
+    btn.disabled = true;
+    btn.textContent = 'Adicionando...';
+    
     try {
-        console.log('💾 Salvando cesta:', userBasket);
+        const newProduct = { nome_produto: productName, codigo_barras: productBarcode || null };
         
-        const response = await authenticatedFetch('/api/basket/', {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                products: userBasket.products
-            })
+        const response = await authenticatedFetch(`/api/baskets/${currentBasketId}/products`, {
+            method: 'POST',
+            body: JSON.stringify(newProduct)
         });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Falha ao adicionar produto.');
+        }
         
-        if (response.ok) {
-            const savedBasket = await response.json();
-            userBasket = savedBasket;
-            console.log('✅ Cesta salva com sucesso:', userBasket);
-            return true;
-        } else {
-            const errorText = await response.text();
-            console.error('❌ Erro ao salvar cesta:', response.status, errorText);
-            throw new Error(`Erro ${response.status}: ${errorText}`);
-        }
+        const updatedBasket = await response.json();
+        currentBasketProducts = updatedBasket.produtos;
+        
+        // Atualizar lista local e limpar formulário
+        renderProductsList();
+        document.getElementById('addProductForm').reset();
+        
+        // Atualizar a contagem no card principal
+        await loadBaskets(); 
+
     } catch (error) {
-        console.error('💥 Erro ao salvar cesta:', error);
-        throw error;
+        console.error("Erro ao adicionar produto:", error);
+        alert(`Erro: ${error.message}`);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Adicionar';
     }
 }
 
-// =============================================
-// FUNÇÕES DE ADMIN
-// =============================================
+/**
+ * Remove um produto da cesta usando seu índice.
+ */
+async function handleRemoveProduct(event) {
+    const index = event.target.dataset.productIndex;
+    if (index === undefined || currentBasketId === null) return;
+    
+    if (!confirm(`Deseja remover o produto "${currentBasketProducts[index].nome_produto}"?`)) return;
 
-// Carrega todas as cestas (apenas admin)
-async function loadAllBaskets() {
     try {
-        const response = await authenticatedFetch('/api/basket/all');
-        if (response.ok) {
-            const allBaskets = await response.json();
-            renderAllBaskets(allBaskets);
-        } else {
-            console.error('Erro ao carregar todas as cestas');
+        const response = await authenticatedFetch(`/api/baskets/${currentBasketId}/products/${index}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Falha ao remover produto.');
         }
+        
+        const updatedBasket = await response.json();
+        currentBasketProducts = updatedBasket.produtos;
+        renderProductsList();
+        await loadBaskets(); 
+
     } catch (error) {
-        console.error('Erro ao carregar todas as cestas:', error);
+        console.error("Erro ao remover produto:", error);
+        alert(`Erro: ${error.message}`);
     }
 }
 
-// Renderiza todas as cestas (admin)
-function renderAllBaskets(baskets) {
-    const adminSection = document.getElementById('admin-baskets-content');
-    if (!adminSection) return;
+/**
+ * Abre o modal de edição e carrega os dados do produto.
+ */
+function openEditProductModal(event) {
+    const index = event.target.dataset.productIndex;
+    const product = currentBasketProducts[index];
 
-    if (baskets.length === 0) {
-        adminSection.innerHTML = '<p>Nenhuma cesta encontrada.</p>';
+    if (!product) return;
+    
+    document.getElementById('editProductIndex').value = index;
+    document.getElementById('editProductName').value = product.nome_produto;
+    document.getElementById('editProductBarcode').value = product.codigo_barras || '';
+
+    const modal = new bootstrap.Modal(document.getElementById('editProductModal'));
+    modal.show();
+}
+
+/**
+ * Envia as alterações do produto para o backend.
+ */
+async function handleEditProductSubmit(event) {
+    event.preventDefault();
+    const index = document.getElementById('editProductIndex').value;
+    const newName = document.getElementById('editProductName').value.trim();
+    const newBarcode = document.getElementById('editProductBarcode').value.trim();
+
+    if (!newName || currentBasketId === null) return;
+
+    const btn = event.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.textContent = 'Salvando...';
+
+    try {
+        const updateData = { 
+            nome_produto: newName, 
+            codigo_barras: newBarcode || null 
+        };
+        
+        const response = await authenticatedFetch(`/api/baskets/${currentBasketId}/products/${index}`, {
+            method: 'PUT',
+            body: JSON.stringify(updateData)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Falha ao editar produto.');
+        }
+        
+        const updatedBasket = await response.json();
+        currentBasketProducts = updatedBasket.produtos;
+        
+        // Fechar o modal e atualizar lista
+        const modal = bootstrap.Modal.getInstance(document.getElementById('editProductModal'));
+        if (modal) modal.hide();
+        renderProductsList();
+
+    } catch (error) {
+        console.error("Erro ao editar produto:", error);
+        alert(`Erro: ${error.message}`);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Salvar Alterações';
+    }
+}
+
+/**
+ * Remove todos os produtos da cesta.
+ */
+async function handleClearBasket() {
+    if (currentBasketId === null) return;
+    
+    if (!confirm('Tem certeza que deseja REMOVER TODOS os produtos desta cesta?')) return;
+
+    try {
+        const response = await authenticatedFetch(`/api/baskets/${currentBasketId}/products`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Falha ao limpar a cesta.');
+        }
+
+        const updatedBasket = await response.json();
+        currentBasketProducts = updatedBasket.produtos;
+        renderProductsList();
+        alert('Cesta limpa com sucesso!');
+        await loadBaskets(); // Atualiza a contagem no card
+    } catch (error) {
+        console.error("Erro ao limpar cesta:", error);
+        alert(`Erro: ${error.message}`);
+    }
+}
+
+/**
+ * Inicia a busca de preços em tempo real para os produtos da cesta.
+ */
+async function handleSearchPrices() {
+    if (currentBasketId === null || currentBasketProducts.length === 0) {
+        alert('Adicione produtos à cesta antes de buscar os preços.');
         return;
     }
 
-    adminSection.innerHTML = `
-        <div class="admin-baskets">
-            <h3><i class="fas fa-users"></i> Todas as Cestas dos Usuários</h3>
-            <div class="baskets-grid">
-                ${baskets.map(basket => `
-                    <div class="basket-card">
-                        <div class="basket-header">
-                            <h4>${basket.basket_name}</h4>
-                            <div class="user-info">
-                                <span class="user-badge">${basket.user_name || 'Usuário'}</span>
-                                <span class="user-email">${basket.user_email}</span>
-                            </div>
-                        </div>
-                        <div class="basket-info">
-                            <p><strong>Produtos:</strong> ${basket.products.length}</p>
-                            <p><strong>Criada:</strong> ${new Date(basket.created_at).toLocaleString('pt-BR')}</p>
-                        </div>
-                        <div class="basket-products">
-                            <h5>Produtos na Cesta:</h5>
-                            ${basket.products.slice(0, 5).map(product => `
-                                <div class="product-preview">
-                                    <span class="product-name">${product.product_name || product.product_barcode}</span>
-                                    <span class="product-barcode">${product.product_barcode}</span>
-                                </div>
-                            `).join('')}
-                            ${basket.products.length > 5 ? `<p class="more-products">... e mais ${basket.products.length - 5} produtos</p>` : ''}
-                            ${basket.products.length === 0 ? '<p class="empty-basket">Cesta vazia</p>' : ''}
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        </div>
-    `;
-}
-
-// Função para mostrar mensagens
-function showMessage(message, type = 'info') {
-    const existingMessage = document.querySelector('.flash-message');
-    if (existingMessage) {
-        existingMessage.remove();
+    // Usaremos todos os mercados disponíveis
+    const cnpjs = allSupermarkets.map(m => m.cnpj);
+    if (cnpjs.length === 0) {
+        alert('Nenhum mercado cadastrado para realizar a busca.');
+        return;
     }
-    
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `flash-message flash-${type}`;
-    messageDiv.innerHTML = `
-        <span>${message}</span>
-        <button onclick="this.parentElement.remove()">×</button>
-    `;
-    
-    document.body.appendChild(messageDiv);
-    
-    setTimeout(() => {
-        if (messageDiv.parentElement) {
-            messageDiv.remove();
-        }
-    }, 5000);
-}
 
-// =============================================
-// INICIALIZAÇÃO
-// =============================================
+    // Fecha o modal de gerenciamento de produtos
+    const manageModal = bootstrap.Modal.getInstance(document.getElementById('manageProductsModal'));
+    if (manageModal) manageModal.hide();
+    
+    const btn = document.getElementById('btnSearchPrices');
+    btn.disabled = true;
+    btn.textContent = 'Buscando Preços...';
+    document.getElementById('realtimeResults').innerHTML = '<p class="text-info">Buscando preços em tempo real, aguarde...</p>';
+    document.getElementById('resultsTitle').style.display = 'block';
 
-document.addEventListener('DOMContentLoaded', async function() {
-    console.log('🚀 Inicializando página da cesta...');
-    
-    // Configura eventos
-    const barcodeInput = document.getElementById('product-barcode');
-    if (barcodeInput) {
-        barcodeInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                addProduct();
-            }
-        });
-    }
-    
-    // Botão para criar nova cesta
-    const createBasketBtn = document.getElementById('create-basket-btn');
-    if (createBasketBtn) {
-        createBasketBtn.addEventListener('click', createUserBasket);
-    }
-    
     try {
-        currentUser = await getAuthUser();
+        // Envia a lista de CNPJs como query parameters
+        const urlParams = cnpjs.map(c => 'cnpjs=' + c).join('&');
         
-        if (currentUser) {
-            console.log('✅ Usuário autenticado:', currentUser.email);
-            isAdmin = currentUser.role === 'admin';
-            
-            // Mostra a interface da cesta
-            const loginSection = document.getElementById('login-section');
-            const basketInterface = document.getElementById('basket-interface');
-            
-            if (loginSection) loginSection.style.display = 'none';
-            if (basketInterface) basketInterface.style.display = 'block';
-            
-            // Carrega a cesta do usuário (cria automaticamente se não existir)
-            await loadUserBasket();
-            
-            // Se for admin, carrega todas as cestas
-            if (isAdmin) {
-                const adminSection = document.getElementById('admin-section');
-                if (adminSection) {
-                    adminSection.style.display = 'block';
-                    await loadAllBaskets();
-                }
-            }
-            
-        } else {
-            console.log('❌ Usuário não autenticado');
-            showMessage('❌ Você precisa estar logado para usar a cesta básica', 'error');
+        const response = await authenticatedFetch(`/api/baskets/${currentBasketId}/realtime-prices?${urlParams}`, {
+            method: 'POST' 
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Falha ao buscar preços.');
         }
+        
+        const data = await response.json();
+        renderRealtimeResults(data.results);
+
     } catch (error) {
-        console.error('💥 Erro na inicialização:', error);
-        showMessage('Erro ao carregar a página. Tente recarregar.', 'error');
+        console.error("Erro na busca em tempo real:", error);
+        document.getElementById('realtimeResults').innerHTML = `<p class="text-danger">Erro ao buscar preços: ${error.message}</p>`;
+    } finally {
+        // O botão é reabilitado na próxima vez que o modal for aberto, pois ele é um elemento DOM estático.
+        // No entanto, para fins de feedback visual se o modal não fechar por algum motivo:
+        // btn.disabled = false;
+        // btn.textContent = 'Buscar Preços em Mercados';
     }
-});
+}
+
+/**
+ * Renderiza os resultados da busca em tempo real em uma tabela.
+ */
+function renderRealtimeResults(results) {
+    const resultsElement = document.getElementById('realtimeResults');
+    
+    if (results.length === 0) {
+        resultsElement.innerHTML = '<p class="text-muted">Nenhum preço encontrado para os produtos da cesta nos mercados selecionados.</p>';
+        return;
+    }
+
+    // Calcular o total de cada cesta
+    const basketTotals = {};
+    
+    results.forEach(item => {
+        const marketName = item.nome_supermercado;
+        const price = item.preco_produto || 0;
+        
+        if (!basketTotals[marketName]) {
+            basketTotals[marketName] = 0;
+        }
+        
+        // Simplesmente soma os produtos encontrados. 
+        // Para uma cesta ideal, precisaríamos de lógica de agrupamento (e.g., o mais barato de cada produto).
+        // Aqui, somamos todos os resultados encontrados para dar uma estimativa.
+        basketTotals[marketName] += price; 
+    });
+
+    // 1. Tabela de Totais (Resumo)
+    let summaryHtml = `
+        <h3 class="mt-4">Resumo da Cesta</h3>
+        <table class="table table-bordered table-sm">
+            <thead>
+                <tr>
+                    <th>Mercado</th>
+                    <th>Total Estimado (R$)</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    const sortedTotals = Object.entries(basketTotals).sort(([, a], [, b]) => a - b);
+    
+    sortedTotals.forEach(([market, total]) => {
+        summaryHtml += `
+            <tr class="${total === sortedTotals[0][1] ? 'table-success fw-bold' : ''}">
+                <td>${market}</td>
+                <td>R$ ${total.toFixed(2)}</td>
+            </tr>
+        `;
+    });
+    
+    summaryHtml += `</tbody></table>`;
+    
+    // 2. Tabela de Detalhes
+    let detailHtml = `
+        <h3 class="mt-5">Detalhes dos Produtos Encontrados</h3>
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>Produto</th>
+                    <th>Mercado</th>
+                    <th>Preço (R$)</th>
+                    <th>Unidade</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    // Ordena por nome do produto (para agrupar) e depois por preço
+    results.sort((a, b) => {
+        if (a.nome_produto < b.nome_produto) return -1;
+        if (a.nome_produto > b.nome_produto) return 1;
+        return a.preco_produto - b.preco_produto;
+    });
+
+    results.forEach(item => {
+        detailHtml += `
+            <tr>
+                <td>${item.nome_produto}</td>
+                <td>${item.nome_supermercado || 'N/A'}</td>
+                <td>${(item.preco_produto || 0).toFixed(2)}</td>
+                <td>${item.unidade || 'N/A'}</td>
+            </tr>
+        `;
+    });
+
+    detailHtml += `</tbody></table>`;
+    
+    resultsElement.innerHTML = summaryHtml + detailHtml;
+}
