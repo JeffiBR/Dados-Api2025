@@ -51,14 +51,14 @@ def setup_basket_routes(app, supabase_client, supabase_admin_client, get_current
 
 # Endpoints da cesta básica
 @basket_router.get("/")
-async def get_user_basket(current_user: dict = Depends(lambda: get_current_user())):
+async def get_user_basket(current_user: dict = Depends(get_current_user)):
     """
     Retorna a cesta do usuário atual
     """
     try:
         response = await asyncio.to_thread(
-            supabase.table('user_baskets').select('*').eq('user_id', current_user.id).execute
-        )
+    lambda: supabase.table('user_baskets').select('*').eq('user_id', current_user.id).execute()
+)
         if response.data:
             return response.data[0]  # Retorna a primeira cesta do usuário
         else:
