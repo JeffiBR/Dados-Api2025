@@ -180,15 +180,13 @@ app.add_middleware(
 # --- CONFIGURAÇÃO DOS MÓDULOS SEPARADOS ---
 # --------------------------------------------------------------------------
 
-# Configura as rotas da cesta básica
+# Configura as rotas da cesta básica (CORRIGIDO)
 basket_service.setup_basket_routes(
     app=app,
     supabase_client=supabase,
     supabase_admin_client=supabase_admin,
-    get_current_user_dep=get_current_user,
-    get_current_user_optional_dep=get_current_user_optional
+    get_current_user_dep=get_current_user  # REMOVIDO o parâmetro get_current_user_optional_dep
 )
-
 # --------------------------------------------------------------------------
 # --- 4. MODELOS DE DADOS (PYDANTIC) ---
 # --------------------------------------------------------------------------
@@ -1145,4 +1143,5 @@ app.mount("/", StaticFiles(directory="web", html=True), name="static")
 @app.get("/")
 def read_root():
     return {"message": "Bem-vindo à API de Preços AL - Versão 3.1.2"}
+
 
