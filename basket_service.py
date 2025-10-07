@@ -2,7 +2,7 @@
 import logging
 import asyncio
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Callable
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
@@ -49,16 +49,33 @@ def setup_basket_routes(app, supabase_client, supabase_admin_client, get_current
     # Inclui o roteador no app principal
     app.include_router(basket_router)
 
+# Função auxiliar para verificar se as dependências foram configuradas
+def get_configured_current_user():
+    if get_current_user is None:
+        raise HTTPException(
+            status_code=500, 
+            detail="Dependência não configurada. Chame setup_basket_routes primeiro."
+        )
+    return get_current_user
+
+def get_configured_current_user_optional():
+    if get_current_user_optional is None:
+        # Se não configurado, retorna uma função que retorna None
+        async def default_optional_user():
+            return None
+        return default_optional_user
+    return get_current_user_optional
+
 # Endpoints da cesta básica
 @basket_router.get("/")
-async def get_user_basket(current_user: dict = Depends(get_current_user)):
+async def get_user_basket(current_user: dict = Depends(get_configured_current_user)):
     """
     Retorna a cesta do usuário atual
     """
     try:
         response = await asyncio.to_thread(
-    lambda: supabase.table('user_baskets').select('*').eq('user_id', current_user.id).execute()
-)
+            lambda: supabase.table('user_baskets').select('*').eq('user_id', current_user.id).execute()
+        )
         if response.data:
             return response.data[0]  # Retorna a primeira cesta do usuário
         else:
@@ -71,7 +88,7 @@ async def get_user_basket(current_user: dict = Depends(get_current_user)):
                 'updated_at': datetime.now().isoformat()
             }
             create_response = await asyncio.to_thread(
-                supabase.table('user_baskets').insert(new_basket).execute
+                lambda: supabase.table('user_baskets').insert(new_basket).execute()
             )
             return create_response.data[0]
     except Exception as e:
@@ -79,7 +96,7 @@ async def get_user_basket(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="Erro ao carregar cesta")
 
 @basket_router.get("/all")
-async def get_all_baskets(current_user: dict = Depends(get_current_user)):
+async def get_all_baskets(current_user: dict = Depends(get_configured_current_user)):
     """
     Retorna todas as cestas com informações dos usuários (apenas para administradores)
     """
@@ -90,9 +107,9 @@ async def get_all_baskets(current_user: dict = Depends(get_current_user)):
         
         # Busca todas as cestas com informações dos usuários
         response = await asyncio.to_thread(
-            supabase.table('user_baskets')
+            lambda: supabase.table('user_baskets')
             .select('*, profiles(full_name, email)')
-            .execute
+            .execute()
         )
         
         # Processa os dados para incluir informações do usuário
@@ -120,17 +137,17 @@ async def get_all_baskets(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="Erro ao carregar cestas")
 
 @basket_router.post("/")
-async def create_user_basket(current_user: dict = Depends(get_current_user)):
+async def create_user_basket(current_user: dict = Depends(get_configured_current_user)):
     """
     Cria uma nova cesta para o usuário
     """
     try:
         # Verifica se já existe uma cesta
         existing_response = await asyncio.to_thread(
-            supabase.table('user_baskets')
+            lambda: supabase.table('user_baskets')
             .select('*')
             .eq('user_id', current_user.id)
-            .execute
+            .execute()
         )
         
         if existing_response.data:
@@ -146,7 +163,7 @@ async def create_user_basket(current_user: dict = Depends(get_current_user)):
         }
         
         create_response = await asyncio.to_thread(
-            supabase.table('user_baskets').insert(new_basket).execute
+            lambda: supabase.table('user_baskets').insert(new_basket).execute()
         )
         return create_response.data[0]
         
@@ -157,7 +174,7 @@ async def create_user_basket(current_user: dict = Depends(get_current_user)):
 @basket_router.patch("/")
 async def update_user_basket(
     basket_update: BasketUpdateRequest, 
-    current_user: dict = Depends(get_current_user)):
+    current_user: dict = Depends(get_configured_current_user)):
         
     """
     Atualiza a cesta do usuário atual - USANDO PATCH
@@ -165,10 +182,10 @@ async def update_user_basket(
     try:
         # Busca a cesta existente do usuário
         existing_response = await asyncio.to_thread(
-            supabase.table('user_baskets')
+            lambda: supabase.table('user_baskets')
             .select('*')
             .eq('user_id', current_user.id)
-            .execute
+            .execute()
         )
         
         if not existing_response.data:
@@ -187,11 +204,11 @@ async def update_user_basket(
             update_data['products'] = [product.dict() for product in basket_update.products]
         
         response = await asyncio.to_thread(
-            supabase.table('user_baskets')
+            lambda: supabase.table('user_baskets')
             .update(update_data)
             .eq('id', basket_id)
             .eq('user_id', current_user.id)
-            .execute
+            .execute()
         )
         
         if response.data:
@@ -208,7 +225,7 @@ async def update_user_basket(
 @basket_router.delete("/product/{barcode}")
 async def remove_product_from_basket(
     barcode: str,
-    current_user: dict = Depends(get_current_user)):
+    current_user: dict = Depends(get_configured_current_user)):
         
     """
     Remove um produto específico da cesta do usuário
@@ -216,10 +233,10 @@ async def remove_product_from_basket(
     try:
         # Busca a cesta do usuário
         basket_response = await asyncio.to_thread(
-            supabase.table('user_baskets')
+            lambda: supabase.table('user_baskets')
             .select('*')
             .eq('user_id', current_user.id)
-            .execute
+            .execute()
         )
         
         if not basket_response.data:
@@ -241,11 +258,11 @@ async def remove_product_from_basket(
         }
         
         response = await asyncio.to_thread(
-            supabase.table('user_baskets')
+            lambda: supabase.table('user_baskets')
             .update(update_data)
             .eq('id', basket['id'])
             .eq('user_id', current_user.id)
-            .execute
+            .execute()
         )
         
         return response.data[0]
@@ -257,17 +274,17 @@ async def remove_product_from_basket(
         raise HTTPException(status_code=500, detail="Erro ao remover produto")
 
 @basket_router.delete("/clear")
-async def clear_user_basket(current_user: dict = Depends(get_current_user)):
+async def clear_user_basket(current_user: dict = Depends(get_configured_current_user)):
     """
     Limpa todos os produtos da cesta do usuário
     """
     try:
         # Busca a cesta do usuário
         basket_response = await asyncio.to_thread(
-            supabase.table('user_baskets')
+            lambda: supabase.table('user_baskets')
             .select('*')
             .eq('user_id', current_user.id)
-            .execute
+            .execute()
         )
         
         if not basket_response.data:
@@ -280,11 +297,11 @@ async def clear_user_basket(current_user: dict = Depends(get_current_user)):
         }
         
         response = await asyncio.to_thread(
-            supabase.table('user_baskets')
+            lambda: supabase.table('user_baskets')
             .update(update_data)
             .eq('id', basket_response.data[0]['id'])
             .eq('user_id', current_user.id)
-            .execute
+            .execute()
         )
         
         return response.data[0]
@@ -298,14 +315,14 @@ async def clear_user_basket(current_user: dict = Depends(get_current_user)):
 @basket_router.post("/calculate")
 async def calculate_basket_prices(
     request: BasketCalculationRequest, 
-    current_user: dict = Depends(get_current_user)):
+    current_user: dict = Depends(get_configured_current_user)):
     """
     Calcula os preços da cesta nos mercados selecionados
     """
     try:
         # Busca a cesta pelo ID
         basket_response = await asyncio.to_thread(
-            supabase.table('user_baskets').select('*').eq('id', request.basket_id).execute
+            lambda: supabase.table('user_baskets').select('*').eq('id', request.basket_id).execute()
         )
         
         if not basket_response.data:
@@ -336,7 +353,7 @@ async def calculate_basket_prices(
         products_info = {}
         for barcode in barcodes:
             product_response = await asyncio.to_thread(
-                supabase.table('produtos').select('nome_produto').eq('codigo_barras', barcode).limit(1).execute
+                lambda: supabase.table('produtos').select('nome_produto').eq('codigo_barras', barcode).limit(1).execute()
             )
             if product_response.data:
                 products_info[barcode] = product_response.data[0]['nome_produto']
@@ -346,7 +363,7 @@ async def calculate_basket_prices(
             'codigo_barras,nome_produto,preco_produto,cnpj_supermercado,nome_supermercado'
         ).in_('codigo_barras', barcodes).in_('cnpj_supermercado', request.cnpjs)
         
-        prices_response = await asyncio.to_thread(price_query.execute)
+        prices_response = await asyncio.to_thread(lambda: price_query.execute())
         
         if not prices_response.data:
             return {
@@ -516,11 +533,11 @@ async def debug_search_product(barcode: str = Query(...)):
     try:
         # Busca direta na tabela produtos
         response = await asyncio.to_thread(
-            supabase.table('produtos')
+            lambda: supabase.table('produtos')
             .select('codigo_barras, nome_produto')
             .eq('codigo_barras', barcode)
             .limit(5)
-            .execute
+            .execute()
         )
         
         return {
