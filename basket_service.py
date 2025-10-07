@@ -1,4 +1,4 @@
-# basket_service.py - VERSÃO COMPLETA E CORRIGIDA
+# basket_service.py - VERSÃO COMPATÍVEL COM NOVA TABELA
 import logging
 import asyncio
 from datetime import datetime
