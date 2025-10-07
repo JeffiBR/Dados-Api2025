@@ -147,37 +147,41 @@ function renderAllBaskets(baskets) {
     `;
 }
 
-// Busca o nome do produto pelo código de barras - CORRIGIDO
+// Busca o nome do produto pelo código de barras - USANDO /api/realtime-search
 async function getProductName(barcode) {
     try {
-        console.log(`🔍 Buscando produto: ${barcode}`);
-        
-        // CORREÇÃO: Use o endpoint correto para busca
-        const response = await authenticatedFetch(`/api/search?q=${encodeURIComponent(barcode)}`);
-        
-        if (response.ok) {
-            const data = await response.json();
-            console.log('📦 Resultados da busca:', data);
-            
-            if (data.results && data.results.length > 0) {
-                // Encontra produto com código exato
-                const exactMatch = data.results.find(p => p.codigo_barras === barcode);
-                if (exactMatch) {
-                    return exactMatch.nome_produto;
-                }
-                // Ou usa o primeiro resultado
-                return data.results[0].nome_produto;
-            }
-        } else if (response.status === 404) {
-            console.log('ℹ️ Produto não encontrado na base de dados');
-            return null;
-        } else {
-            console.warn('⚠️ Erro na busca do produto:', response.status);
+        console.log(`🔍 Buscando produto no endpoint realtime-search: ${barcode}`);
+
+        const response = await authenticatedFetch('/api/realtime-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                produto: barcode,
+                cnpjs: [] // busca global, sem filtrar por mercado
+            })
+        });
+
+        if (!response.ok) {
+            console.warn('⚠️ Erro na busca:', response.status);
             return null;
         }
+
+        const data = await response.json();
+        console.log('📦 Resultados da busca:', data);
+
+        // Verifica se retornou resultados válidos
+        if (Array.isArray(data) && data.length > 0) {
+            // Busca produto com código exato
+            const exactMatch = data.find(p => p.codigo_barras === barcode);
+            if (exactMatch) return exactMatch.nome_produto;
+
+            // Ou retorna o primeiro nome da lista
+            return data[0].nome_produto || null;
+        }
+
         return null;
     } catch (error) {
-        console.error('💥 Erro na busca do produto:', error);
+        console.error('💥 Erro ao buscar produto:', error);
         return null;
     }
 }
