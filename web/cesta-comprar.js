@@ -1,8 +1,9 @@
 // cesta-comprar.js - Funcionalidade de compra de cesta básica por código de barras
-// Com interface idêntica ao compare.html
+// VERSÃO ATUALIZADA COM NOVO LAYOUT DE CARDS
 
 let buyBasketModal;
 let marketDetailsModal;
+let bestBasketModal;
 
 // Variáveis para controle de mercados
 let allMarkets = [];
@@ -13,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Inicializar modais
     buyBasketModal = document.getElementById('buyBasketModal');
     marketDetailsModal = document.getElementById('marketDetailsModal');
+    bestBasketModal = document.getElementById('bestBasketModal');
     
     // Fechar modais ao clicar no X
     document.querySelectorAll('.close').forEach(closeBtn => {
@@ -57,7 +59,7 @@ function openBuyBasketModal(basketId, basketName) {
 }
 
 /**
- * Inicializa a interface de seleção de mercados (igual ao compare.html)
+ * Inicializa a interface de seleção de mercados
  */
 async function initializeMarketsInterface() {
     // Elementos da interface
@@ -283,7 +285,6 @@ async function searchBasketByBarcode(products, selectedMarkets) {
 
 /**
  * Busca preços para um produto específico por código de barras
- * (Função similar à do compare.js)
  */
 async function fetchProductPrices(barcode, cnpjs) {
     try {
@@ -322,7 +323,7 @@ async function fetchProductPrices(barcode, cnpjs) {
 }
 
 /**
- * Renderiza os resultados da comparação da cesta em formato de cards
+ * Renderiza os resultados da comparação da cesta com NOVO LAYOUT DE CARDS
  */
 function renderBasketComparison(results, selectedMarkets, productsWithBarcode) {
     const resultsElement = document.getElementById('realtimeResults');
@@ -367,234 +368,140 @@ function renderBasketComparison(results, selectedMarkets, productsWithBarcode) {
             productsFoundByMarket[marketName].add(item.original_product_name);
         }
     });
-
-    // 1. CESTA BÁSICA IDEAL
-    const idealBasket = createIdealBasket(results, productsWithBarcode);
-    const idealBasketHtml = createIdealBasketCard(idealBasket, productsWithBarcode.length);
     
-    // 2. RESUMO
-    const summaryHtml = createComparisonSummary(results, resultsByMarket, productsWithBarcode);
+    // Calcular melhor cesta básica (produtos mais baratos de todos os mercados)
+    const bestBasket = calculateBestBasket(results, productsWithBarcode);
     
-    // 3. CARDS DOS MERCADOS
-    const marketCardsHtml = createMarketCards(resultsByMarket, marketTotals, productsFoundByMarket, marketDetails, productsWithBarcode.length);
-    
-    resultsElement.innerHTML = idealBasketHtml + summaryHtml + marketCardsHtml;
-    
-    // Adicionar event listeners para os botões de detalhes
-    resultsElement.querySelectorAll('.btn-view-details').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const marketName = e.target.closest('button').dataset.market;
-            showMarketDetails(marketName, resultsByMarket[marketName], marketDetails[marketName]);
-        });
-    });
-}
-
-/**
- * Cria a cesta básica ideal com os melhores preços
- */
-function createIdealBasket(results, productsWithBarcode) {
-    const idealBasket = {};
-    const bestPrices = {};
-    
-    // Encontrar o melhor preço para cada produto
-    productsWithBarcode.forEach(product => {
-        const productName = product.nome_produto;
-        const productResults = results.filter(r => r.original_product_name === productName);
-        
-        if (productResults.length > 0) {
-            const bestOffer = productResults.reduce((best, current) => {
-                return (!best || (current.preco_produto || Infinity) < (best.preco_produto || Infinity)) ? current : best;
-            }, null);
-            
-            if (bestOffer) {
-                idealBasket[productName] = bestOffer;
-                
-                // Contar quantas vezes cada mercado aparece na cesta ideal
-                const marketName = bestOffer.nome_supermercado;
-                bestPrices[marketName] = (bestPrices[marketName] || 0) + 1;
-            }
-        }
-    });
-    
-    return {
-        products: idealBasket,
-        bestPrices: bestPrices,
-        total: Object.values(idealBasket).reduce((sum, item) => sum + (item.preco_produto || 0), 0)
-    };
-}
-
-/**
- * Cria o card da cesta básica ideal
- */
-function createIdealBasketCard(idealBasket, totalProducts) {
-    const productCount = Object.keys(idealBasket.products).length;
-    const completionRate = totalProducts > 0 ? Math.round((productCount / totalProducts) * 100) : 0;
-    
-    // Encontrar mercado mais frequente na cesta ideal
-    const bestMarket = Object.entries(idealBasket.bestPrices)
-        .sort(([,a], [,b]) => b - a)[0];
-    
-    return `
-        <div class="card ideal-basket-card">
-            <div class="card-header">
-                <div class="card-title">
-                    <i class="fas fa-crown text-warning"></i>
-                    <h3>Cesta Básica Ideal</h3>
-                    <span class="badge best-price">Melhor Preço Total</span>
-                </div>
-                <div class="card-stats">
-                    <div class="stat">
-                        <span class="stat-value">R$ ${idealBasket.total.toFixed(2)}</span>
-                        <span class="stat-label">Total Ideal</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-value">${productCount}/${totalProducts}</span>
-                        <span class="stat-label">Produtos</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-value">${completionRate}%</span>
-                        <span class="stat-label">Completude</span>
-                    </div>
-                </div>
-            </div>
-            <div class="card-content">
-                <div class="ideal-basket-details">
-                    <div class="ideal-market">
-                        <strong>Mercado mais econômico:</strong>
-                        ${bestMarket ? `${bestMarket[0]} (${bestMarket[1]} produtos)` : 'N/A'}
-                    </div>
-                    
-                    <div class="products-grid">
-                        ${Object.entries(idealBasket.products).map(([productName, product]) => `
-                            <div class="product-card-mini">
-                                <div class="product-name">${productName}</div>
-                                <div class="product-details">
-                                    <span class="product-price">R$ ${(product.preco_produto || 0).toFixed(2)}</span>
-                                    <span class="product-market">${product.nome_supermercado}</span>
-                                </div>
-                                <div class="product-meta">
-                                    <small>Código: ${product.codigo_barras || 'N/A'}</small>
-                                    <small>Data: ${product.data_ultima_venda ? new Date(product.data_ultima_venda).toLocaleDateString('pt-BR') : 'N/A'}</small>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-/**
- * Cria os cards dos mercados
- */
-function createMarketCards(resultsByMarket, marketTotals, productsFoundByMarket, marketDetails, totalProducts) {
     // Ordenar mercados por preço total
     const sortedMarkets = Object.entries(marketTotals)
         .sort(([, a], [, b]) => a - b)
         .filter(([, total]) => total > 0);
     
-    if (sortedMarkets.length === 0) {
-        return '<div class="empty-state">Nenhum mercado com preços encontrados</div>';
-    }
-    
-    return `
-        <div class="market-cards-section">
-            <h3><i class="fas fa-store"></i> Mercados Encontrados</h3>
-            <div class="market-cards-grid">
-                ${sortedMarkets.map(([marketName, total], index) => {
-                    const products = resultsByMarket[marketName] || [];
-                    const productCount = productsFoundByMarket[marketName]?.size || 0;
-                    const completionRate = totalProducts > 0 ? Math.round((productCount / totalProducts) * 100) : 0;
-                    const marketInfo = marketDetails[marketName];
-                    const isBest = index === 0;
-                    
-                    let statusClass = 'cancelada';
-                    let statusText = 'Ruim';
-                    
-                    if (completionRate >= 80) {
-                        statusClass = 'concluída';
-                        statusText = 'Ótimo';
-                    } else if (completionRate >= 50) {
-                        statusClass = 'em-andamento';
-                        statusText = 'Bom';
-                    }
-                    
-                    return `
-                        <div class="market-card ${isBest ? 'highlight' : ''}">
-                            <div class="market-card-header">
-                                <div class="market-card-title">
-                                    <h4>${marketName}</h4>
-                                    ${isBest ? '<i class="fas fa-trophy best-market" title="Melhor oferta"></i>' : ''}
-                                </div>
-                                <div class="market-card-price">
-                                    <span class="total-price">R$ ${total.toFixed(2)}</span>
-                                    <span class="completion-rate">${completionRate}% completo</span>
-                                </div>
-                            </div>
-                            
-                            <div class="market-card-address">
-                                <i class="fas fa-map-marker-alt"></i>
-                                ${marketInfo?.endereco || 'Endereço não disponível'}
-                            </div>
-                            
-                            <div class="market-card-stats">
-                                <div class="market-stat">
-                                    <span class="stat-value">${productCount}</span>
-                                    <span class="stat-label">Produtos</span>
-                                </div>
-                                <div class="market-stat">
-                                    <span class="stat-value">${products.length}</span>
-                                    <span class="stat-label">Itens</span>
-                                </div>
-                                <div class="market-stat">
-                                    <span class="status-badge ${statusClass}">${statusText}</span>
-                                </div>
-                            </div>
-                            
-                            <div class="market-card-products">
-                                <h5>Produtos Encontrados:</h5>
-                                <div class="products-list">
-                                    ${products.slice(0, 5).map(product => `
-                                        <div class="market-product-item">
-                                            <div class="product-info">
-                                                <span class="product-name">${product.original_product_name}</span>
-                                                <span class="product-price">R$ ${(product.preco_produto || 0).toFixed(2)}</span>
-                                            </div>
-                                            <div class="product-meta">
-                                                <small>Código: ${product.codigo_barras || 'N/A'}</small>
-                                                <small>Data: ${product.data_ultima_venda ? new Date(product.data_ultima_venda).toLocaleDateString('pt-BR') : 'N/A'}</small>
-                                            </div>
-                                        </div>
-                                    `).join('')}
-                                    ${products.length > 5 ? `
-                                        <div class="more-products">
-                                            + ${products.length - 5} outros produtos...
-                                        </div>
-                                    ` : ''}
-                                </div>
-                            </div>
-                            
-                            <div class="market-card-actions">
-                                <button class="btn btn-outline btn-view-details" data-market="${marketName}">
-                                    <i class="fas fa-list"></i> Ver Todos os Detalhes
-                                </button>
+    // 1. Card da Melhor Cesta Básica
+    let bestBasketHtml = '';
+    if (bestBasket.products.length > 0) {
+        bestBasketHtml = `
+            <div class="results-section">
+                <h3><i class="fas fa-crown text-warning"></i> Melhor Cesta Básica</h3>
+                <div class="cards-grid">
+                    <div class="market-card best-basket">
+                        <div class="card-header">
+                            <div class="market-rank best">#1</div>
+                            <div class="market-name">Cesta Otimizada</div>
+                            <div class="market-badge best-price">
+                                <i class="fas fa-trophy"></i> Melhor Preço
                             </div>
                         </div>
-                    `;
-                }).join('')}
+                        <div class="card-body">
+                            <div class="market-total">
+                                R$ ${bestBasket.total.toFixed(2)}
+                                <div class="total-label">Valor Total</div>
+                            </div>
+                            <div class="market-stats">
+                                <div class="stat">
+                                    <span class="stat-value">${bestBasket.products.length}</span>
+                                    <span class="stat-label">Produtos Encontrados</span>
+                                </div>
+                                <div class="stat">
+                                    <span class="stat-value">${productsWithBarcode.length}</span>
+                                    <span class="stat-label">Total na Cesta</span>
+                                </div>
+                            </div>
+                            <div class="completion-rate">
+                                <div class="progress">
+                                    <div class="progress-bar" style="width: ${(bestBasket.products.length / productsWithBarcode.length) * 100}%"></div>
+                                </div>
+                                <span>${Math.round((bestBasket.products.length / productsWithBarcode.length) * 100)}% de cobertura</span>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn btn-outline btn-view-best-basket">
+                                <i class="fas fa-list"></i> Ver Detalhes da Cesta
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
+        `;
+    }
+    
+    // 2. Cards dos Mercados (Top 1, Mais Caro e Outros)
+    let marketsHtml = `
+        <div class="results-section">
+            <h3><i class="fas fa-store"></i> Comparação por Mercado</h3>
+            <div class="cards-grid">
     `;
-}
-
-/**
- * Cria o resumo da comparação
- */
-function createComparisonSummary(results, resultsByMarket, productsWithBarcode) {
-    return `
+    
+    sortedMarkets.forEach(([marketName, total], index) => {
+        const productCount = productsFoundByMarket[marketName].size;
+        const completionRate = Math.round((productCount / productsWithBarcode.length) * 100);
+        const market = marketDetails[marketName];
+        const isCheapest = index === 0;
+        const isMostExpensive = index === sortedMarkets.length - 1;
+        
+        let cardClass = 'market-card';
+        let rankClass = '';
+        let rankText = '';
+        
+        if (isCheapest) {
+            cardClass += ' cheapest';
+            rankClass = 'best';
+            rankText = '#1 Mais Barato';
+        } else if (isMostExpensive) {
+            cardClass += ' most-expensive';
+            rankClass = 'worst';
+            rankText = `#${sortedMarkets.length} Mais Caro`;
+        } else {
+            rankText = `#${index + 1}`;
+        }
+        
+        marketsHtml += `
+            <div class="${cardClass}">
+                <div class="card-header">
+                    <div class="market-rank ${rankClass}">${rankText}</div>
+                    <div class="market-name">${marketName}</div>
+                    ${isCheapest ? '<div class="market-badge best-price"><i class="fas fa-trophy"></i> Melhor Preço</div>' : ''}
+                </div>
+                <div class="card-body">
+                    <div class="market-address">
+                        <i class="fas fa-map-marker-alt"></i>
+                        ${market.endereco || 'Endereço não disponível'}
+                    </div>
+                    <div class="market-total">
+                        R$ ${total.toFixed(2)}
+                        <div class="total-label">Valor Total</div>
+                    </div>
+                    <div class="market-stats">
+                        <div class="stat">
+                            <span class="stat-value">${productCount}</span>
+                            <span class="stat-label">Produtos Encontrados</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">${productsWithBarcode.length}</span>
+                            <span class="stat-label">Total na Cesta</span>
+                        </div>
+                    </div>
+                    <div class="completion-rate">
+                        <div class="progress">
+                            <div class="progress-bar" style="width: ${completionRate}%"></div>
+                        </div>
+                        <span>${completionRate}% de cobertura</span>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button class="btn btn-outline btn-view-details" data-market="${marketName}">
+                        <i class="fas fa-list"></i> Ver Detalhes
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    
+    marketsHtml += `</div></div>`;
+    
+    // 3. Resumo Estatístico
+    const summaryHtml = `
         <div class="results-summary">
-            <h3><i class="fas fa-chart-bar"></i> Resumo da Comparação</h3>
             <div class="summary-stats">
                 <div class="stat">
                     <span class="stat-value">${results.length}</span>
@@ -609,12 +516,92 @@ function createComparisonSummary(results, resultsByMarket, productsWithBarcode) 
                     <span class="stat-label">Produtos com Código</span>
                 </div>
                 <div class="stat">
-                    <span class="stat-value">${allMarkets.length}</span>
-                    <span class="stat-label">Total de Mercados</span>
+                    <span class="stat-value">${selectedMarkets.length}</span>
+                    <span class="stat-label">Mercados Selecionados</span>
                 </div>
             </div>
         </div>
     `;
+    
+    resultsElement.innerHTML = summaryHtml + bestBasketHtml + marketsHtml;
+    
+    // Adicionar event listeners para os botões de detalhes
+    resultsElement.querySelectorAll('.btn-view-details').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const marketName = e.target.closest('button').dataset.market;
+            showMarketDetails(marketName, resultsByMarket[marketName], marketDetails[marketName]);
+        });
+    });
+    
+    // Adicionar event listener para o botão da melhor cesta
+    resultsElement.querySelectorAll('.btn-view-best-basket').forEach(btn => {
+        btn.addEventListener('click', () => {
+            showBestBasketDetails(bestBasket, productsWithBarcode);
+        });
+    });
+}
+
+/**
+ * Calcula a melhor cesta básica (produtos mais baratos de todos os mercados)
+ */
+function calculateBestBasket(results, productsWithBarcode) {
+    const bestProducts = {};
+    
+    // Para cada produto, encontrar o menor preço
+    productsWithBarcode.forEach(product => {
+        const productResults = results.filter(r => 
+            r.original_product_name === product.nome_produto && 
+            r.original_barcode === product.codigo_barras
+        );
+        
+        if (productResults.length > 0) {
+            const bestOffer = productResults.reduce((best, current) => 
+                (current.preco_produto < best.preco_produto) ? current : best
+            );
+            
+            bestProducts[product.nome_produto] = bestOffer;
+        }
+    });
+    
+    const bestProductsArray = Object.values(bestProducts);
+    const total = bestProductsArray.reduce((sum, product) => sum + (product.preco_produto || 0), 0);
+    
+    return {
+        products: bestProductsArray,
+        total: total,
+        savings: calculateSavings(results, bestProductsArray)
+    };
+}
+
+/**
+ * Calcula a economia da melhor cesta em relação à média
+ */
+function calculateSavings(allResults, bestProducts) {
+    // Calcular preço médio por produto
+    const productAverages = {};
+    
+    allResults.forEach(item => {
+        const productName = item.original_product_name;
+        if (!productAverages[productName]) {
+            productAverages[productName] = [];
+        }
+        productAverages[productName].push(item.preco_produto);
+    });
+    
+    // Calcular média por produto
+    let averageTotal = 0;
+    Object.keys(productAverages).forEach(productName => {
+        const prices = productAverages[productName];
+        const average = prices.reduce((sum, price) => sum + price, 0) / prices.length;
+        averageTotal += average;
+    });
+    
+    const bestTotal = bestProducts.reduce((sum, product) => sum + product.preco_produto, 0);
+    
+    return {
+        amount: averageTotal - bestTotal,
+        percentage: ((averageTotal - bestTotal) / averageTotal) * 100
+    };
 }
 
 /**
@@ -622,54 +609,199 @@ function createComparisonSummary(results, resultsByMarket, productsWithBarcode) 
  */
 function showMarketDetails(marketName, products, marketInfo) {
     const content = document.getElementById('marketDetailsContent');
+    const total = products.reduce((sum, p) => sum + (p.preco_produto || 0), 0);
     
     let detailsHtml = `
-        <h4><i class="fas fa-store"></i> ${marketName}</h4>
-        ${marketInfo.endereco ? `<p><i class="fas fa-map-marker-alt"></i> ${marketInfo.endereco}</p>` : ''}
-        
-        <div class="market-stats">
-            <div class="stat">
-                <span class="stat-value">${products.length}</span>
-                <span class="stat-label">Produtos Encontrados</span>
-            </div>
-            <div class="stat">
-                <span class="stat-value">R$ ${products.reduce((sum, p) => sum + (p.preco_produto || 0), 0).toFixed(2)}</span>
-                <span class="stat-label">Total</span>
+        <div class="market-details-header">
+            <h4><i class="fas fa-store"></i> ${marketName}</h4>
+            ${marketInfo.endereco ? `<p class="market-address"><i class="fas fa-map-marker-alt"></i> ${marketInfo.endereco}</p>` : ''}
+            
+            <div class="market-stats-grid">
+                <div class="market-stat">
+                    <div class="stat-value">${products.length}</div>
+                    <div class="stat-label">Produtos Encontrados</div>
+                </div>
+                <div class="market-stat">
+                    <div class="stat-value">R$ ${total.toFixed(2)}</div>
+                    <div class="stat-label">Valor Total</div>
+                </div>
+                <div class="market-stat">
+                    <div class="stat-value">${marketInfo.cnpj}</div>
+                    <div class="stat-label">CNPJ</div>
+                </div>
             </div>
         </div>
         
-        <h5>Produtos Encontrados:</h5>
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Produto</th>
-                    <th>Preço (R$)</th>
-                    <th>Unidade</th>
-                    <th>Código</th>
-                    <th>Data</th>
-                </tr>
-            </thead>
-            <tbody>
+        <div class="products-list">
+            <h5>Produtos Encontrados:</h5>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Produto</th>
+                        <th>Código</th>
+                        <th>Preço (R$)</th>
+                        <th>Unidade</th>
+                        <th>Última Venda</th>
+                    </tr>
+                </thead>
+                <tbody>
     `;
     
     // Ordenar produtos por nome
     products.sort((a, b) => a.original_product_name.localeCompare(b.original_product_name));
     
     products.forEach(product => {
+        const lastSaleDate = product.data_ultima_venda ? 
+            new Date(product.data_ultima_venda).toLocaleDateString('pt-BR') : 'N/A';
+            
         detailsHtml += `
             <tr>
-                <td>${product.original_product_name}</td>
+                <td>
+                    <div class="product-name">${product.original_product_name}</div>
+                    ${product.nome_produto !== product.original_product_name ? 
+                      `<div class="product-alias">(${product.nome_produto})</div>` : ''}
+                </td>
+                <td><code class="barcode">${product.codigo_barras || 'N/A'}</code></td>
                 <td class="price">R$ ${(product.preco_produto || 0).toFixed(2)}</td>
                 <td>${product.unidade || 'UN'}</td>
-                <td><code>${product.codigo_barras || 'N/A'}</code></td>
-                <td>${product.data_ultima_venda ? new Date(product.data_ultima_venda).toLocaleDateString('pt-BR') : 'N/A'}</td>
+                <td>${lastSaleDate}</td>
             </tr>
         `;
     });
     
-    detailsHtml += `</tbody></table>`;
+    detailsHtml += `</tbody></table></div>`;
     content.innerHTML = detailsHtml;
     marketDetailsModal.style.display = 'block';
+}
+
+/**
+ * Mostra detalhes da melhor cesta básica
+ */
+function showBestBasketDetails(bestBasket, originalProducts) {
+    const content = document.getElementById('bestBasketContent');
+    
+    let detailsHtml = `
+        <div class="market-details-header">
+            <h4><i class="fas fa-crown text-warning"></i> Melhor Cesta Básica</h4>
+            <p class="market-address"><i class="fas fa-lightbulb"></i> Combinação dos produtos mais baratos de todos os mercados</p>
+            
+            <div class="market-stats-grid">
+                <div class="market-stat">
+                    <div class="stat-value">${bestBasket.products.length}</div>
+                    <div class="stat-label">Produtos Otimizados</div>
+                </div>
+                <div class="market-stat">
+                    <div class="stat-value">R$ ${bestBasket.total.toFixed(2)}</div>
+                    <div class="stat-label">Valor Total</div>
+                </div>
+                <div class="market-stat">
+                    <div class="stat-value">R$ ${bestBasket.savings.amount.toFixed(2)}</div>
+                    <div class="stat-label">Economia</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="products-list">
+            <h5>Produtos da Cesta Otimizada:</h5>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Produto</th>
+                        <th>Código</th>
+                        <th>Melhor Preço (R$)</th>
+                        <th>Mercado</th>
+                        <th>Endereço</th>
+                        <th>Última Venda</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    // Ordenar produtos por nome
+    bestBasket.products.sort((a, b) => a.original_product_name.localeCompare(b.original_product_name));
+    
+    bestBasket.products.forEach(product => {
+        const lastSaleDate = product.data_ultima_venda ? 
+            new Date(product.data_ultima_venda).toLocaleDateString('pt-BR') : 'N/A';
+        const market = allMarkets.find(m => m.nome === product.nome_supermercado);
+        const marketAddress = market ? market.endereco : 'N/A';
+            
+        detailsHtml += `
+            <tr>
+                <td>
+                    <div class="product-name">${product.original_product_name}</div>
+                    ${product.nome_produto !== product.original_product_name ? 
+                      `<div class="product-alias">(${product.nome_produto})</div>` : ''}
+                </td>
+                <td><code class="barcode">${product.codigo_barras || 'N/A'}</code></td>
+                <td class="price price-cheapest">R$ ${(product.preco_produto || 0).toFixed(2)}</td>
+                <td><strong>${product.nome_supermercado}</strong></td>
+                <td>${marketAddress}</td>
+                <td>${lastSaleDate}</td>
+            </tr>
+        `;
+    });
+    
+    // Adicionar produtos não encontrados
+    const foundProductNames = bestBasket.products.map(p => p.original_product_name);
+    const missingProducts = originalProducts.filter(p => !foundProductNames.includes(p.nome_produto));
+    
+    if (missingProducts.length > 0) {
+        detailsHtml += `
+            <tr class="section-divider">
+                <td colspan="6">
+                    <strong>Produtos Não Encontrados:</strong>
+                </td>
+            </tr>
+        `;
+        
+        missingProducts.forEach(product => {
+            detailsHtml += `
+                <tr class="text-muted">
+                    <td>${product.nome_produto}</td>
+                    <td><code>${product.codigo_barras || 'N/A'}</code></td>
+                    <td colspan="4" class="text-center">Nenhum preço encontrado</td>
+                </tr>
+            `;
+        });
+    }
+    
+    detailsHtml += `</tbody></table></div>`;
+    
+    // Criar modal da melhor cesta se não existir
+    if (!document.getElementById('bestBasketModal')) {
+        createBestBasketModal();
+    }
+    
+    document.getElementById('bestBasketContent').innerHTML = detailsHtml;
+    document.getElementById('bestBasketModal').style.display = 'block';
+}
+
+/**
+ * Cria o modal da melhor cesta básica
+ */
+function createBestBasketModal() {
+    const modalHtml = `
+        <div id="bestBasketModal" class="modal">
+            <div class="modal-content" style="max-width: 1000px;">
+                <div class="modal-header">
+                    <h5>Detalhes da Melhor Cesta Básica</h5>
+                    <span class="close">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div id="bestBasketContent">
+                        <!-- Conteúdo será renderizado aqui -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Adicionar event listener para fechar
+    document.getElementById('bestBasketModal').querySelector('.close').addEventListener('click', function() {
+        document.getElementById('bestBasketModal').style.display = 'none';
+    });
 }
 
 /**
@@ -685,46 +817,4 @@ function debounce(func, wait) {
         clearTimeout(timeout);
         timeout = setTimeout(later, wait);
     };
-}
-
-/**
- * Exibe uma notificação para o usuário
- */
-function showNotification(message, type = 'info') {
-    // Remove notificação existente
-    const existingNotification = document.querySelector('.notification');
-    if (existingNotification) {
-        existingNotification.remove();
-    }
-    
-    const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    notification.innerHTML = `
-        <i class="fas fa-${getNotificationIcon(type)}"></i>
-        <span>${message}</span>
-    `;
-    
-    document.body.appendChild(notification);
-    
-    // Mostrar notificação
-    setTimeout(() => notification.classList.add('show'), 100);
-    
-    // Remover após 5 segundos
-    setTimeout(() => {
-        notification.classList.remove('show');
-        setTimeout(() => notification.remove(), 300);
-    }, 5000);
-}
-
-/**
- * Retorna o ícone apropriado para o tipo de notificação
- */
-function getNotificationIcon(type) {
-    const icons = {
-        success: 'check-circle',
-        error: 'exclamation-circle',
-        warning: 'exclamation-triangle',
-        info: 'info-circle'
-    };
-    return icons[type] || 'info-circle';
 }
