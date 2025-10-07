@@ -1,4 +1,4 @@
-// cesta.js - VERSÃO COMPLETA COM FLUXO PASSO A PASSO
+// cesta.js - VERSÃO CORRIGIDA COM BOTÃO DE CRIAÇÃO
 let userBasket = { 
     id: null, 
     basket_name: "Minha Cesta", 
@@ -10,27 +10,42 @@ let currentUser = null;
 let isAdmin = false;
 
 // =============================================
-// FUNÇÕES DE CONTROLE DE INTERFACE - NOVAS
+// FUNÇÕES DE CONTROLE DE INTERFACE - ATUALIZADAS
 // =============================================
 
-// Função para verificar e atualizar o estado da interface
+// Mostra/oculta seções baseado no estado da cesta
 function updateInterfaceState() {
     const productCount = userBasket.products.length;
     const marketSection = document.getElementById('market-selection-section');
     const progressAlert = document.getElementById('progress-alert');
     const resultsSection = document.getElementById('results-section');
     const calculateBtn = document.getElementById('calculate-btn');
+    const createBasketSection = document.getElementById('create-basket-section');
+    const addProductSection = document.getElementById('add-product-section');
+    
+    // Se não tem cesta criada
+    if (!userBasket.id) {
+        createBasketSection.style.display = 'block';
+        addProductSection.style.display = 'none';
+        marketSection.style.display = 'none';
+        resultsSection.style.display = 'none';
+        return;
+    }
+    
+    // Se tem cesta criada
+    createBasketSection.style.display = 'none';
+    addProductSection.style.display = 'block';
     
     // Mostra/oculta seção de mercados baseado no número de produtos
     if (productCount >= 5) {
         marketSection.style.display = 'block';
-        progressAlert.style.display = 'flex';
-        calculateBtn.disabled = false;
+        if (progressAlert) progressAlert.style.display = 'flex';
+        if (calculateBtn) calculateBtn.disabled = false;
     } else {
         marketSection.style.display = 'none';
-        progressAlert.style.display = 'none';
+        if (progressAlert) progressAlert.style.display = 'none';
         resultsSection.style.display = 'none';
-        calculateBtn.disabled = true;
+        if (calculateBtn) calculateBtn.disabled = true;
     }
     
     // Atualiza contador de produtos
@@ -39,6 +54,11 @@ function updateInterfaceState() {
 
 // Função para mostrar instruções passo a passo
 function showStepInstructions() {
+    if (!userBasket.id) {
+        showMessage('📝 Clique em "Criar Minha Cesta Básica" para começar', 'info');
+        return;
+    }
+    
     const productCount = userBasket.products.length;
     
     if (productCount === 0) {
@@ -53,7 +73,7 @@ function showStepInstructions() {
 }
 
 // =============================================
-// FUNÇÕES PRINCIPAIS (EXISTENTES - ATUALIZADAS)
+// FUNÇÕES PRINCIPAIS - CORRIGIDAS
 // =============================================
 
 // Função para fetch autenticado
@@ -86,7 +106,7 @@ async function authenticatedFetch(url, options = {}) {
     }
 }
 
-// Carrega a cesta do usuário
+// Carrega a cesta do usuário - CORRIGIDA
 async function loadUserBasket() {
     try {
         console.log('🔍 Carregando cesta do usuário...');
@@ -99,12 +119,15 @@ async function loadUserBasket() {
             console.log('✅ Cesta carregada:', userBasket);
             renderProducts();
             updateInterfaceState();
+            showStepInstructions();
             return;
         } 
         
         if (response.status === 404) {
-            console.log('ℹ️ Cesta não encontrada, criando nova...');
-            await createUserBasket();
+            console.log('ℹ️ Cesta não encontrada');
+            userBasket = { id: null, basket_name: "Minha Cesta", products: [] };
+            updateInterfaceState();
+            showStepInstructions();
             return;
         }
         
@@ -115,11 +138,13 @@ async function loadUserBasket() {
         
     } catch (error) {
         console.error('💥 Erro ao carregar cesta:', error);
-        showMessage('Erro ao carregar sua cesta. Tente recarregar a página.', 'error');
+        userBasket = { id: null, basket_name: "Minha Cesta", products: [] };
+        updateInterfaceState();
+        showStepInstructions();
     }
 }
 
-// Cria uma nova cesta para o usuário
+// Cria uma nova cesta para o usuário - CORRIGIDA
 async function createUserBasket() {
     try {
         console.log('🆕 Criando nova cesta...');
@@ -133,6 +158,8 @@ async function createUserBasket() {
             console.log('✅ Cesta criada:', userBasket);
             renderProducts();
             updateInterfaceState();
+            showStepInstructions();
+            showMessage('✅ Cesta criada com sucesso! Agora adicione produtos.', 'success');
             return basketData;
         } else {
             const errorText = await response.text();
@@ -141,12 +168,12 @@ async function createUserBasket() {
         }
     } catch (error) {
         console.error('💥 Erro ao criar cesta:', error);
-        showMessage('Erro ao criar cesta. Tente recarregar a página.', 'error');
+        showMessage('Erro ao criar cesta: ' + error.message, 'error');
         throw error;
     }
 }
 
-// Busca o nome do produto pelo código de barras
+// Busca o nome do produto pelo código de barras - CORRIGIDA
 async function getProductName(barcode) {
     try {
         console.log(`🔍 Buscando produto: ${barcode}`);
@@ -174,8 +201,14 @@ async function getProductName(barcode) {
     }
 }
 
-// Adiciona produto à cesta
+// Adiciona produto à cesta - CORRIGIDA
 async function addProduct() {
+    // Verifica se a cesta existe
+    if (!userBasket.id) {
+        showMessage('❌ Crie sua cesta básica primeiro', 'warning');
+        return;
+    }
+    
     const barcodeInput = document.getElementById('product-barcode');
     const barcode = barcodeInput.value.trim();
     
@@ -244,7 +277,7 @@ async function addProduct() {
         
     } catch (error) {
         console.error('Erro ao adicionar produto:', error);
-        showMessage('Erro ao adicionar produto. Tente novamente.', 'error');
+        showMessage('Erro ao adicionar produto: ' + error.message, 'error');
         barcodeInput.value = originalText;
     } finally {
         barcodeInput.disabled = false;
@@ -252,7 +285,7 @@ async function addProduct() {
     }
 }
 
-// Remove produto específico
+// Remove produto específico - CORRIGIDA
 async function removeProduct(barcode) {
     if (confirm('Tem certeza que deseja remover este produto da cesta?')) {
         try {
@@ -271,12 +304,12 @@ async function removeProduct(barcode) {
             }
         } catch (error) {
             console.error('Erro ao remover produto:', error);
-            showMessage('Erro ao remover produto', 'error');
+            showMessage('Erro ao remover produto: ' + error.message, 'error');
         }
     }
 }
 
-// Limpa toda a cesta
+// Limpa toda a cesta - CORRIGIDA
 async function clearBasket() {
     if (userBasket.products.length === 0) {
         showMessage('A cesta já está vazia', 'info');
@@ -300,10 +333,86 @@ async function clearBasket() {
             }
         } catch (error) {
             console.error('Erro ao limpar cesta:', error);
-            showMessage('Erro ao limpar cesta', 'error');
+            showMessage('Erro ao limpar cesta: ' + error.message, 'error');
         }
     }
 }
+
+// Renderiza os produtos - CORRIGIDA
+function renderProducts() {
+    const grid = document.getElementById('products-grid');
+    const countElement = document.getElementById('product-count');
+    const emptyState = document.getElementById('empty-state');
+    
+    if (!grid) return;
+    
+    countElement.textContent = userBasket.products.length;
+    
+    if (userBasket.products.length === 0) {
+        grid.innerHTML = `
+            <div class="empty-state" id="empty-state">
+                <div class="icon"><i class="fas fa-shopping-basket"></i></div>
+                <h3>Sua cesta está vazia</h3>
+                <p>Adicione produtos usando o código de barras acima</p>
+                <div class="step-instruction">
+                    <p><strong>Passo 1 de 3:</strong> Adicione pelo menos 5 produtos</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    if (emptyState) emptyState.style.display = 'none';
+    
+    grid.innerHTML = '';
+    
+    userBasket.products.forEach((product, index) => {
+        const productCard = document.createElement('div');
+        productCard.className = 'product-card';
+        productCard.innerHTML = `
+            <div class="product-content">
+                <div class="product-actions">
+                    <button class="btn-icon edit-btn" onclick="openEditModal(${JSON.stringify(product).replace(/"/g, '&quot;')})" title="Editar produto">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-icon remove-btn" onclick="removeProduct('${product.product_barcode}')" title="Remover produto">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="product-info">
+                    <div class="product-name">${product.product_name || 'Produto não identificado'}</div>
+                    <div class="product-barcode">Código: ${product.product_barcode}</div>
+                </div>
+            </div>
+        `;
+        grid.appendChild(productCard);
+    });
+    
+    // Adiciona instrução de progresso se ainda não tiver 5 produtos
+    if (userBasket.products.length < 5) {
+        const progressInfo = document.createElement('div');
+        progressInfo.className = 'progress-info';
+        progressInfo.innerHTML = `
+            <div class="step-instruction">
+                <p><strong>Progresso:</strong> ${userBasket.products.length}/5 produtos</p>
+                <p>Adicione mais ${5 - userBasket.products.length} produtos para desbloquear a comparação de preços</p>
+            </div>
+        `;
+        grid.appendChild(progressInfo);
+    }
+}
+
+// =============================================
+// FUNÇÕES RESTANTES (mantenha as mesmas do código anterior)
+// =============================================
+
+// [Mantenha todas as outras funções exatamente como estavam no código anterior:
+// - openEditModal, closeEditModal, saveProductEdit
+// - saveBasket, loadMarkets, renderMarketSelection
+// - toggleMarket, selectAllMarkets, deselectAllMarkets, updateSelectedMarketsCount, filterMarkets
+// - calculateBasket, displayResults, displayCompleteBasket, displayMixedBasket
+// - loadAllBaskets, renderAllBaskets, showMessage, showAuthRequired, exportBasket
+// - E a inicialização no final]
 
 // Abre modal para editar produto
 function openEditModal(product) {
@@ -393,74 +502,6 @@ async function saveBasket() {
         throw error;
     }
 }
-
-// Renderiza os produtos
-function renderProducts() {
-    const grid = document.getElementById('products-grid');
-    const countElement = document.getElementById('product-count');
-    const emptyState = document.getElementById('empty-state');
-    
-    if (!grid) return;
-    
-    countElement.textContent = userBasket.products.length;
-    
-    if (userBasket.products.length === 0) {
-        grid.innerHTML = `
-            <div class="empty-state" id="empty-state">
-                <div class="icon"><i class="fas fa-shopping-basket"></i></div>
-                <h3>Sua cesta está vazia</h3>
-                <p>Adicione produtos usando o código de barras acima</p>
-                <div class="step-instruction">
-                    <p><strong>Passo 1 de 3:</strong> Adicione pelo menos 5 produtos</p>
-                </div>
-            </div>
-        `;
-        return;
-    }
-    
-    if (emptyState) emptyState.style.display = 'none';
-    
-    grid.innerHTML = '';
-    
-    userBasket.products.forEach((product, index) => {
-        const productCard = document.createElement('div');
-        productCard.className = 'product-card';
-        productCard.innerHTML = `
-            <div class="product-content">
-                <div class="product-actions">
-                    <button class="btn-icon edit-btn" onclick="openEditModal(${JSON.stringify(product).replace(/"/g, '&quot;')})" title="Editar produto">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-icon remove-btn" onclick="removeProduct('${product.product_barcode}')" title="Remover produto">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="product-info">
-                    <div class="product-name">${product.product_name || 'Produto não identificado'}</div>
-                    <div class="product-barcode">Código: ${product.product_barcode}</div>
-                </div>
-            </div>
-        `;
-        grid.appendChild(productCard);
-    });
-    
-    // Adiciona instrução de progresso se ainda não tiver 5 produtos
-    if (userBasket.products.length < 5) {
-        const progressInfo = document.createElement('div');
-        progressInfo.className = 'progress-info';
-        progressInfo.innerHTML = `
-            <div class="step-instruction">
-                <p><strong>Progresso:</strong> ${userBasket.products.length}/5 produtos</p>
-                <p>Adicione mais ${5 - userBasket.products.length} produtos para desbloquear a comparação de preços</p>
-            </div>
-        `;
-        grid.appendChild(progressInfo);
-    }
-}
-
-// =============================================
-// FUNÇÕES DE MERCADOS (EXISTENTES - ATUALIZADAS)
-// =============================================
 
 // Carrega mercados
 async function loadMarkets() {
@@ -564,12 +605,13 @@ function filterMarkets(searchTerm) {
     });
 }
 
-// =============================================
-// FUNÇÕES DE CÁLCULO E RESULTADOS (EXISTENTES)
-// =============================================
-
 // Calcula preços da cesta
 async function calculateBasket() {
+    if (!userBasket.id) {
+        showMessage('❌ Crie sua cesta básica primeiro', 'warning');
+        return;
+    }
+    
     if (userBasket.products.length < 5) {
         showMessage('❌ Adicione pelo menos 5 produtos antes de calcular', 'warning');
         return;
@@ -605,11 +647,11 @@ async function calculateBasket() {
         } else {
             const errorText = await response.text();
             console.error('Erro ao calcular preços:', errorText);
-            alert('Erro ao calcular preços. Tente novamente.');
+            showMessage('Erro ao calcular preços: ' + errorText, 'error');
         }
     } catch (error) {
         console.error('Erro:', error);
-        alert('Erro de conexão. Verifique sua internet e tente novamente.');
+        showMessage('Erro de conexão: ' + error.message, 'error');
     } finally {
         calculateBtn.disabled = false;
         calculateBtn.innerHTML = '<i class="fas fa-calculator"></i> Comparar Preços da Cesta';
@@ -727,10 +769,6 @@ function displayMixedBasket(mixedBasket) {
     }
 }
 
-// =============================================
-// FUNÇÕES ADMIN (EXISTENTES)
-// =============================================
-
 // Carrega todas as cestas (apenas admin)
 async function loadAllBaskets() {
     try {
@@ -791,10 +829,6 @@ function renderAllBaskets(baskets) {
         </div>
     `;
 }
-
-// =============================================
-// FUNÇÕES UTILITÁRIAS (EXISTENTES)
-// =============================================
 
 // Função para mostrar mensagens
 function showMessage(message, type = 'info') {
