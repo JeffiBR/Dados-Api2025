@@ -158,7 +158,7 @@ async def create_user_basket(current_user: dict = Depends(get_current_user)):
 async def update_user_basket(
     basket_update: BasketUpdateRequest, 
     current_user: dict = Depends(get_current_user)):
-):
+        
     """
     Atualiza a cesta do usuário atual - USANDO PATCH
     """
