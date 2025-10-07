@@ -1,4 +1,4 @@
-# main.py (completo e atualizado)
+# main.py (completo e corrigido)
 import os
 import asyncio
 from datetime import date, timedelta, datetime
@@ -14,7 +14,6 @@ from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional
 import pandas as pd
 import collector_service
-import basket_service
 
 # --------------------------------------------------------------------------
 # --- 1. CONFIGURAÇÕES INICIAIS E VARIÁVEIS DE AMBIENTE ---
@@ -43,6 +42,9 @@ if not all([SUPABASE_URL, SUPABASE_KEY, SERVICE_ROLE_KEY, ECONOMIZA_ALAGOAS_TOKE
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 supabase_admin: Client = create_client(SUPABASE_URL, SERVICE_ROLE_KEY)
 
+# Cliente assíncrono (usaremos uma abordagem diferente)
+# Para operações assíncronas, vamos usar o cliente síncrono com asyncio.to_thread
+
 # --------------------------------------------------------------------------
 # --- 2. TRATAMENTO DE ERROS CENTRALIZADO ---
 # --------------------------------------------------------------------------
@@ -63,13 +65,9 @@ class UserProfile(BaseModel):
     allowed_pages: List[str] = []
     email: Optional[str] = None
 
-from typing import Optional # Garanta que Optional está importado
-
-async def get_current_user(authorization: Optional[str] = Header(None)) -> UserProfile:
-    # A única mudança necessária é aqui:
-    if not authorization or not str(authorization).startswith("Bearer "):
+async def get_current_user(authorization: str = Header(None)) -> UserProfile:
+    if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Token de autorização ausente ou mal formatado")
-    
     jwt = authorization.split(" ")[1]
     try:
         user_response = supabase.auth.get_user(jwt)
@@ -180,17 +178,6 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-# --------------------------------------------------------------------------
-# --- CONFIGURAÇÃO DOS MÓDULOS SEPARADOS ---
-# --------------------------------------------------------------------------
-
-# Configura as rotas da cesta básica (CORRIGIDO)
-basket_service.setup_basket_routes(
-    app=app,
-    supabase_client=supabase,
-    supabase_admin_client=supabase_admin,
-    get_current_user_dep=get_current_user  # REMOVIDO o parâmetro get_current_user_optional_dep
-)
 # --------------------------------------------------------------------------
 # --- 4. MODELOS DE DADOS (PYDANTIC) ---
 # --------------------------------------------------------------------------
@@ -913,40 +900,6 @@ async def get_usage_statistics(
         logging.error(f"Erro ao buscar estatísticas de uso: {e}")
         raise HTTPException(status_code=500, detail="Erro ao buscar estatísticas de uso")
 
-# --- NOVO ENDPOINT PARA BUSCA ESPECÍFICA POR CÓDIGO DE BARRAS ---
-@app.get("/api/search-product")
-async def search_product_by_barcode(
-    barcode: str = Query(..., description="Código de barras do produto"),
-    current_user: Optional[UserProfile] = Depends(get_current_user_optional)
-):
-    """
-    Busca específica por código de barras exato
-    """
-    try:
-        response = await asyncio.to_thread(
-            supabase.table('produtos')
-            .select('codigo_barras, nome_produto, preco_produto, nome_supermercado')
-            .eq('codigo_barras', barcode)
-            .order('data_ultima_venda', desc=True)
-            .limit(1)
-            .execute
-        )
-        
-        if response.data:
-            return {
-                "found": True,
-                "product": response.data[0]
-            }
-        else:
-            return {
-                "found": False,
-                "message": "Produto não encontrado"
-            }
-            
-    except Exception as e:
-        logging.error(f"Erro na busca por código de barras {barcode}: {e}")
-        raise HTTPException(status_code=500, detail="Erro na busca do produto")
-
 # --- Endpoints Públicos e de Usuário Logado ---
 @app.get("/api/products-log")
 async def get_products_log(page: int = 1, page_size: int = 50, user: UserProfile = Depends(require_page_access('product_log'))):
@@ -1147,6 +1100,4 @@ app.mount("/", StaticFiles(directory="web", html=True), name="static")
 @app.get("/")
 def read_root():
     return {"message": "Bem-vindo à API de Preços AL - Versão 3.1.2"}
-
-
 
