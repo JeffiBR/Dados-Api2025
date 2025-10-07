@@ -322,7 +322,7 @@ async function fetchProductPrices(barcode, cnpjs) {
 }
 
 /**
- * Renderiza os resultados da comparação da cesta
+ * Renderiza os resultados da comparação da cesta em formato de cards
  */
 function renderBasketComparison(results, selectedMarkets, productsWithBarcode) {
     const resultsElement = document.getElementById('realtimeResults');
@@ -367,9 +367,232 @@ function renderBasketComparison(results, selectedMarkets, productsWithBarcode) {
             productsFoundByMarket[marketName].add(item.original_product_name);
         }
     });
+
+    // 1. CESTA BÁSICA IDEAL
+    const idealBasket = createIdealBasket(results, productsWithBarcode);
+    const idealBasketHtml = createIdealBasketCard(idealBasket, productsWithBarcode.length);
     
-    // 1. Resumo da Comparação
-    const summaryHtml = `
+    // 2. RESUMO
+    const summaryHtml = createComparisonSummary(results, resultsByMarket, productsWithBarcode);
+    
+    // 3. CARDS DOS MERCADOS
+    const marketCardsHtml = createMarketCards(resultsByMarket, marketTotals, productsFoundByMarket, marketDetails, productsWithBarcode.length);
+    
+    resultsElement.innerHTML = idealBasketHtml + summaryHtml + marketCardsHtml;
+    
+    // Adicionar event listeners para os botões de detalhes
+    resultsElement.querySelectorAll('.btn-view-details').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const marketName = e.target.closest('button').dataset.market;
+            showMarketDetails(marketName, resultsByMarket[marketName], marketDetails[marketName]);
+        });
+    });
+}
+
+/**
+ * Cria a cesta básica ideal com os melhores preços
+ */
+function createIdealBasket(results, productsWithBarcode) {
+    const idealBasket = {};
+    const bestPrices = {};
+    
+    // Encontrar o melhor preço para cada produto
+    productsWithBarcode.forEach(product => {
+        const productName = product.nome_produto;
+        const productResults = results.filter(r => r.original_product_name === productName);
+        
+        if (productResults.length > 0) {
+            const bestOffer = productResults.reduce((best, current) => {
+                return (!best || (current.preco_produto || Infinity) < (best.preco_produto || Infinity)) ? current : best;
+            }, null);
+            
+            if (bestOffer) {
+                idealBasket[productName] = bestOffer;
+                
+                // Contar quantas vezes cada mercado aparece na cesta ideal
+                const marketName = bestOffer.nome_supermercado;
+                bestPrices[marketName] = (bestPrices[marketName] || 0) + 1;
+            }
+        }
+    });
+    
+    return {
+        products: idealBasket,
+        bestPrices: bestPrices,
+        total: Object.values(idealBasket).reduce((sum, item) => sum + (item.preco_produto || 0), 0)
+    };
+}
+
+/**
+ * Cria o card da cesta básica ideal
+ */
+function createIdealBasketCard(idealBasket, totalProducts) {
+    const productCount = Object.keys(idealBasket.products).length;
+    const completionRate = totalProducts > 0 ? Math.round((productCount / totalProducts) * 100) : 0;
+    
+    // Encontrar mercado mais frequente na cesta ideal
+    const bestMarket = Object.entries(idealBasket.bestPrices)
+        .sort(([,a], [,b]) => b - a)[0];
+    
+    return `
+        <div class="card ideal-basket-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-crown text-warning"></i>
+                    <h3>Cesta Básica Ideal</h3>
+                    <span class="badge best-price">Melhor Preço Total</span>
+                </div>
+                <div class="card-stats">
+                    <div class="stat">
+                        <span class="stat-value">R$ ${idealBasket.total.toFixed(2)}</span>
+                        <span class="stat-label">Total Ideal</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-value">${productCount}/${totalProducts}</span>
+                        <span class="stat-label">Produtos</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-value">${completionRate}%</span>
+                        <span class="stat-label">Completude</span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-content">
+                <div class="ideal-basket-details">
+                    <div class="ideal-market">
+                        <strong>Mercado mais econômico:</strong>
+                        ${bestMarket ? `${bestMarket[0]} (${bestMarket[1]} produtos)` : 'N/A'}
+                    </div>
+                    
+                    <div class="products-grid">
+                        ${Object.entries(idealBasket.products).map(([productName, product]) => `
+                            <div class="product-card-mini">
+                                <div class="product-name">${productName}</div>
+                                <div class="product-details">
+                                    <span class="product-price">R$ ${(product.preco_produto || 0).toFixed(2)}</span>
+                                    <span class="product-market">${product.nome_supermercado}</span>
+                                </div>
+                                <div class="product-meta">
+                                    <small>Código: ${product.codigo_barras || 'N/A'}</small>
+                                    <small>Data: ${product.data_ultima_venda ? new Date(product.data_ultima_venda).toLocaleDateString('pt-BR') : 'N/A'}</small>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Cria os cards dos mercados
+ */
+function createMarketCards(resultsByMarket, marketTotals, productsFoundByMarket, marketDetails, totalProducts) {
+    // Ordenar mercados por preço total
+    const sortedMarkets = Object.entries(marketTotals)
+        .sort(([, a], [, b]) => a - b)
+        .filter(([, total]) => total > 0);
+    
+    if (sortedMarkets.length === 0) {
+        return '<div class="empty-state">Nenhum mercado com preços encontrados</div>';
+    }
+    
+    return `
+        <div class="market-cards-section">
+            <h3><i class="fas fa-store"></i> Mercados Encontrados</h3>
+            <div class="market-cards-grid">
+                ${sortedMarkets.map(([marketName, total], index) => {
+                    const products = resultsByMarket[marketName] || [];
+                    const productCount = productsFoundByMarket[marketName]?.size || 0;
+                    const completionRate = totalProducts > 0 ? Math.round((productCount / totalProducts) * 100) : 0;
+                    const marketInfo = marketDetails[marketName];
+                    const isBest = index === 0;
+                    
+                    let statusClass = 'cancelada';
+                    let statusText = 'Ruim';
+                    
+                    if (completionRate >= 80) {
+                        statusClass = 'concluída';
+                        statusText = 'Ótimo';
+                    } else if (completionRate >= 50) {
+                        statusClass = 'em-andamento';
+                        statusText = 'Bom';
+                    }
+                    
+                    return `
+                        <div class="market-card ${isBest ? 'highlight' : ''}">
+                            <div class="market-card-header">
+                                <div class="market-card-title">
+                                    <h4>${marketName}</h4>
+                                    ${isBest ? '<i class="fas fa-trophy best-market" title="Melhor oferta"></i>' : ''}
+                                </div>
+                                <div class="market-card-price">
+                                    <span class="total-price">R$ ${total.toFixed(2)}</span>
+                                    <span class="completion-rate">${completionRate}% completo</span>
+                                </div>
+                            </div>
+                            
+                            <div class="market-card-address">
+                                <i class="fas fa-map-marker-alt"></i>
+                                ${marketInfo?.endereco || 'Endereço não disponível'}
+                            </div>
+                            
+                            <div class="market-card-stats">
+                                <div class="market-stat">
+                                    <span class="stat-value">${productCount}</span>
+                                    <span class="stat-label">Produtos</span>
+                                </div>
+                                <div class="market-stat">
+                                    <span class="stat-value">${products.length}</span>
+                                    <span class="stat-label">Itens</span>
+                                </div>
+                                <div class="market-stat">
+                                    <span class="status-badge ${statusClass}">${statusText}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="market-card-products">
+                                <h5>Produtos Encontrados:</h5>
+                                <div class="products-list">
+                                    ${products.slice(0, 5).map(product => `
+                                        <div class="market-product-item">
+                                            <div class="product-info">
+                                                <span class="product-name">${product.original_product_name}</span>
+                                                <span class="product-price">R$ ${(product.preco_produto || 0).toFixed(2)}</span>
+                                            </div>
+                                            <div class="product-meta">
+                                                <small>Código: ${product.codigo_barras || 'N/A'}</small>
+                                                <small>Data: ${product.data_ultima_venda ? new Date(product.data_ultima_venda).toLocaleDateString('pt-BR') : 'N/A'}</small>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                    ${products.length > 5 ? `
+                                        <div class="more-products">
+                                            + ${products.length - 5} outros produtos...
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                            
+                            <div class="market-card-actions">
+                                <button class="btn btn-outline btn-view-details" data-market="${marketName}">
+                                    <i class="fas fa-list"></i> Ver Todos os Detalhes
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Cria o resumo da comparação
+ */
+function createComparisonSummary(results, resultsByMarket, productsWithBarcode) {
+    return `
         <div class="results-summary">
             <h3><i class="fas fa-chart-bar"></i> Resumo da Comparação</h3>
             <div class="summary-stats">
@@ -386,159 +609,12 @@ function renderBasketComparison(results, selectedMarkets, productsWithBarcode) {
                     <span class="stat-label">Produtos com Código</span>
                 </div>
                 <div class="stat">
-                    <span class="stat-value">${selectedMarkets.length}</span>
-                    <span class="stat-label">Mercados Selecionados</span>
+                    <span class="stat-value">${allMarkets.length}</span>
+                    <span class="stat-label">Total de Mercados</span>
                 </div>
             </div>
         </div>
     `;
-    
-    // 2. Tabela de Comparação de Mercados (ordenada por preço total)
-    const sortedMarkets = Object.entries(marketTotals)
-        .sort(([, a], [, b]) => a - b)
-        .filter(([, total]) => total > 0);
-    
-    let comparisonHtml = `
-        <div class="table-container">
-            <h3><i class="fas fa-trophy"></i> Melhores Ofertas por Mercado</h3>
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Posição</th>
-                        <th>Mercado</th>
-                        <th>Total Estimado (R$)</th>
-                        <th>Produtos Encontrados</th>
-                        <th>Taxa de Sucesso</th>
-                        <th>Status</th>
-                        <th>Ação</th>
-                    </tr>
-                </thead>
-                <tbody>
-    `;
-    
-    sortedMarkets.forEach(([marketName, total], index) => {
-        const productCount = productsFoundByMarket[marketName].size;
-        const completionRate = productsWithBarcode.length > 0 ? 
-            Math.round((productCount / productsWithBarcode.length) * 100) : 0;
-        const isBest = index === 0;
-        
-        let statusClass = 'cancelada';
-        let statusText = 'Ruim';
-        
-        if (completionRate >= 80) {
-            statusClass = 'concluída';
-            statusText = 'Ótimo';
-        } else if (completionRate >= 50) {
-            statusClass = 'em-andamento';
-            statusText = 'Bom';
-        }
-        
-        comparisonHtml += `
-            <tr class="${isBest ? 'highlight' : ''}">
-                <td>
-                    ${index + 1}°
-                    ${isBest ? '<i class="fas fa-crown text-warning" title="Melhor oferta"></i>' : ''}
-                </td>
-                <td><strong>${marketName}</strong></td>
-                <td class="price ${isBest ? 'price-cheapest' : ''}">R$ ${total.toFixed(2)}</td>
-                <td>
-                    ${productCount} de ${productsWithBarcode.length}
-                    <div class="progress" style="height: 6px; margin-top: 5px;">
-                        <div class="progress-bar" style="width: ${completionRate}%"></div>
-                    </div>
-                </td>
-                <td>${completionRate}%</td>
-                <td>
-                    <span class="status-badge ${statusClass}">
-                        ${statusText}
-                    </span>
-                </td>
-                <td>
-                    <button class="btn btn-sm btn-outline btn-view-details" data-market="${marketName}">
-                        <i class="fas fa-list"></i> Detalhes
-                    </button>
-                </td>
-            </tr>
-        `;
-    });
-    
-    comparisonHtml += `</tbody></table></div>`;
-    
-    // 3. Detalhes por Produto
-    let detailsHtml = `
-        <div class="table-container">
-            <h3><i class="fas fa-list-ul"></i> Detalhes por Produto</h3>
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Produto</th>
-                        <th>Código</th>
-                        <th>Melhor Preço</th>
-                        <th>Mercado</th>
-                        <th>Preço Médio</th>
-                        <th>Economia</th>
-                    </tr>
-                </thead>
-                <tbody>
-    `;
-    
-    // Agrupar por produto original
-    const productsWithPrices = {};
-    
-    // Coletar estatísticas por produto
-    productsWithBarcode.forEach(product => {
-        const productName = product.nome_produto;
-        const productResults = results.filter(r => r.original_product_name === productName);
-        
-        if (productResults.length > 0) {
-            const prices = productResults.map(p => p.preco_produto).filter(p => p);
-            const minPrice = Math.min(...prices);
-            const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
-            const bestOffer = productResults.find(p => p.preco_produto === minPrice);
-            const economy = avgPrice - minPrice;
-            
-            productsWithPrices[productName] = {
-                bestOffer,
-                minPrice,
-                avgPrice,
-                economy,
-                allOffers: productResults
-            };
-            
-            detailsHtml += `
-                <tr>
-                    <td>${productName}</td>
-                    <td><code>${product.codigo_barras}</code></td>
-                    <td class="price price-cheapest">R$ ${minPrice.toFixed(2)}</td>
-                    <td>${bestOffer?.nome_supermercado || 'N/A'}</td>
-                    <td>R$ ${avgPrice.toFixed(2)}</td>
-                    <td class="economy ${economy > 0 ? 'positive' : ''}">
-                        ${economy > 0 ? `+R$ ${economy.toFixed(2)}` : '--'}
-                    </td>
-                </tr>
-            `;
-        } else {
-            detailsHtml += `
-                <tr class="text-muted">
-                    <td>${productName}</td>
-                    <td><code>${product.codigo_barras}</code></td>
-                    <td colspan="4" class="text-center">Nenhum preço encontrado</td>
-                </tr>
-            `;
-        }
-    });
-    
-    detailsHtml += `</tbody></table></div>`;
-    
-    resultsElement.innerHTML = summaryHtml + comparisonHtml + detailsHtml;
-    
-    // Adicionar event listeners para os botões de detalhes
-    resultsElement.querySelectorAll('.btn-view-details').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const marketName = e.target.closest('button').dataset.market;
-            showMarketDetails(marketName, resultsByMarket[marketName], marketDetails[marketName]);
-        });
-    });
 }
 
 /**
@@ -570,6 +646,7 @@ function showMarketDetails(marketName, products, marketInfo) {
                     <th>Preço (R$)</th>
                     <th>Unidade</th>
                     <th>Código</th>
+                    <th>Data</th>
                 </tr>
             </thead>
             <tbody>
@@ -585,6 +662,7 @@ function showMarketDetails(marketName, products, marketInfo) {
                 <td class="price">R$ ${(product.preco_produto || 0).toFixed(2)}</td>
                 <td>${product.unidade || 'UN'}</td>
                 <td><code>${product.codigo_barras || 'N/A'}</code></td>
+                <td>${product.data_ultima_venda ? new Date(product.data_ultima_venda).toLocaleDateString('pt-BR') : 'N/A'}</td>
             </tr>
         `;
     });
@@ -607,4 +685,46 @@ function debounce(func, wait) {
         clearTimeout(timeout);
         timeout = setTimeout(later, wait);
     };
+}
+
+/**
+ * Exibe uma notificação para o usuário
+ */
+function showNotification(message, type = 'info') {
+    // Remove notificação existente
+    const existingNotification = document.querySelector('.notification');
+    if (existingNotification) {
+        existingNotification.remove();
+    }
+    
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.innerHTML = `
+        <i class="fas fa-${getNotificationIcon(type)}"></i>
+        <span>${message}</span>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Mostrar notificação
+    setTimeout(() => notification.classList.add('show'), 100);
+    
+    // Remover após 5 segundos
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 300);
+    }, 5000);
+}
+
+/**
+ * Retorna o ícone apropriado para o tipo de notificação
+ */
+function getNotificationIcon(type) {
+    const icons = {
+        success: 'check-circle',
+        error: 'exclamation-circle',
+        warning: 'exclamation-triangle',
+        info: 'info-circle'
+    };
+    return icons[type] || 'info-circle';
 }
