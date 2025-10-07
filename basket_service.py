@@ -1,10 +1,14 @@
-# basket_service.py
+# basket_service.py - VERSÃO COMPLETA E CORRIGIDA
 import logging
 import asyncio
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+
+# Configurar logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Modelos Pydantic para a cesta básica
 class BasketProduct(BaseModel):
@@ -46,10 +50,12 @@ def setup_basket_routes(app, supabase_client, supabase_admin_client, get_current
     get_current_user_dependency = get_current_user_dep
     get_current_user_optional_dependency = get_current_user_optional_dep
     
+    logger.info("✅ Rotas da cesta básica configuradas!")
+    
     # Inclui o roteador no app principal
     app.include_router(basket_router)
 
-# Função auxiliar para obter o usuário atual
+# Funções auxiliares para obter o usuário atual
 async def get_current_user():
     if get_current_user_dependency is None:
         raise HTTPException(
@@ -58,11 +64,37 @@ async def get_current_user():
         )
     return await get_current_user_dependency()
 
-# Função auxiliar para obter o usuário atual (opcional)
 async def get_current_user_optional():
     if get_current_user_optional_dependency is None:
         return None
     return await get_current_user_optional_dependency()
+
+# Função auxiliar para obter user_id de forma segura
+def get_user_id(current_user):
+    """Obtém o user_id de forma segura"""
+    try:
+        if hasattr(current_user, 'id'):
+            return current_user.id
+        elif isinstance(current_user, dict) and 'id' in current_user:
+            return current_user['id']
+        else:
+            logger.error(f"Estrutura do current_user não reconhecida: {type(current_user)}")
+            raise HTTPException(status_code=400, detail="Usuário não possui ID válido")
+    except Exception as e:
+        logger.error(f"Erro ao obter user_id: {e}")
+        raise HTTPException(status_code=400, detail="Erro ao identificar usuário")
+
+# Função auxiliar para verificar se usuário é admin
+def is_admin(current_user):
+    """Verifica se o usuário é admin"""
+    try:
+        if hasattr(current_user, 'role'):
+            return current_user.role == 'admin'
+        elif isinstance(current_user, dict) and 'role' in current_user:
+            return current_user.get('role') == 'admin'
+        return False
+    except:
+        return False
 
 # Endpoints da cesta básica
 @basket_router.get("/")
@@ -71,23 +103,22 @@ async def get_user_basket(current_user = Depends(get_current_user)):
     Retorna a cesta do usuário atual
     """
     try:
-        logging.info(f"🔍 Buscando cesta para usuário: {current_user.id}")
+        user_id = get_user_id(current_user)
+        logger.info(f"Buscando cesta para usuário: {user_id}")
         
         response = await asyncio.to_thread(
-            lambda: supabase.table('user_baskets').select('*').eq('user_id', current_user.id).execute()
+            lambda: supabase.table('user_baskets').select('*').eq('user_id', user_id).execute()
         )
         
         if response.data:
-            logging.info(f"✅ Cesta encontrada para usuário {current_user.id}")
             return response.data[0]
         else:
-            logging.info(f"❌ Cesta não encontrada para usuário {current_user.id}")
             raise HTTPException(status_code=404, detail="Cesta não encontrada")
             
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Erro ao buscar cesta do usuário {current_user.id}: {e}")
+        logger.error(f"Erro ao buscar cesta do usuário: {e}")
         raise HTTPException(status_code=500, detail="Erro ao carregar cesta")
 
 @basket_router.post("/")
@@ -96,47 +127,48 @@ async def create_user_basket(current_user = Depends(get_current_user)):
     Cria uma nova cesta para o usuário
     """
     try:
-        logging.info(f"🆕 Criando cesta para usuário: {current_user.id}")
+        user_id = get_user_id(current_user)
+        logger.info(f"Criando cesta para usuário: {user_id}")
         
         # Verifica se já existe uma cesta
         existing_response = await asyncio.to_thread(
             lambda: supabase.table('user_baskets')
             .select('*')
-            .eq('user_id', current_user.id)
+            .eq('user_id', user_id)
             .execute()
         )
         
         if existing_response.data:
-            logging.info(f"✅ Cesta já existe para usuário: {current_user.id}")
+            logger.info(f"Cesta já existe para usuário: {user_id}")
             return existing_response.data[0]
         
         # Cria nova cesta
         new_basket = {
-            'user_id': current_user.id,
+            'user_id': user_id,
             'basket_name': 'Minha Cesta',
             'products': [],
             'created_at': datetime.now().isoformat(),
             'updated_at': datetime.now().isoformat()
         }
         
-        logging.info(f"📝 Inserindo nova cesta: {new_basket}")
+        logger.info(f"Inserindo nova cesta para usuário: {user_id}")
         
         create_response = await asyncio.to_thread(
             lambda: supabase.table('user_baskets').insert(new_basket).execute()
         )
         
         if create_response.data:
-            logging.info(f"✅ Cesta criada com sucesso: {create_response.data[0]}")
+            logger.info(f"Cesta criada com sucesso para usuário: {user_id}")
             return create_response.data[0]
         else:
-            logging.error("❌ Nenhum dado retornado ao criar cesta")
-            raise HTTPException(status_code=500, detail="Erro ao criar cesta - nenhum dado retornado")
+            logger.error("Nenhum dado retornado na criação da cesta")
+            raise HTTPException(status_code=500, detail="Erro ao criar cesta")
         
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Erro ao criar cesta para usuário {current_user.id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Erro ao criar cesta: {str(e)}")
+        logger.error(f"Erro ao criar cesta: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao criar cesta")
 
 @basket_router.get("/all")
 async def get_all_baskets(current_user = Depends(get_current_user)):
@@ -145,7 +177,7 @@ async def get_all_baskets(current_user = Depends(get_current_user)):
     """
     try:
         # Verifica se o usuário é admin
-        if not hasattr(current_user, 'role') or current_user.role != 'admin':
+        if not is_admin(current_user):
             raise HTTPException(status_code=403, detail="Acesso não autorizado")
         
         # Busca todas as cestas com informações dos usuários
@@ -176,7 +208,7 @@ async def get_all_baskets(current_user = Depends(get_current_user)):
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Erro ao buscar todas as cestas: {e}")
+        logger.error(f"Erro ao buscar todas as cestas: {e}")
         raise HTTPException(status_code=500, detail="Erro ao carregar cestas")
 
 @basket_router.patch("/")
@@ -188,11 +220,13 @@ async def update_user_basket(
     Atualiza a cesta do usuário atual - USANDO PATCH
     """
     try:
+        user_id = get_user_id(current_user)
+        
         # Busca a cesta existente do usuário
         existing_response = await asyncio.to_thread(
             lambda: supabase.table('user_baskets')
             .select('*')
-            .eq('user_id', current_user.id)
+            .eq('user_id', user_id)
             .execute()
         )
         
@@ -215,7 +249,7 @@ async def update_user_basket(
             lambda: supabase.table('user_baskets')
             .update(update_data)
             .eq('id', basket_id)
-            .eq('user_id', current_user.id)
+            .eq('user_id', user_id)
             .execute()
         )
         
@@ -227,7 +261,7 @@ async def update_user_basket(
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Erro ao atualizar cesta: {e}")
+        logger.error(f"Erro ao atualizar cesta: {e}")
         raise HTTPException(status_code=500, detail="Erro ao atualizar cesta")
 
 @basket_router.delete("/product/{barcode}")
@@ -239,11 +273,13 @@ async def remove_product_from_basket(
     Remove um produto específico da cesta do usuário
     """
     try:
+        user_id = get_user_id(current_user)
+        
         # Busca a cesta do usuário
         basket_response = await asyncio.to_thread(
             lambda: supabase.table('user_baskets')
             .select('*')
-            .eq('user_id', current_user.id)
+            .eq('user_id', user_id)
             .execute()
         )
         
@@ -269,7 +305,7 @@ async def remove_product_from_basket(
             lambda: supabase.table('user_baskets')
             .update(update_data)
             .eq('id', basket['id'])
-            .eq('user_id', current_user.id)
+            .eq('user_id', user_id)
             .execute()
         )
         
@@ -281,7 +317,7 @@ async def remove_product_from_basket(
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Erro ao remover produto da cesta: {e}")
+        logger.error(f"Erro ao remover produto da cesta: {e}")
         raise HTTPException(status_code=500, detail="Erro ao remover produto")
 
 @basket_router.delete("/clear")
@@ -290,11 +326,13 @@ async def clear_user_basket(current_user = Depends(get_current_user)):
     Limpa todos os produtos da cesta do usuário
     """
     try:
+        user_id = get_user_id(current_user)
+        
         # Busca a cesta do usuário
         basket_response = await asyncio.to_thread(
             lambda: supabase.table('user_baskets')
             .select('*')
-            .eq('user_id', current_user.id)
+            .eq('user_id', user_id)
             .execute()
         )
         
@@ -311,7 +349,7 @@ async def clear_user_basket(current_user = Depends(get_current_user)):
             lambda: supabase.table('user_baskets')
             .update(update_data)
             .eq('id', basket_response.data[0]['id'])
-            .eq('user_id', current_user.id)
+            .eq('user_id', user_id)
             .execute()
         )
         
@@ -323,7 +361,7 @@ async def clear_user_basket(current_user = Depends(get_current_user)):
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Erro ao limpar cesta: {e}")
+        logger.error(f"Erro ao limpar cesta: {e}")
         raise HTTPException(status_code=500, detail="Erro ao limpar cesta")
 
 @basket_router.post("/calculate")
@@ -343,9 +381,10 @@ async def calculate_basket_prices(
             raise HTTPException(status_code=404, detail="Cesta não encontrada")
         
         basket = basket_response.data[0]
+        user_id = get_user_id(current_user)
         
         # Verifica se a cesta pertence ao usuário (a menos que seja admin)
-        if (not hasattr(current_user, 'role') or current_user.role != 'admin') and basket['user_id'] != current_user.id:
+        if not is_admin(current_user) and basket['user_id'] != user_id:
             raise HTTPException(status_code=403, detail="Acesso não autorizado a esta cesta")
         
         products = basket.get('products', [])
@@ -536,7 +575,7 @@ async def calculate_basket_prices(
         }
         
     except Exception as e:
-        logging.error(f"Erro ao calcular preços da cesta: {e}")
+        logger.error(f"Erro ao calcular preços da cesta: {e}")
         raise HTTPException(status_code=500, detail="Erro ao calcular preços da cesta")
 
 @basket_router.get("/debug/search")
