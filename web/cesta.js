@@ -1,4 +1,4 @@
-// cesta.js - VERSÃO COMPLETA CORRIGIDA
+// cesta.js - VERSÃO COMPLETA COM FLUXO PASSO A PASSO
 let userBasket = { 
     id: null, 
     basket_name: "Minha Cesta", 
@@ -8,6 +8,53 @@ let allMarkets = [];
 let selectedMarkets = new Set();
 let currentUser = null;
 let isAdmin = false;
+
+// =============================================
+// FUNÇÕES DE CONTROLE DE INTERFACE - NOVAS
+// =============================================
+
+// Função para verificar e atualizar o estado da interface
+function updateInterfaceState() {
+    const productCount = userBasket.products.length;
+    const marketSection = document.getElementById('market-selection-section');
+    const progressAlert = document.getElementById('progress-alert');
+    const resultsSection = document.getElementById('results-section');
+    const calculateBtn = document.getElementById('calculate-btn');
+    
+    // Mostra/oculta seção de mercados baseado no número de produtos
+    if (productCount >= 5) {
+        marketSection.style.display = 'block';
+        progressAlert.style.display = 'flex';
+        calculateBtn.disabled = false;
+    } else {
+        marketSection.style.display = 'none';
+        progressAlert.style.display = 'none';
+        resultsSection.style.display = 'none';
+        calculateBtn.disabled = true;
+    }
+    
+    // Atualiza contador de produtos
+    document.getElementById('product-count').textContent = productCount;
+}
+
+// Função para mostrar instruções passo a passo
+function showStepInstructions() {
+    const productCount = userBasket.products.length;
+    
+    if (productCount === 0) {
+        showMessage('🔍 Comece adicionando produtos à sua cesta usando o código de barras', 'info');
+    } else if (productCount < 5) {
+        showMessage(`📝 Continue adicionando produtos (${productCount}/5) para desbloquear a comparação`, 'info');
+    } else if (productCount >= 5 && selectedMarkets.size === 0) {
+        showMessage('🏪 Agora selecione os mercados para comparar os preços', 'success');
+    } else if (productCount >= 5 && selectedMarkets.size > 0) {
+        showMessage('✅ Pronto! Clique em "Comparar Preços" para ver os resultados', 'success');
+    }
+}
+
+// =============================================
+// FUNÇÕES PRINCIPAIS (EXISTENTES - ATUALIZADAS)
+// =============================================
 
 // Função para fetch autenticado
 async function authenticatedFetch(url, options = {}) {
@@ -39,7 +86,7 @@ async function authenticatedFetch(url, options = {}) {
     }
 }
 
-// Carrega a cesta do usuário - CORRIGIDO
+// Carrega a cesta do usuário
 async function loadUserBasket() {
     try {
         console.log('🔍 Carregando cesta do usuário...');
@@ -51,12 +98,12 @@ async function loadUserBasket() {
             userBasket = basketData;
             console.log('✅ Cesta carregada:', userBasket);
             renderProducts();
+            updateInterfaceState();
             return;
         } 
         
         if (response.status === 404) {
             console.log('ℹ️ Cesta não encontrada, criando nova...');
-            // Cria uma cesta vazia se não existir
             await createUserBasket();
             return;
         }
@@ -72,7 +119,7 @@ async function loadUserBasket() {
     }
 }
 
-// Cria uma nova cesta para o usuário - CORRIGIDO
+// Cria uma nova cesta para o usuário
 async function createUserBasket() {
     try {
         console.log('🆕 Criando nova cesta...');
@@ -85,6 +132,7 @@ async function createUserBasket() {
             userBasket = basketData;
             console.log('✅ Cesta criada:', userBasket);
             renderProducts();
+            updateInterfaceState();
             return basketData;
         } else {
             const errorText = await response.text();
@@ -98,73 +146,11 @@ async function createUserBasket() {
     }
 }
 
-// Carrega todas as cestas (apenas admin)
-async function loadAllBaskets() {
-    try {
-        const response = await authenticatedFetch('/api/basket/all');
-        if (response.ok) {
-            const allBaskets = await response.json();
-            renderAllBaskets(allBaskets);
-        } else {
-            console.error('Erro ao carregar todas as cestas');
-        }
-    } catch (error) {
-        console.error('Erro ao carregar todas as cestas:', error);
-    }
-}
-
-// Renderiza todas as cestas (admin)
-function renderAllBaskets(baskets) {
-    const adminSection = document.getElementById('admin-section');
-    if (!adminSection) return;
-
-    if (baskets.length === 0) {
-        adminSection.innerHTML = '<p>Nenhuma cesta encontrada.</p>';
-        return;
-    }
-
-    adminSection.innerHTML = `
-        <div class="admin-baskets">
-            <h3><i class="fas fa-users"></i> Todas as Cestas dos Usuários</h3>
-            <div class="baskets-grid">
-                ${baskets.map(basket => `
-                    <div class="basket-card">
-                        <div class="basket-header">
-                            <h4>${basket.basket_name}</h4>
-                            <div class="user-info">
-                                <span class="user-badge">${basket.user_name || 'Usuário'}</span>
-                                <span class="user-email">${basket.user_email}</span>
-                            </div>
-                        </div>
-                        <div class="basket-info">
-                            <p><strong>Produtos:</strong> ${basket.products.length}</p>
-                            <p><strong>Criada:</strong> ${new Date(basket.created_at).toLocaleString('pt-BR')}</p>
-                            <p><strong>Atualizada:</strong> ${new Date(basket.updated_at).toLocaleString('pt-BR')}</p>
-                        </div>
-                        <div class="basket-products">
-                            <h5>Produtos na Cesta:</h5>
-                            ${basket.products.slice(0, 5).map(product => `
-                                <div class="product-preview">
-                                    <span class="product-name">${product.product_name || product.product_barcode}</span>
-                                    <span class="product-barcode">${product.product_barcode}</span>
-                                </div>
-                            `).join('')}
-                            ${basket.products.length > 5 ? `<p class="more-products">... e mais ${basket.products.length - 5} produtos</p>` : ''}
-                            ${basket.products.length === 0 ? '<p class="empty-basket">Cesta vazia</p>' : ''}
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        </div>
-    `;
-}
-
-// Busca o nome do produto pelo código de barras - CORRIGIDO
+// Busca o nome do produto pelo código de barras
 async function getProductName(barcode) {
     try {
         console.log(`🔍 Buscando produto: ${barcode}`);
         
-        // CORREÇÃO: Use o endpoint correto para busca por código de barras
         const response = await authenticatedFetch(`/api/search-product?barcode=${encodeURIComponent(barcode)}`);
         
         if (response.ok) {
@@ -188,7 +174,7 @@ async function getProductName(barcode) {
     }
 }
 
-// Adiciona produto à cesta - CORRIGIDO
+// Adiciona produto à cesta
 async function addProduct() {
     const barcodeInput = document.getElementById('product-barcode');
     const barcode = barcodeInput.value.trim();
@@ -227,7 +213,6 @@ async function addProduct() {
         const productName = await getProductName(barcode);
         
         if (!productName) {
-            // Produto não encontrado, pergunta se deseja adicionar mesmo assim
             if (confirm(`Produto com código ${barcode} não encontrado na base de dados. Deseja adicionar mesmo assim?`)) {
                 userBasket.products.push({
                     product_barcode: barcode,
@@ -236,13 +221,14 @@ async function addProduct() {
                 
                 await saveBasket();
                 renderProducts();
+                updateInterfaceState();
+                showStepInstructions();
                 showMessage('✅ Produto adicionado (nome não identificado)', 'success');
                 barcodeInput.value = '';
             } else {
                 barcodeInput.value = originalText;
             }
         } else {
-            // Produto encontrado
             userBasket.products.push({
                 product_barcode: barcode,
                 product_name: productName
@@ -250,6 +236,8 @@ async function addProduct() {
             
             await saveBasket();
             renderProducts();
+            updateInterfaceState();
+            showStepInstructions();
             showMessage('✅ Produto adicionado com sucesso!', 'success');
             barcodeInput.value = '';
         }
@@ -273,9 +261,10 @@ async function removeProduct(barcode) {
             });
             
             if (response.ok) {
-                // Atualiza a cesta local
                 userBasket.products = userBasket.products.filter(p => p.product_barcode !== barcode);
                 renderProducts();
+                updateInterfaceState();
+                showStepInstructions();
                 showMessage('✅ Produto removido com sucesso!', 'success');
             } else {
                 throw new Error('Erro ao remover produto');
@@ -303,6 +292,8 @@ async function clearBasket() {
             if (response.ok) {
                 userBasket.products = [];
                 renderProducts();
+                updateInterfaceState();
+                showStepInstructions();
                 showMessage('✅ Cesta limpa com sucesso!', 'success');
             } else {
                 throw new Error('Erro ao limpar cesta');
@@ -320,7 +311,6 @@ function openEditModal(product) {
     document.getElementById('edit-barcode').value = product.product_barcode;
     document.getElementById('edit-name').value = product.product_name || '';
     
-    // Armazena o código de barras original para referência
     modal.setAttribute('data-original-barcode', product.product_barcode);
     modal.style.display = 'flex';
 }
@@ -349,16 +339,13 @@ async function saveProductEdit() {
     }
     
     try {
-        // Remove o produto antigo
         userBasket.products = userBasket.products.filter(p => p.product_barcode !== originalBarcode);
         
-        // Busca novo nome se necessário
         let productName = newName;
         if (!productName) {
             productName = await getProductName(newBarcode);
         }
         
-        // Adiciona o produto atualizado
         userBasket.products.push({
             product_barcode: newBarcode,
             product_name: productName || `Produto ${newBarcode}`
@@ -366,6 +353,7 @@ async function saveProductEdit() {
         
         await saveBasket();
         renderProducts();
+        updateInterfaceState();
         closeEditModal();
         showMessage('✅ Produto atualizado com sucesso!', 'success');
         
@@ -375,12 +363,11 @@ async function saveProductEdit() {
     }
 }
 
-// Salva a cesta no servidor - CORRIGIDO (usando PATCH)
+// Salva a cesta no servidor
 async function saveBasket() {
     try {
         console.log('💾 Salvando cesta:', userBasket);
         
-        // CORREÇÃO: Use PATCH em vez de PUT
         const response = await authenticatedFetch('/api/basket/', {
             method: 'PATCH',
             headers: {
@@ -407,31 +394,6 @@ async function saveBasket() {
     }
 }
 
-// Exporta a cesta para JSON
-function exportBasket() {
-    if (userBasket.products.length === 0) {
-        showMessage('A cesta está vazia', 'warning');
-        return;
-    }
-    
-    const basketData = {
-        basket_name: userBasket.basket_name,
-        products: userBasket.products,
-        export_date: new Date().toISOString(),
-        total_products: userBasket.products.length
-    };
-    
-    const dataStr = JSON.stringify(basketData, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(dataBlob);
-    link.download = `cesta-basica-${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    
-    showMessage('✅ Cesta exportada com sucesso!', 'success');
-}
-
 // Renderiza os produtos
 function renderProducts() {
     const grid = document.getElementById('products-grid');
@@ -448,6 +410,9 @@ function renderProducts() {
                 <div class="icon"><i class="fas fa-shopping-basket"></i></div>
                 <h3>Sua cesta está vazia</h3>
                 <p>Adicione produtos usando o código de barras acima</p>
+                <div class="step-instruction">
+                    <p><strong>Passo 1 de 3:</strong> Adicione pelo menos 5 produtos</p>
+                </div>
             </div>
         `;
         return;
@@ -478,7 +443,24 @@ function renderProducts() {
         `;
         grid.appendChild(productCard);
     });
+    
+    // Adiciona instrução de progresso se ainda não tiver 5 produtos
+    if (userBasket.products.length < 5) {
+        const progressInfo = document.createElement('div');
+        progressInfo.className = 'progress-info';
+        progressInfo.innerHTML = `
+            <div class="step-instruction">
+                <p><strong>Progresso:</strong> ${userBasket.products.length}/5 produtos</p>
+                <p>Adicione mais ${5 - userBasket.products.length} produtos para desbloquear a comparação de preços</p>
+            </div>
+        `;
+        grid.appendChild(progressInfo);
+    }
 }
+
+// =============================================
+// FUNÇÕES DE MERCADOS (EXISTENTES - ATUALIZADAS)
+// =============================================
 
 // Carrega mercados
 async function loadMarkets() {
@@ -527,6 +509,8 @@ function renderMarketSelection() {
             toggleMarket(market.cnpj);
             marketCard.classList.toggle('selected');
             updateSelectedMarketsCount();
+            updateInterfaceState();
+            showStepInstructions();
         });
         
         container.appendChild(marketCard);
@@ -547,11 +531,15 @@ function toggleMarket(cnpj) {
 function selectAllMarkets() {
     allMarkets.forEach(market => selectedMarkets.add(market.cnpj));
     renderMarketSelection();
+    updateInterfaceState();
+    showStepInstructions();
 }
 
 function deselectAllMarkets() {
     selectedMarkets.clear();
     renderMarketSelection();
+    updateInterfaceState();
+    showStepInstructions();
 }
 
 function updateSelectedMarketsCount() {
@@ -576,15 +564,19 @@ function filterMarkets(searchTerm) {
     });
 }
 
+// =============================================
+// FUNÇÕES DE CÁLCULO E RESULTADOS (EXISTENTES)
+// =============================================
+
 // Calcula preços da cesta
 async function calculateBasket() {
-    if (userBasket.products.length === 0) {
-        alert('Adicione produtos à cesta antes de calcular');
+    if (userBasket.products.length < 5) {
+        showMessage('❌ Adicione pelo menos 5 produtos antes de calcular', 'warning');
         return;
     }
     
     if (selectedMarkets.size === 0) {
-        alert('Selecione pelo menos um mercado');
+        showMessage('❌ Selecione pelo menos um mercado', 'warning');
         return;
     }
     
@@ -620,7 +612,7 @@ async function calculateBasket() {
         alert('Erro de conexão. Verifique sua internet e tente novamente.');
     } finally {
         calculateBtn.disabled = false;
-        calculateBtn.innerHTML = '<i class="fas fa-calculator"></i> Calcular Melhores Preços';
+        calculateBtn.innerHTML = '<i class="fas fa-calculator"></i> Comparar Preços da Cesta';
     }
 }
 
@@ -712,7 +704,6 @@ function displayMixedBasket(mixedBasket) {
         </div>
     `;
     
-    // Mostra breakdown por mercado se houver economia e múltiplos mercados
     if (mixedBasket.economy_percent > 0 && breakdownContainer && marketBreakdown && Object.keys(mixedBasket.market_breakdown).length > 1) {
         breakdownContainer.style.display = 'block';
         marketBreakdown.innerHTML = Object.values(mixedBasket.market_breakdown).map(market => `
@@ -735,6 +726,75 @@ function displayMixedBasket(mixedBasket) {
         breakdownContainer.style.display = 'none';
     }
 }
+
+// =============================================
+// FUNÇÕES ADMIN (EXISTENTES)
+// =============================================
+
+// Carrega todas as cestas (apenas admin)
+async function loadAllBaskets() {
+    try {
+        const response = await authenticatedFetch('/api/basket/all');
+        if (response.ok) {
+            const allBaskets = await response.json();
+            renderAllBaskets(allBaskets);
+        } else {
+            console.error('Erro ao carregar todas as cestas');
+        }
+    } catch (error) {
+        console.error('Erro ao carregar todas as cestas:', error);
+    }
+}
+
+// Renderiza todas as cestas (admin)
+function renderAllBaskets(baskets) {
+    const adminSection = document.getElementById('admin-baskets-content');
+    if (!adminSection) return;
+
+    if (baskets.length === 0) {
+        adminSection.innerHTML = '<p>Nenhuma cesta encontrada.</p>';
+        return;
+    }
+
+    adminSection.innerHTML = `
+        <div class="admin-baskets">
+            <h3><i class="fas fa-users"></i> Todas as Cestas dos Usuários</h3>
+            <div class="baskets-grid">
+                ${baskets.map(basket => `
+                    <div class="basket-card">
+                        <div class="basket-header">
+                            <h4>${basket.basket_name}</h4>
+                            <div class="user-info">
+                                <span class="user-badge">${basket.user_name || 'Usuário'}</span>
+                                <span class="user-email">${basket.user_email}</span>
+                            </div>
+                        </div>
+                        <div class="basket-info">
+                            <p><strong>Produtos:</strong> ${basket.products.length}</p>
+                            <p><strong>Criada:</strong> ${new Date(basket.created_at).toLocaleString('pt-BR')}</p>
+                            <p><strong>Atualizada:</strong> ${new Date(basket.updated_at).toLocaleString('pt-BR')}</p>
+                        </div>
+                        <div class="basket-products">
+                            <h5>Produtos na Cesta:</h5>
+                            ${basket.products.slice(0, 5).map(product => `
+                                <div class="product-preview">
+                                    <span class="product-name">${product.product_name || product.product_barcode}</span>
+                                    <span class="product-barcode">${product.product_barcode}</span>
+                                </div>
+                            `).join('')}
+                            ${basket.products.length > 5 ? `<p class="more-products">... e mais ${basket.products.length - 5} produtos</p>` : ''}
+                            ${basket.products.length === 0 ? '<p class="empty-basket">Cesta vazia</p>' : ''}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+// =============================================
+// FUNÇÕES UTILITÁRIAS (EXISTENTES)
+// =============================================
 
 // Função para mostrar mensagens
 function showMessage(message, type = 'info') {
@@ -768,7 +828,35 @@ function showAuthRequired() {
     if (basketInterface) basketInterface.style.display = 'none';
 }
 
+// Exporta a cesta para JSON
+function exportBasket() {
+    if (userBasket.products.length === 0) {
+        showMessage('A cesta está vazia', 'warning');
+        return;
+    }
+    
+    const basketData = {
+        basket_name: userBasket.basket_name,
+        products: userBasket.products,
+        export_date: new Date().toISOString(),
+        total_products: userBasket.products.length
+    };
+    
+    const dataStr = JSON.stringify(basketData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(dataBlob);
+    link.download = `cesta-basica-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    
+    showMessage('✅ Cesta exportada com sucesso!', 'success');
+}
+
+// =============================================
 // INICIALIZAÇÃO
+// =============================================
+
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('🚀 Inicializando página da cesta...');
     
@@ -816,6 +904,10 @@ document.addEventListener('DOMContentLoaded', async function() {
                 loadUserBasket(),
                 loadMarkets()
             ]);
+            
+            // Inicializa a interface no estado correto
+            updateInterfaceState();
+            showStepInstructions();
             
             // Se for admin, carrega todas as cestas e mostra a seção
             if (isAdmin) {
