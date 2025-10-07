@@ -6641,4 +6641,101 @@ body.light-mode .modal-footer {
     }
 }
   
+/* ESTILOS ADICIONAIS PARA CORREÇÕES */
+
+.market-card.complete-basket {
+    border-left: 4px solid var(--success);
+    background: linear-gradient(135deg, var(--card-bg) 0%, rgba(34, 197, 94, 0.1) 100%);
+    box-shadow: 0 4px 15px rgba(34, 197, 94, 0.2);
+}
+
+.market-badge.complete {
+    background: var(--success);
+    color: white;
+}
+
+.market-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.market-stat {
+    text-align: center;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.market-stat .stat-value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.market-stat .stat-label {
+    display: block;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+}
+
+.section-divider td {
+    background: var(--bg-secondary) !important;
+    font-weight: 600;
+    padding: 1rem !important;
+    border-bottom: 2px solid var(--border-color);
+    font-size: 1.1rem;
+}
+
+.product-alias {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    margin-top: 0.25rem;
+}
+
+.barcode {
+    font-family: 'Courier New', monospace;
+    background: var(--bg-secondary);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    border: 1px solid var(--border-color);
+}
+
+/* Melhorar responsividade */
+@media (max-width: 768px) {
+    .market-stats-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .cards-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Animações para os cards */
+.market-card {
+    transition: all 0.3s ease;
+}
+
+.market-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+}
+
+/* Destaques para preços */
+.price-cheapest {
+    color: var(--success);
+    font-weight: 700;
+}
+
+.price-expensive {
+    color: var(--danger);
+    font-weight: 700;
+}
 
