@@ -1,9 +1,9 @@
-# basket_service.py
+# basket_service.py - VERSÃO FOCADA NAS FUNÇÕES ESSENCIAIS
 import logging
 import asyncio
 from datetime import datetime
-from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 # Modelos Pydantic para a cesta básica
@@ -23,10 +23,6 @@ class BasketUpdateRequest(BaseModel):
     basket_name: Optional[str] = None
     products: Optional[List[BasketProduct]] = None
 
-class BasketCalculationRequest(BaseModel):
-    basket_id: int
-    cnpjs: List[str]
-
 # Cria o roteador para a cesta básica
 basket_router = APIRouter(prefix="/api/basket", tags=["basket"])
 
@@ -34,17 +30,15 @@ basket_router = APIRouter(prefix="/api/basket", tags=["basket"])
 supabase = None
 supabase_admin = None
 get_current_user_dependency = None
-get_current_user_optional_dependency = None
 
-def setup_basket_routes(app, supabase_client, supabase_admin_client, get_current_user_dep, get_current_user_optional_dep):
+def setup_basket_routes(app, supabase_client, supabase_admin_client, get_current_user_dep):
     """
     Configura as rotas da cesta básica com as dependências do main.py
     """
-    global supabase, supabase_admin, get_current_user_dependency, get_current_user_optional_dependency
+    global supabase, supabase_admin, get_current_user_dependency
     supabase = supabase_client
     supabase_admin = supabase_admin_client
     get_current_user_dependency = get_current_user_dep
-    get_current_user_optional_dependency = get_current_user_optional_dep
     
     # Inclui o roteador no app principal
     app.include_router(basket_router)
@@ -58,12 +52,7 @@ async def get_current_user():
         )
     return await get_current_user_dependency()
 
-async def get_current_user_optional():
-    if get_current_user_optional_dependency is None:
-        return None
-    return await get_current_user_optional_dependency()
-
-# Endpoints da cesta básica
+# Endpoints da cesta básica - FUNÇÕES ESSENCIAIS
 @basket_router.get("/")
 async def get_user_basket(current_user: dict = Depends(get_current_user)):
     """
@@ -334,239 +323,3 @@ async def get_all_baskets(current_user: dict = Depends(get_current_user)):
     except Exception as e:
         logging.error(f"Erro ao buscar todas as cestas: {e}")
         raise HTTPException(status_code=500, detail="Erro ao carregar cestas")
-
-@basket_router.post("/calculate")
-async def calculate_basket_prices(
-    request: BasketCalculationRequest, 
-    current_user: dict = Depends(get_current_user)):
-    """
-    Calcula os preços da cesta nos mercados selecionados
-    """
-    try:
-        # Busca a cesta pelo ID
-        basket_response = await asyncio.to_thread(
-            lambda: supabase.table('user_baskets').select('*').eq('id', request.basket_id).execute()
-        )
-        
-        if not basket_response.data:
-            raise HTTPException(status_code=404, detail="Cesta não encontrada")
-        
-        basket = basket_response.data[0]
-        
-        # Verifica se a cesta pertence ao usuário (a menos que seja admin)
-        if current_user.role != 'admin' and basket['user_id'] != current_user.id:
-            raise HTTPException(status_code=403, detail="Acesso não autorizado a esta cesta")
-        
-        products = basket.get('products', [])
-        
-        if len(products) > 25:
-            raise HTTPException(status_code=400, detail="A cesta não pode ter mais de 25 produtos")
-        
-        if not products:
-            return {
-                "complete_basket_results": {},
-                "mixed_basket_results": {},
-                "best_complete_basket": None
-            }
-        
-        # Busca os preços mais recentes para cada produto nos mercados selecionados
-        barcodes = [product['product_barcode'] for product in products]
-        
-        # Primeiro, busca informações básicas dos produtos
-        products_info = {}
-        for barcode in barcodes:
-            product_response = await asyncio.to_thread(
-                lambda: supabase.table('produtos').select('nome_produto').eq('codigo_barras', barcode).limit(1).execute()
-            )
-            if product_response.data:
-                products_info[barcode] = product_response.data[0]['nome_produto']
-        
-        # Agora busca os preços
-        price_query = supabase.table('produtos').select(
-            'codigo_barras,nome_produto,preco_produto,cnpj_supermercado,nome_supermercado'
-        ).in_('codigo_barras', barcodes).in_('cnpj_supermercado', request.cnpjs)
-        
-        prices_response = await asyncio.to_thread(lambda: price_query.execute())
-        
-        if not prices_response.data:
-            return {
-                "complete_basket_results": {},
-                "mixed_basket_results": {},
-                "best_complete_basket": None
-            }
-        
-        # Organiza os preços por mercado e por produto
-        market_prices = {}
-        product_prices = {}
-        
-        for price in prices_response.data:
-            market_cnpj = price['cnpj_supermercado']
-            market_name = price['nome_supermercado']
-            barcode = price['codigo_barras']
-            product_price = float(price['preco_produto'])
-            
-            # Organiza por mercado
-            if market_cnpj not in market_prices:
-                market_prices[market_cnpj] = {
-                    'market_name': market_name,
-                    'products': {},
-                    'total': 0
-                }
-            
-            # Pega o menor preço para cada produto no mesmo mercado
-            if barcode not in market_prices[market_cnpj]['products'] or product_price < market_prices[market_cnpj]['products'][barcode]:
-                market_prices[market_cnpj]['products'][barcode] = product_price
-            
-            # Organiza por produto para a cesta mista
-            if barcode not in product_prices:
-                product_prices[barcode] = {}
-            
-            if market_cnpj not in product_prices[barcode] or product_price < product_prices[barcode][market_cnpj]:
-                product_prices[barcode][market_cnpj] = {
-                    'price': product_price,
-                    'market_name': market_name
-                }
-        
-        # Calcula totais para cada mercado (cesta completa)
-        complete_basket_results = {}
-        for market_cnpj, market_data in market_prices.items():
-            total = 0
-            market_products = []
-            
-            for product in products:
-                barcode = product['product_barcode']
-                if barcode in market_data['products']:
-                    price = market_data['products'][barcode]
-                    total += price
-                    market_products.append({
-                        'barcode': barcode,
-                        'name': products_info.get(barcode, 'Produto não encontrado'),
-                        'price': price,
-                        'found': True
-                    })
-                else:
-                    market_products.append({
-                        'barcode': barcode,
-                        'name': products_info.get(barcode, 'Produto não encontrado'),
-                        'price': 0,
-                        'found': False
-                    })
-            
-            complete_basket_results[market_cnpj] = {
-                'market_name': market_data['market_name'],
-                'total': round(total, 2),
-                'products': market_products,
-                'products_found': len([p for p in market_products if p['found']]),
-                'total_products': len(products)
-            }
-        
-        # Calcula a cesta mista (melhor preço de cada produto em qualquer mercado)
-        mixed_basket_results = {
-            'total': 0,
-            'products': [],
-            'market_breakdown': {}
-        }
-        
-        for product in products:
-            barcode = product['product_barcode']
-            if barcode in product_prices:
-                # Encontra o menor preço para este produto
-                best_price = float('inf')
-                best_market = None
-                best_market_name = None
-                
-                for market_cnpj, price_data in product_prices[barcode].items():
-                    if price_data['price'] < best_price:
-                        best_price = price_data['price']
-                        best_market = market_cnpj
-                        best_market_name = price_data['market_name']
-                
-                if best_price != float('inf'):
-                    mixed_basket_results['total'] += best_price
-                    product_info = {
-                        'barcode': barcode,
-                        'name': products_info.get(barcode, 'Produto não encontrado'),
-                        'price': best_price,
-                        'market_cnpj': best_market,
-                        'market_name': best_market_name,
-                        'found': True
-                    }
-                    mixed_basket_results['products'].append(product_info)
-                    
-                    # Adiciona ao breakdown por mercado
-                    if best_market not in mixed_basket_results['market_breakdown']:
-                        mixed_basket_results['market_breakdown'][best_market] = {
-                            'market_name': best_market_name,
-                            'products': [],
-                            'subtotal': 0
-                        }
-                    
-                    mixed_basket_results['market_breakdown'][best_market]['products'].append(product_info)
-                    mixed_basket_results['market_breakdown'][best_market]['subtotal'] += best_price
-                else:
-                    mixed_basket_results['products'].append({
-                        'barcode': barcode,
-                        'name': products_info.get(barcode, 'Produto não encontrado'),
-                        'price': 0,
-                        'market_cnpj': None,
-                        'market_name': 'Não encontrado',
-                        'found': False
-                    })
-            else:
-                mixed_basket_results['products'].append({
-                    'barcode': barcode,
-                    'name': products_info.get(barcode, 'Produto não identificado'),
-                    'price': 0,
-                    'market_cnpj': None,
-                    'market_name': 'Não encontrado',
-                    'found': False
-                })
-        
-        mixed_basket_results['total'] = round(mixed_basket_results['total'], 2)
-        
-        # Encontra a melhor cesta completa
-        best_complete = None
-        if complete_basket_results:
-            valid_markets = {k: v for k, v in complete_basket_results.items() if v['products_found'] > 0}
-            if valid_markets:
-                best_complete = min(valid_markets.values(), key=lambda x: x['total'])
-        
-        # Calcula economia percentual
-        if best_complete and mixed_basket_results['total'] > 0:
-            economy_percent = ((best_complete['total'] - mixed_basket_results['total']) / best_complete['total']) * 100
-            mixed_basket_results['economy_percent'] = round(economy_percent, 1)
-        else:
-            mixed_basket_results['economy_percent'] = 0
-        
-        return {
-            "complete_basket_results": complete_basket_results,
-            "mixed_basket_results": mixed_basket_results,
-            "best_complete_basket": best_complete
-        }
-        
-    except Exception as e:
-        logging.error(f"Erro ao calcular preços da cesta: {e}")
-        raise HTTPException(status_code=500, detail="Erro ao calcular preços da cesta")
-
-@basket_router.get("/debug/search")
-async def debug_search_product(barcode: str = Query(...)):
-    """
-    Endpoint de debug para verificar se a busca está funcionando
-    """
-    try:
-        # Busca direta na tabela produtos
-        response = await asyncio.to_thread(
-            lambda: supabase.table('produtos')
-            .select('codigo_barras, nome_produto')
-            .eq('codigo_barras', barcode)
-            .limit(5)
-            .execute()
-        )
-        
-        return {
-            "barcode": barcode,
-            "found": len(response.data) > 0,
-            "results": response.data
-        }
-    except Exception as e:
-        return {"error": str(e)}
