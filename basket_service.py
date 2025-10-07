@@ -299,7 +299,6 @@ async def clear_user_basket(current_user: dict = Depends(get_current_user)):
 async def calculate_basket_prices(
     request: BasketCalculationRequest, 
     current_user: dict = Depends(get_current_user)):
-):
     """
     Calcula os preços da cesta nos mercados selecionados
     """
