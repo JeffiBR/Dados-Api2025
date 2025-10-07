@@ -6940,6 +6940,9 @@ body.light-mode .modal-footer {
     }
 }
 
+
+
+    
 /* Efeito de brilho nos cards */
 .market-card::after {
     content: '';
@@ -7128,4 +7131,225 @@ body.light-mode .modal-footer {
     background: linear-gradient(135deg, #ef4444, #f87171);
     color: white;
     box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+/* Estilos para Modais - CORREÇÃO DE RESPONSIVIDADE */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    overflow: auto;
+}
+
+.modal-content {
+    background-color: var(--card-bg);
+    margin: 2% auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    position: relative;
+    max-width: 95%;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    background-color: var(--card-bg);
+    z-index: 10;
+}
+
+.modal-header h5 {
+    margin: 0;
+    flex: 1;
+}
+
+.close {
+    color: var(--text-muted);
+    font-size: 1.5rem;
+    font-weight: bold;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close:hover {
+    color: var(--text-color);
+    background-color: var(--hover-bg);
+    border-radius: 50%;
+}
+
+.modal-body {
+    padding: 1.5rem;
+    max-height: calc(90vh - 120px);
+    overflow-y: auto;
+}
+
+.modal-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    position: sticky;
+    bottom: 0;
+    background-color: var(--card-bg);
+}
+
+/* Responsividade para Mobile */
+@media (max-width: 768px) {
+    .modal-content {
+        margin: 0;
+        max-width: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+        height: 100vh;
+    }
+    
+    .modal-body {
+        max-height: calc(100vh - 120px);
+        padding: 1rem;
+    }
+    
+    .modal-header {
+        padding: 1rem;
+    }
+    
+    .modal-footer {
+        padding: 1rem;
+        flex-direction: column;
+    }
+    
+    .modal-footer .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Ajustes específicos para modais grandes em mobile */
+    .modal-content[style*="max-width: 800px"] {
+        max-width: 100% !important;
+        margin: 0 !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .modal-body {
+        padding: 0.75rem;
+    }
+    
+    .form-inline {
+        flex-direction: column;
+    }
+    
+    .form-inline .form-group {
+        margin-bottom: 0.5rem;
+        width: 100%;
+    }
+    
+    .form-inline .form-control {
+        width: 100%;
+    }
+}
+
+/* Melhorias para scroll no modal */
+.modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+    background: var(--border-color);
+    border-radius: 3px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background: var(--text-muted);
+    border-radius: 3px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-color);
+}
+
+/* Grid de supermercados responsivo */
+.supermarket-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+@media (max-width: 768px) {
+    .supermarket-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+}
+
+.market-card {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background-color: var(--card-bg);
+}
+
+.market-card:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.market-card.selected {
+    border-color: var(--success-color);
+    background-color: rgba(var(--success-color-rgb), 0.1);
+}
+
+/* Ajustes para formulários em modais mobile */
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    font-size: 1rem;
+}
+
+@media (max-width: 768px) {
+    .form-control {
+        padding: 0.875rem;
+        font-size: 16px; /* Prevenir zoom no iOS */
+    }
 }
