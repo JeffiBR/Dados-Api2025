@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -95,7 +94,22 @@
                     </div>
                 </div>
 
-                <main class="basket-container">
+                <!-- Seção de Login Necessário -->
+                <div id="login-section" class="card" style="display: none;">
+                    <div class="card-content">
+                        <div class="empty-state">
+                            <div class="icon"><i class="fas fa-lock"></i></div>
+                            <h3>Login Necessário</h3>
+                            <p>Você precisa estar logado para usar a cesta básica</p>
+                            <a href="/login.html" class="btn btn-primary">
+                                <i class="fas fa-sign-in-alt"></i> Fazer Login
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interface Principal da Cesta -->
+                <main class="basket-container" id="basket-interface" style="display: none;">
                     <!-- Seção de Gerenciamento da Cesta -->
                     <section class="card basket-section">
                         <div class="card-header">
@@ -133,20 +147,25 @@
                         </div>
                     </section>
 
-                    <!-- Seção de Seleção de Mercados -->
-                    <section class="card basket-section">
+                    <!-- Seção de Seleção de Mercados - INICIALMENTE OCULTA -->
+                    <section class="card basket-section" id="market-selection-section" style="display: none;">
                         <div class="card-header">
                             <h2><i class="fas fa-store"></i> Selecionar Mercados para Comparação</h2>
                         </div>
                         <div class="card-content">
+                            <div class="progress-alert" id="progress-alert" style="display: none;">
+                                <i class="fas fa-check-circle"></i>
+                                <span>✅ Cesta com 5+ produtos! Agora selecione os mercados.</span>
+                            </div>
+                            
                             <p>Selecione os mercados onde você deseja comparar os preços da sua cesta</p>
                             
-                            <!-- Filtro de mercados (estilo do style.css) -->
-                            <details class="market-filters" id="marketFilters">
+                            <!-- Filtro de mercados -->
+                            <details class="market-filters" id="marketFilters" open>
                                 <summary>
                                     <div class="summary-content">
                                         <i class="fas fa-store"></i>
-                                        <span>Mercados Selecionados</span>
+                                        <span>Mercados Disponíveis</span>
                                         <span class="selection-count" id="selectedMarketsCount">0</span>
                                     </div>
                                 </summary>
@@ -175,7 +194,7 @@
                             </details>
                             
                             <button onclick="calculateBasket()" class="btn btn-primary" id="calculate-btn" style="width: 100%; padding: 12px; margin-top: 15px;">
-                                <i class="fas fa-calculator"></i> Calcular Melhores Preços
+                                <i class="fas fa-calculator"></i> Comparar Preços da Cesta
                             </button>
                         </div>
                     </section>
@@ -221,7 +240,41 @@
                             </div>
                         </div>
                     </section>
+
+                    <!-- Seção Admin (apenas para administradores) -->
+                    <section class="card basket-section" id="admin-section" style="display: none;">
+                        <div class="card-header">
+                            <h2><i class="fas fa-users-cog"></i> Administração - Todas as Cestas</h2>
+                        </div>
+                        <div class="card-content">
+                            <div id="admin-baskets-content"></div>
+                        </div>
+                    </section>
                 </main>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Editar Produto -->
+    <div id="edit-product-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-edit"></i> Editar Produto</h3>
+                <button class="close-modal" onclick="closeEditModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="edit-barcode">Código de Barras:</label>
+                    <input type="text" id="edit-barcode" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label for="edit-name">Nome do Produto:</label>
+                    <input type="text" id="edit-name" class="form-input" placeholder="Opcional - será buscado automaticamente">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeEditModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="saveProductEdit()">Salvar Alterações</button>
             </div>
         </div>
     </div>
