@@ -98,6 +98,36 @@ async function loadBaskets() {
     }
 }
 
+// Adicione este código ao seu arquivo cesta.js ou cesta-comprar.js
+
+// Função para melhorar a experiência mobile nos modais
+function enhanceModalForMobile() {
+    const modals = document.querySelectorAll('.modal');
+    
+    modals.forEach(modal => {
+        // Prevenir que eventos passem para o conteúdo subjacente
+        modal.addEventListener('touchmove', function(e) {
+            e.stopPropagation();
+        }, { passive: false });
+        
+        // Fechar modal ao tocar no backdrop
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+    });
+}
+
+// Chamar a função quando o DOM estiver carregado
+document.addEventListener('DOMContentLoaded', function() {
+    enhanceModalForMobile();
+    
+    // Adicionar classe para identificar dispositivos touch
+    if ('ontouchstart' in window || navigator.maxTouchPoints) {
+        document.body.classList.add('touch-device');
+    }
+});
 /**
  * Renderiza os cards das cestas na tela.
  */
