@@ -1,7 +1,13 @@
 // cesta-comprar.js - Funcionalidade de compra de cesta básica por código de barras
+// Com interface idêntica ao compare.html
 
 let buyBasketModal;
 let marketDetailsModal;
+
+// Variáveis para controle de mercados
+let allMarkets = [];
+let filteredMarkets = [];
+let selectedMarkets = new Set();
 
 document.addEventListener('DOMContentLoaded', () => {
     // Inicializar modais
@@ -23,20 +29,170 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     // Event listener para o formulário de comparação
-    document.getElementById('compareBasketForm').addEventListener('submit', handleCompareBasket);
+    document.getElementById('btnCompareBasket').addEventListener('click', handleCompareBasket);
 });
+
+/**
+ * Abre o modal de compra com a interface de seleção de mercados
+ */
+function openBuyBasketModal(basketId, basketName) {
+    currentBasketId = parseInt(basketId);
+    const basket = allBaskets.find(b => b.id === currentBasketId);
+    
+    if (basket) {
+        currentBasketProducts = basket.produtos || [];
+        document.getElementById('buyBasketName').textContent = basketName;
+        
+        // Verificar se há produtos com código de barras
+        const productsWithBarcode = currentBasketProducts.filter(p => p.codigo_barras);
+        if (productsWithBarcode.length === 0) {
+            showNotification('Esta cesta não possui produtos com código de barras para busca.', 'warning');
+            return;
+        }
+        
+        // Inicializar a interface de mercados
+        initializeMarketsInterface();
+        buyBasketModal.style.display = 'block';
+    }
+}
+
+/**
+ * Inicializa a interface de seleção de mercados (igual ao compare.html)
+ */
+async function initializeMarketsInterface() {
+    // Elementos da interface
+    const supermarketGrid = document.getElementById('supermarketGrid');
+    const marketSearch = document.getElementById('marketSearch');
+    const clearMarketSearch = document.getElementById('clearMarketSearch');
+    const selectAllMarkets = document.getElementById('selectAllMarkets');
+    const deselectAllMarkets = document.getElementById('deselectAllMarkets');
+    const selectedMarketsCount = document.getElementById('selectedMarketsCount');
+    const btnCompareBasket = document.getElementById('btnCompareBasket');
+
+    // Limpar seleções anteriores
+    selectedMarkets.clear();
+    filteredMarkets = [];
+
+    try {
+        // Carregar lista de mercados
+        const response = await authenticatedFetch('/api/supermarkets/public');
+        if (!response.ok) throw new Error('Falha ao carregar mercados');
+        
+        allMarkets = await response.json();
+        renderMarketGrid(allMarkets);
+        filteredMarkets = [...allMarkets];
+        
+    } catch (error) {
+        console.error('Erro ao carregar mercados:', error);
+        showNotification('Erro ao carregar lista de mercados', 'error');
+        return;
+    }
+
+    // Configurar event listeners
+    function setupEventListeners() {
+        // Busca em mercados
+        marketSearch.addEventListener('input', debounce(filterMarkets, 300));
+        clearMarketSearch.addEventListener('click', clearMarketSearchFilter);
+        
+        // Seleção em massa
+        selectAllMarkets.addEventListener('click', selectAllFilteredMarkets);
+        deselectAllMarkets.addEventListener('click', clearMarketSelection);
+    }
+
+    function renderMarketGrid(markets) {
+        supermarketGrid.innerHTML = '';
+        
+        if (markets.length === 0) {
+            supermarketGrid.innerHTML = '<div class="empty-state">Nenhum mercado encontrado</div>';
+            return;
+        }
+
+        markets.forEach(market => {
+            const marketCard = document.createElement('div');
+            marketCard.className = `market-card ${selectedMarkets.has(market.cnpj) ? 'selected' : ''}`;
+            marketCard.innerHTML = `
+                <div class="market-info">
+                    <div class="market-name">${market.nome}</div>
+                    <div class="market-address">${market.endereco || 'Endereço não disponível'}</div>
+                </div>
+            `;
+            
+            marketCard.addEventListener('click', () => toggleMarketSelection(market.cnpj));
+            supermarketGrid.appendChild(marketCard);
+        });
+        
+        updateCompareButtonState();
+    }
+
+    function toggleMarketSelection(cnpj) {
+        if (selectedMarkets.has(cnpj)) {
+            selectedMarkets.delete(cnpj);
+        } else {
+            selectedMarkets.add(cnpj);
+        }
+        updateSelectionCount();
+        renderMarketGrid(filteredMarkets);
+    }
+
+    function updateSelectionCount() {
+        selectedMarketsCount.textContent = `${selectedMarkets.size} selecionados`;
+        updateCompareButtonState();
+    }
+
+    function updateCompareButtonState() {
+        const hasMarkets = selectedMarkets.size >= 1;
+        const hasProductsWithBarcode = currentBasketProducts.filter(p => p.codigo_barras).length > 0;
+        
+        btnCompareBasket.disabled = !(hasMarkets && hasProductsWithBarcode);
+    }
+
+    function filterMarkets() {
+        const searchTerm = marketSearch.value.toLowerCase().trim();
+        
+        if (!searchTerm) {
+            filteredMarkets = [...allMarkets];
+        } else {
+            filteredMarkets = allMarkets.filter(market => 
+                market.nome.toLowerCase().includes(searchTerm) ||
+                (market.endereco && market.endereco.toLowerCase().includes(searchTerm)) ||
+                market.cnpj.includes(searchTerm)
+            );
+        }
+        
+        renderMarketGrid(filteredMarkets);
+    }
+
+    function clearMarketSearchFilter() {
+        marketSearch.value = '';
+        filterMarkets();
+    }
+
+    function selectAllFilteredMarkets() {
+        filteredMarkets.forEach(market => selectedMarkets.add(market.cnpj));
+        updateSelectionCount();
+        renderMarketGrid(filteredMarkets);
+    }
+
+    function clearMarketSelection() {
+        selectedMarkets.clear();
+        updateSelectionCount();
+        renderMarketGrid(filteredMarkets);
+    }
+
+    // Inicializar
+    setupEventListeners();
+    updateSelectionCount();
+    updateCompareButtonState();
+}
 
 /**
  * Lida com a comparação de preços da cesta por código de barras
  */
-async function handleCompareBasket(event) {
-    event.preventDefault();
+async function handleCompareBasket() {
+    const selectedCnpjs = Array.from(selectedMarkets);
     
-    const selectedMarkets = Array.from(document.querySelectorAll('.market-checkbox:checked'))
-        .map(checkbox => checkbox.value);
-    
-    if (selectedMarkets.length === 0) {
-        showNotification('Selecione pelo menos um mercado para comparar.', 'warning');
+    if (selectedCnpjs.length === 0) {
+        showNotification('Selecione pelo menos um mercado para comparar', 'error');
         return;
     }
     
@@ -64,14 +220,15 @@ async function handleCompareBasket(event) {
     document.getElementById('realtimeResults').innerHTML = `
         <div class="loader-container">
             <div class="loader"></div>
-            <p>Buscando preços pelos códigos de barras em ${selectedMarkets.length} mercado(s), aguarde...</p>
+            <p>Buscando preços por código de barras em ${selectedCnpjs.length} mercado(s), aguarde...</p>
+            <p><small>Produtos com código de barras: ${productsWithBarcode.length}</small></p>
         </div>
     `;
     
     try {
         // Buscar preços por código de barras
-        const results = await searchBasketByBarcode(currentBasketProducts, selectedMarkets);
-        renderBasketComparison(results, selectedMarkets);
+        const results = await searchBasketByBarcode(productsWithBarcode, selectedCnpjs);
+        renderBasketComparison(results, selectedCnpjs, productsWithBarcode);
         
         showNotification('Comparação de preços concluída!', 'success');
         
@@ -100,19 +257,20 @@ async function searchBasketByBarcode(products, selectedMarkets) {
     for (const product of products) {
         if (product.codigo_barras) {
             try {
-                const productResults = await searchProductByBarcode(
+                const productResults = await fetchProductPrices(
                     product.codigo_barras, 
-                    product.nome_produto, 
                     selectedMarkets
                 );
                 
-                // Marcar o produto original para referência
-                productResults.forEach(result => {
-                    result.original_product_name = product.nome_produto;
-                    result.original_barcode = product.codigo_barras;
-                });
-                
-                allResults.push(...productResults);
+                if (productResults && productResults.length > 0) {
+                    // Adicionar informações do produto original
+                    productResults.forEach(result => {
+                        result.original_product_name = product.nome_produto;
+                        result.original_barcode = product.codigo_barras;
+                    });
+                    
+                    allResults.push(...productResults);
+                }
             } catch (error) {
                 console.error(`Erro ao buscar produto ${product.nome_produto}:`, error);
                 // Continuar com os outros produtos mesmo se um falhar
@@ -124,24 +282,37 @@ async function searchBasketByBarcode(products, selectedMarkets) {
 }
 
 /**
- * Busca um produto específico por código de barras
+ * Busca preços para um produto específico por código de barras
+ * (Função similar à do compare.js)
  */
-async function searchProductByBarcode(barcode, productName, markets) {
+async function fetchProductPrices(barcode, cnpjs) {
     try {
-        // Fazer busca usando a API existente de busca
-        const response = await authenticatedFetch(`/api/search?q=${encodeURIComponent(barcode)}&cnpjs=${markets.join(',')}`);
-        
+        const requestBody = { 
+            produto: barcode, 
+            cnpjs: cnpjs 
+        };
+
+        const response = await authenticatedFetch('/api/realtime-search', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+        });
+
         if (!response.ok) {
-            throw new Error(`Falha ao buscar produto por código de barras: ${barcode}`);
+            const error = await response.json();
+            throw new Error(error.detail || 'Erro na requisição');
         }
-        
+
         const data = await response.json();
-        
+        const results = data.results || [];
+
         // Filtrar apenas resultados que correspondem exatamente ao código de barras
-        const exactMatches = data.results.filter(item => 
+        const exactMatches = results.filter(item => 
             item.codigo_barras && item.codigo_barras.toString() === barcode.toString()
         );
-        
+
         return exactMatches;
         
     } catch (error) {
@@ -153,7 +324,7 @@ async function searchProductByBarcode(barcode, productName, markets) {
 /**
  * Renderiza os resultados da comparação da cesta
  */
-function renderBasketComparison(results, selectedMarkets) {
+function renderBasketComparison(results, selectedMarkets, productsWithBarcode) {
     const resultsElement = document.getElementById('realtimeResults');
     
     if (results.length === 0) {
@@ -176,7 +347,7 @@ function renderBasketComparison(results, selectedMarkets) {
     
     // Inicializar estruturas
     selectedMarkets.forEach(cnpj => {
-        const market = allSupermarkets.find(m => m.cnpj === cnpj);
+        const market = allMarkets.find(m => m.cnpj === cnpj);
         if (market) {
             resultsByMarket[market.nome] = [];
             marketTotals[market.nome] = 0;
@@ -196,9 +367,6 @@ function renderBasketComparison(results, selectedMarkets) {
             productsFoundByMarket[marketName].add(item.original_product_name);
         }
     });
-    
-    // Produtos com código de barras na cesta
-    const productsWithBarcode = currentBasketProducts.filter(p => p.codigo_barras);
     
     // 1. Resumo da Comparação
     const summaryHtml = `
@@ -316,7 +484,6 @@ function renderBasketComparison(results, selectedMarkets) {
     
     // Agrupar por produto original
     const productsWithPrices = {};
-    const productStats = {};
     
     // Coletar estatísticas por produto
     productsWithBarcode.forEach(product => {
@@ -425,4 +592,19 @@ function showMarketDetails(marketName, products, marketInfo) {
     detailsHtml += `</tbody></table>`;
     content.innerHTML = detailsHtml;
     marketDetailsModal.style.display = 'block';
+}
+
+/**
+ * Função utilitária para debounce
+ */
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
 }
