@@ -13,6 +13,221 @@
     <script src="auth.js"></script>
     <script src="user-menu.js"></script>
     <script src="theme.js"></script>
+    <style>
+        /* Estilos para o fluxo passo a passo */
+        .progress-alert {
+            background: var(--success-light);
+            border: 1px solid var(--success);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .progress-alert i {
+            color: var(--success);
+            font-size: 1.2em;
+        }
+
+        .step-instruction {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .step-instruction p {
+            margin: 5px 0;
+            color: var(--text-muted);
+        }
+
+        .progress-info {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 15px;
+        }
+
+        /* Estado desabilitado para o botão de calcular */
+        #calculate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        #calculate-btn:disabled:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Estilos para o botão de criar cesta */
+        #create-basket-section .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        #create-basket-section .empty-state .icon {
+            font-size: 3em;
+            color: var(--primary);
+            margin-bottom: 15px;
+        }
+
+        #create-basket-section .empty-state h3 {
+            margin-bottom: 10px;
+            color: var(--text-color);
+        }
+
+        #create-basket-section .empty-state p {
+            color: var(--text-muted);
+            margin-bottom: 20px;
+        }
+
+        /* Estados de loading e desabilitado */
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn:disabled:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Modal styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            flex: 1;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-muted);
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .modal-footer {
+            padding: 20px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--input-bg);
+            color: var(--text-color);
+        }
+
+        /* Flash messages */
+        .flash-message {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-width: 300px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .flash-message button {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        .flash-info {
+            background: var(--info);
+        }
+
+        .flash-success {
+            background: var(--success);
+        }
+
+        .flash-warning {
+            background: var(--warning);
+        }
+
+        .flash-error {
+            background: var(--error);
+        }
+
+        /* Melhorias na responsividade */
+        @media (max-width: 768px) {
+            .add-product-form {
+                flex-direction: column;
+            }
+            
+            .add-product-form .search-input-group {
+                margin-bottom: 10px;
+            }
+            
+            .flash-message {
+                min-width: auto;
+                left: 20px;
+                right: 20px;
+            }
+        }
+    </style>
 </head>
 <body class="theme-dark">
     <script>routeGuard('cesta');</script>
@@ -118,31 +333,46 @@
                         <div class="card-content">
                             <p>Adicione até 25 produtos por código de barras para calcular os melhores preços</p>
                             
-                            <div class="add-product-form">
-                                <div class="search-input-group">
-                                    <input type="text" id="product-barcode" placeholder="Digite o código de barras do produto" maxlength="20">
-                                    <button class="clear-search" onclick="document.getElementById('product-barcode').value = ''">
-                                        <i class="fas fa-times"></i>
+                            <!-- Botão para criar cesta se não existir -->
+                            <div id="create-basket-section" style="display: none;">
+                                <div class="empty-state">
+                                    <div class="icon"><i class="fas fa-shopping-basket"></i></div>
+                                    <h3>Cesta não encontrada</h3>
+                                    <p>Você precisa criar sua cesta básica para começar</p>
+                                    <button onclick="createUserBasket()" class="btn btn-primary">
+                                        <i class="fas fa-plus"></i> Criar Minha Cesta Básica
                                     </button>
                                 </div>
-                                <button onclick="addProduct()" class="btn btn-primary">
-                                    <i class="fas fa-plus"></i> Adicionar Produto
-                                </button>
                             </div>
-                            
-                            <div id="products-grid" class="product-grid">
-                                <div class="empty-state" id="empty-state">
-                                    <div class="icon"><i class="fas fa-shopping-basket"></i></div>
-                                    <h3>Sua cesta está vazia</h3>
-                                    <p>Adicione produtos usando o código de barras acima</p>
+
+                            <!-- Formulário de adição de produtos (inicialmente oculto) -->
+                            <div id="add-product-section" style="display: none;">
+                                <div class="add-product-form">
+                                    <div class="search-input-group">
+                                        <input type="text" id="product-barcode" placeholder="Digite o código de barras do produto" maxlength="20">
+                                        <button class="clear-search" onclick="document.getElementById('product-barcode').value = ''">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                    <button onclick="addProduct()" class="btn btn-primary">
+                                        <i class="fas fa-plus"></i> Adicionar Produto
+                                    </button>
                                 </div>
-                            </div>
-                            
-                            <div class="basket-info">
-                                <p><strong>Total de produtos:</strong> <span id="product-count">0</span>/25</p>
-                                <button onclick="clearBasket()" class="btn btn-secondary" style="margin-top: 10px;">
-                                    <i class="fas fa-trash"></i> Limpar Cesta
-                                </button>
+                                
+                                <div id="products-grid" class="product-grid">
+                                    <div class="empty-state" id="empty-state">
+                                        <div class="icon"><i class="fas fa-shopping-basket"></i></div>
+                                        <h3>Sua cesta está vazia</h3>
+                                        <p>Adicione produtos usando o código de barras acima</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="basket-info">
+                                    <p><strong>Total de produtos:</strong> <span id="product-count">0</span>/25</p>
+                                    <button onclick="clearBasket()" class="btn btn-secondary" style="margin-top: 10px;">
+                                        <i class="fas fa-trash"></i> Limpar Cesta
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </section>
