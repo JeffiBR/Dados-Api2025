@@ -79,7 +79,7 @@ async def get_user_basket(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="Erro ao carregar cesta")
 
 @basket_router.get("/all")
-async def get_all_baskets(current_user: dict = Depends(lambda: get_current_user())):
+async def get_all_baskets(current_user: dict = Depends(get_current_user)):
     """
     Retorna todas as cestas com informações dos usuários (apenas para administradores)
     """
@@ -120,7 +120,7 @@ async def get_all_baskets(current_user: dict = Depends(lambda: get_current_user(
         raise HTTPException(status_code=500, detail="Erro ao carregar cestas")
 
 @basket_router.post("/")
-async def create_user_basket(current_user: dict = Depends(lambda: get_current_user())):
+async def create_user_basket(current_user: dict = Depends(get_current_user)):
     """
     Cria uma nova cesta para o usuário
     """
@@ -157,7 +157,7 @@ async def create_user_basket(current_user: dict = Depends(lambda: get_current_us
 @basket_router.patch("/")
 async def update_user_basket(
     basket_update: BasketUpdateRequest, 
-    current_user: dict = Depends(lambda: get_current_user())
+    current_user: dict = Depends(get_current_user)):
 ):
     """
     Atualiza a cesta do usuário atual - USANDO PATCH
@@ -208,7 +208,7 @@ async def update_user_basket(
 @basket_router.delete("/product/{barcode}")
 async def remove_product_from_basket(
     barcode: str,
-    current_user: dict = Depends(lambda: get_current_user())
+    current_user: dict = Depends(get_current_user)):
 ):
     """
     Remove um produto específico da cesta do usuário
@@ -257,7 +257,7 @@ async def remove_product_from_basket(
         raise HTTPException(status_code=500, detail="Erro ao remover produto")
 
 @basket_router.delete("/clear")
-async def clear_user_basket(current_user: dict = Depends(lambda: get_current_user())):
+async def clear_user_basket(current_user: dict = Depends(get_current_user)):
     """
     Limpa todos os produtos da cesta do usuário
     """
@@ -298,7 +298,7 @@ async def clear_user_basket(current_user: dict = Depends(lambda: get_current_use
 @basket_router.post("/calculate")
 async def calculate_basket_prices(
     request: BasketCalculationRequest, 
-    current_user: dict = Depends(lambda: get_current_user())
+    current_user: dict = Depends(get_current_user)):
 ):
     """
     Calcula os preços da cesta nos mercados selecionados
