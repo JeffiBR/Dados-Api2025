@@ -1,4 +1,4 @@
-# main.py (completo e corrigido)
+# main.py (completo e corrigido com Cestas Básicas)
 import os
 import asyncio
 from datetime import date, timedelta, datetime
@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional
 import pandas as pd
-import collector_service
+import collector_service # Presume-se que este módulo exista e tenha 'consultar_produto'
 
 # --------------------------------------------------------------------------
 # --- 1. CONFIGURAÇÕES INICIAIS E VARIÁVEIS DE AMBIENTE ---
@@ -239,6 +239,28 @@ class CustomActionRequest(BaseModel):
     page: str
     details: Dict[str, Any] = Field(default_factory=dict)
     timestamp: str
+
+# NOVOS MODELOS PARA CESTA BÁSICA
+class CestaItem(BaseModel):
+    nome_produto: str = Field(..., max_length=150)
+    codigo_barras: Optional[str] = Field(None, max_length=50) # Código de barras é opcional
+
+class CestaCreate(BaseModel):
+    nome: str = Field(..., max_length=100)
+    # Produtos inicializados como vazios ou com até 25 itens
+    produtos: List[CestaItem] = Field(default_factory=list, max_items=25)
+
+class CestaUpdate(BaseModel):
+    nome: Optional[str] = Field(None, max_length=100)
+
+class CestaUpdateItem(BaseModel):
+    nome_produto: Optional[str] = Field(None, max_length=150)
+    codigo_barras: Optional[str] = Field(None, max_length=50)
+
+class Cesta(CestaCreate):
+    id: Optional[int] = None
+    user_id: str
+
 
 # --------------------------------------------------------------------------
 # --- 5. FUNÇÕES DE LOG CORRIGIDAS ---
@@ -1089,7 +1111,294 @@ async def get_dashboard_bargains(start_date: date, end_date: date, cnpjs: Option
         filtered_df = df[df['nome_produto'].str.contains(regex_pattern, case=False, na=False)]
     
     return filtered_df.to_dict(orient='records')
+
+# --------------------------------------------------------------------------
+# --- GERENCIAMENTO DE CESTAS BÁSICAS (NOVOS ENDPOINTS) ---
+# --------------------------------------------------------------------------
+
+BASKET_LIMIT_PER_USER = 3
+PRODUCT_LIMIT_PER_BASKET = 25
+
+# --- CRIAÇÃO DE CESTA ---
+@app.post("/api/baskets", response_model=Cesta, status_code=201)
+async def create_basket(
+    basket_data: CestaCreate,
+    current_user: UserProfile = Depends(require_page_access('baskets')) # Requer acesso à página 'baskets'
+):
+    # 1. Verificar limite de cestas do usuário
+    count_response = await asyncio.to_thread(
+        supabase.table('cestas_basicas').select('id', count='exact').eq('user_id', current_user.id).execute
+    )
+    current_baskets_count = count_response.count if count_response.count is not None else 0
+
+    if current_baskets_count >= BASKET_LIMIT_PER_USER:
+        raise HTTPException(status_code=403, detail=f"Limite de {BASKET_LIMIT_PER_USER} cestas básicas atingido.")
+
+    # 2. Preparar dados
+    new_basket = {
+        'user_id': current_user.id,
+        'nome': basket_data.nome,
+        'produtos': [item.dict() for item in basket_data.produtos]
+    }
+
+    # 3. Inserir
+    try:
+        resp = await asyncio.to_thread(
+            supabase.table('cestas_basicas').insert(new_basket).execute
+        )
+        return resp.data[0]
+    except Exception as e:
+        logging.error(f"Erro ao criar cesta: {e}")
+        raise HTTPException(status_code=500, detail="Erro interno ao criar a cesta básica.")
+
+# --- LISTAGEM DE CESTAS (ADMIN e USUÁRIO) ---
+@app.get("/api/baskets", response_model=List[Cesta])
+async def list_baskets(
+    current_user: UserProfile = Depends(require_page_access('baskets')),
+    user_id: Optional[str] = Query(None) # Opcional para admin filtrar
+):
+    query = supabase.table('cestas_basicas').select('*').order('id', desc=False)
+
+    # Lógica de Permissão
+    if current_user.role == 'admin':
+        # Admin pode filtrar por user_id ou ver todas
+        if user_id:
+            query = query.eq('user_id', user_id)
+    else:
+        # Usuário normal só pode ver as suas
+        query = query.eq('user_id', current_user.id)
+
+    resp = await asyncio.to_thread(query.execute)
+
+    # Mapeia para o modelo Pydantic
+    return [Cesta(**data) for data in resp.data]
+
+# --- ATUALIZAÇÃO DO NOME DA CESTA ---
+@app.put("/api/baskets/{basket_id}", response_model=Cesta)
+async def update_basket_name(
+    basket_id: int,
+    basket_data: CestaUpdate,
+    current_user: UserProfile = Depends(require_page_access('baskets'))
+):
+    # 1. Restrição: Usuário só pode editar a sua própria cesta.
+    # Usamos o user_id na query de update para garantir isso.
+    resp = await asyncio.to_thread(
+        supabase.table('cestas_basicas').update(basket_data.dict(exclude_none=True))
+                 .eq('id', basket_id)
+                 .eq('user_id', current_user.id)
+                 .execute
+    )
     
+    if not resp.data:
+        raise HTTPException(status_code=404, detail="Cesta não encontrada ou você não tem permissão para editar.")
+    
+    return resp.data[0]
+
+# --- ADICIONAR PRODUTO À CESTA ---
+@app.post("/api/baskets/{basket_id}/products", response_model=Cesta)
+async def add_product_to_basket(
+    basket_id: int,
+    product: CestaItem,
+    current_user: UserProfile = Depends(require_page_access('baskets'))
+):
+    # 1. Buscar a cesta para checar a permissão e o limite de produtos
+    basket_resp = await asyncio.to_thread(
+        supabase.table('cestas_basicas').select('user_id, produtos').eq('id', basket_id).single().execute
+    )
+    
+    basket_data = basket_resp.data
+    if not basket_data or basket_data['user_id'] != current_user.id:
+        raise HTTPException(status_code=404, detail="Cesta não encontrada ou você não tem permissão.")
+    
+    current_products = basket_data['produtos'] or []
+    
+    if len(current_products) >= PRODUCT_LIMIT_PER_BASKET:
+        raise HTTPException(status_code=403, detail=f"Limite de {PRODUCT_LIMIT_PER_BASKET} produtos por cesta atingido.")
+        
+    # 2. Adicionar o novo produto
+    new_product_list = current_products + [product.dict()]
+    
+    # 3. Atualizar no banco de dados
+    update_resp = await asyncio.to_thread(
+        supabase.table('cestas_basicas').update({'produtos': new_product_list}).eq('id', basket_id).execute
+    )
+    return update_resp.data[0]
+
+# --- EDITAR PRODUTO POR ÍNDICE ---
+@app.put("/api/baskets/{basket_id}/products/{product_index}", response_model=Cesta)
+async def edit_product_in_basket(
+    basket_id: int,
+    product_index: int,
+    product_update: CestaUpdateItem,
+    current_user: UserProfile = Depends(require_page_access('baskets'))
+):
+    # 1. Buscar a cesta para checar a permissão
+    basket_resp = await asyncio.to_thread(
+        supabase.table('cestas_basicas').select('user_id, produtos').eq('id', basket_id).single().execute
+    )
+    
+    basket_data = basket_resp.data
+    if not basket_data or basket_data['user_id'] != current_user.id:
+        raise HTTPException(status_code=404, detail="Cesta não encontrada ou você não tem permissão.")
+    
+    current_products = basket_data['produtos'] or []
+    
+    # 2. Validar índice
+    if not (0 <= product_index < len(current_products)):
+        raise HTTPException(status_code=400, detail="Índice de produto inválido.")
+        
+    # 3. Atualizar produto
+    product_to_update = current_products[product_index]
+    
+    if product_update.nome_produto is not None:
+        product_to_update['nome_produto'] = product_update.nome_produto
+    if product_update.codigo_barras is not None:
+        product_to_update['codigo_barras'] = product_update.codigo_barras
+        
+    current_products[product_index] = product_to_update
+    
+    # 4. Atualizar no banco
+    update_resp = await asyncio.to_thread(
+        supabase.table('cestas_basicas').update({'produtos': current_products}).eq('id', basket_id).execute
+    )
+    return update_resp.data[0]
+
+# --- REMOVER PRODUTO DA CESTA (por índice) ---
+@app.delete("/api/baskets/{basket_id}/products/{product_index}", response_model=Cesta)
+async def remove_product_from_basket(
+    basket_id: int,
+    product_index: int,
+    current_user: UserProfile = Depends(require_page_access('baskets'))
+):
+    basket_resp = await asyncio.to_thread(
+        supabase.table('cestas_basicas').select('user_id, produtos').eq('id', basket_id).single().execute
+    )
+    
+    basket_data = basket_resp.data
+    if not basket_data or basket_data['user_id'] != current_user.id:
+        raise HTTPException(status_code=404, detail="Cesta não encontrada ou você não tem permissão.")
+    
+    current_products = basket_data['produtos'] or []
+    
+    # 1. Validar índice
+    if not (0 <= product_index < len(current_products)):
+        raise HTTPException(status_code=400, detail="Índice de produto inválido.")
+        
+    # 2. Remover produto
+    new_product_list = [
+        item for i, item in enumerate(current_products) if i != product_index
+    ]
+    
+    # 3. Atualizar no banco
+    update_resp = await asyncio.to_thread(
+        supabase.table('cestas_basicas').update({'produtos': new_product_list}).eq('id', basket_id).execute
+    )
+    return update_resp.data[0]
+
+# --- LIMPAR TODOS OS PRODUTOS DA CESTA ---
+@app.delete("/api/baskets/{basket_id}/products", response_model=Cesta)
+async def clear_basket_products(
+    basket_id: int,
+    current_user: UserProfile = Depends(require_page_access('baskets'))
+):
+    # 1. Verificar permissão
+    basket_resp = await asyncio.to_thread(
+        supabase.table('cestas_basicas').select('user_id').eq('id', basket_id).single().execute
+    )
+    
+    if not basket_resp.data or basket_resp.data['user_id'] != current_user.id:
+        raise HTTPException(status_code=404, detail="Cesta não encontrada ou você não tem permissão.")
+    
+    # 2. Limpar a lista de produtos (setar como array vazio)
+    update_resp = await asyncio.to_thread(
+        supabase.table('cestas_basicas').update({'produtos': []}).eq('id', basket_id).execute
+    )
+    return update_resp.data[0]
+
+# --- EXCLUSÃO DE CESTA ---
+@app.delete("/api/baskets/{basket_id}", status_code=204)
+async def delete_basket(
+    basket_id: int,
+    current_user: UserProfile = Depends(require_page_access('baskets'))
+):
+    # Usuário só pode excluir a sua própria cesta
+    resp = await asyncio.to_thread(
+        lambda: supabase.table('cestas_basicas').delete()
+                        .eq('id', basket_id)
+                        .eq('user_id', current_user.id)
+                        .execute()
+    )
+    if not resp.data:
+        raise HTTPException(status_code=404, detail="Cesta não encontrada ou você não tem permissão para excluir.")
+    return
+
+# --- Endpoint para obter preços em tempo real dos produtos da cesta ---
+@app.post("/api/baskets/{basket_id}/realtime-prices")
+async def get_basket_realtime_prices(
+    basket_id: int,
+    cnpjs: List[str] = Query(..., description="Lista de CNPJs dos mercados para pesquisa."),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+    current_user: UserProfile = Depends(require_page_access('baskets'))
+):
+    # 1. Obter a cesta e verificar permissão
+    basket_resp = await asyncio.to_thread(
+        supabase.table('cestas_basicas').select('user_id, nome, produtos').eq('id', basket_id).single().execute
+    )
+    
+    basket_data = basket_resp.data
+    # Admin pode ver, então a checagem é: não encontrado OU user_id diferente E não é admin.
+    if not basket_data or (basket_data['user_id'] != current_user.id and current_user.role != 'admin'):
+        raise HTTPException(status_code=404, detail="Cesta não encontrada ou você não tem permissão.")
+
+    products_to_search = basket_data['produtos'] or []
+    if not products_to_search:
+        return {"results": [], "message": "Nenhum produto na cesta para buscar."}
+
+    # 2. Obter mapa de nome/cnpj dos mercados (reutiliza lógica)
+    resp_markets = await asyncio.to_thread(
+        supabase.table('supermercados').select('cnpj, nome').in_('cnpj', cnpjs).execute
+    )
+    mercados_map = {m['cnpj']: m['nome'] for m in resp_markets.data}
+    
+    # 3. Criar e executar as tarefas de busca em tempo real
+    all_tasks = []
+    
+    for product in products_to_search:
+        if not product.get('nome_produto'):
+            continue 
+            
+        product_tasks = [
+            # Assumindo que 'collector_service.consultar_produto' está disponível
+            # e segue o padrão de argumentos esperado
+            collector_service.consultar_produto(
+                product['nome_produto'], 
+                {"cnpj": cnpj, "nome": mercados_map.get(cnpj, cnpj)}, 
+                datetime.now().isoformat(), 
+                ECONOMIZA_ALAGOAS_TOKEN, 
+                -1 
+            ) for cnpj in cnpjs
+        ]
+        all_tasks.extend(product_tasks)
+        
+    if not all_tasks:
+        return {"results": [], "message": "Nenhum produto válido encontrado para busca."}
+        
+    resultados_por_mercado = await asyncio.gather(*all_tasks, return_exceptions=True)
+    resultados_finais = []
+    
+    for resultado in resultados_por_mercado:
+        if isinstance(resultado, Exception):
+            logging.error(f"Falha na busca em tempo real de cesta: {resultado}")
+        elif resultado:
+            resultados_finais.extend(resultado)
+            
+    # Registrar log de busca
+    basket_name = basket_data.get('nome', f"Cesta #{basket_id}")
+    background_tasks.add_task(log_search, f"[Cesta: {basket_name}]", 'realtime', cnpjs, len(resultados_finais), current_user)
+    
+    # Ordenar por nome do produto e depois por preço
+    return {"results": sorted(resultados_finais, key=lambda x: (x.get('nome_produto_normalizado', ''), x.get('preco_produto', float('inf'))))}
+
 # --- Servir o Frontend ---
 app.mount("/", StaticFiles(directory="web", html=True), name="static")
 
@@ -1100,4 +1409,3 @@ app.mount("/", StaticFiles(directory="web", html=True), name="static")
 @app.get("/")
 def read_root():
     return {"message": "Bem-vindo à API de Preços AL - Versão 3.1.2"}
-
