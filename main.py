@@ -1145,3 +1145,4 @@ app.mount("/", StaticFiles(directory="web", html=True), name="static")
 @app.get("/")
 def read_root():
     return {"message": "Bem-vindo à API de Preços AL - Versão 3.1.2"}
+
