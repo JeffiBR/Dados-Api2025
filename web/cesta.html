@@ -14,112 +14,6 @@
     <script src="user-menu.js"></script>
     <script src="theme.js"></script>
     <style>
-        .progress-alert {
-            background: var(--success-light);
-            border: 1px solid var(--success);
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .progress-alert i {
-            color: var(--success);
-            font-size: 1.2em;
-        }
-
-        .step-instruction {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 12px;
-            margin-top: 15px;
-            text-align: center;
-        }
-
-        .step-instruction p {
-            margin: 5px 0;
-            color: var(--text-muted);
-        }
-
-        #calculate-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        #calculate-btn:disabled:hover {
-            transform: none;
-            box-shadow: none;
-        }
-
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        .btn:disabled:hover {
-            transform: none;
-            box-shadow: none;
-        }
-
-        .flash-message {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 12px 20px;
-            border-radius: 8px;
-            color: white;
-            z-index: 1001;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            min-width: 300px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-
-        .flash-message button {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 18px;
-            cursor: pointer;
-            margin-left: 10px;
-        }
-
-        .flash-info {
-            background: var(--info);
-        }
-
-        .flash-success {
-            background: var(--success);
-        }
-
-        .flash-warning {
-            background: var(--warning);
-        }
-
-        .flash-error {
-            background: var(--error);
-        }
-
-        @media (max-width: 768px) {
-            .add-product-form {
-                flex-direction: column;
-            }
-            
-            .add-product-form .search-input-group {
-                margin-bottom: 10px;
-            }
-            
-            .flash-message {
-                min-width: auto;
-                left: 20px;
-                right: 20px;
-            }
-        }
-
         .product-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -222,12 +116,114 @@
             padding-top: 15px;
             border-top: 1px solid var(--border-color);
         }
+
+        .flash-message {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-width: 300px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .flash-message button {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        .flash-info { background: var(--info); }
+        .flash-success { background: var(--success); }
+        .flash-warning { background: var(--warning); }
+        .flash-error { background: var(--error); }
+
+        .admin-baskets {
+            margin-top: 30px;
+        }
+
+        .baskets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .basket-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .basket-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .user-info {
+            text-align: right;
+        }
+
+        .user-badge {
+            background: var(--primary);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+        }
+
+        .user-email {
+            font-size: 0.8em;
+            color: var(--text-muted);
+            display: block;
+            margin-top: 4px;
+        }
+
+        .basket-products {
+            margin-top: 15px;
+        }
+
+        .product-preview {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .product-preview:last-child {
+            border-bottom: none;
+        }
+
+        .more-products {
+            text-align: center;
+            color: var(--text-muted);
+            font-style: italic;
+            margin-top: 10px;
+        }
+
+        .empty-basket {
+            text-align: center;
+            color: var(--text-muted);
+            font-style: italic;
+        }
     </style>
 </head>
 <body class="theme-dark">
     <script>routeGuard('cesta');</script>
 
     <div class="app-container">
+        <!-- Sidebar (mantido do seu código original) -->
         <aside class="sidebar">
             <div class="sidebar-header">
                 <i class="fas fa-bolt"></i>
@@ -299,7 +295,7 @@
                 <div class="page-header">
                     <div class="page-title">
                         <h1><i class="fas fa-shopping-basket"></i> Cesta Básica</h1>
-                        <p>Monte sua cesta básica pessoal e gerencie seus produtos</p>
+                        <p>Monte e gerencie sua cesta básica pessoal</p>
                     </div>
                     <div class="page-actions">
                         <button id="create-basket-btn" class="btn btn-secondary">
@@ -324,7 +320,7 @@
 
                 <!-- Interface Principal da Cesta -->
                 <main class="basket-container" id="basket-interface" style="display: none;">
-                    <!-- Seção de Gerenciamento da Cesta -->
+                    <!-- Seção de Gerenciamento da Cesta do Usuário -->
                     <section class="card basket-section">
                         <div class="card-header">
                             <h2><i class="fas fa-box"></i> Minha Cesta Básica</h2>
@@ -333,65 +329,43 @@
                             <p>Adicione até 25 produtos por código de barras. A cesta é criada automaticamente para você.</p>
                             
                             <!-- Formulário de adição de produtos -->
-                            <div id="add-product-section" style="display: none;">
-                                <div class="add-product-form">
-                                    <div class="search-input-group">
-                                        <input type="text" id="product-barcode" placeholder="Digite o código de barras do produto" maxlength="20">
-                                        <button class="clear-search" onclick="document.getElementById('product-barcode').value = ''">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </div>
-                                    <button onclick="addProduct()" class="btn btn-primary">
-                                        <i class="fas fa-plus"></i> Adicionar Produto
+                            <div class="add-product-form">
+                                <div class="search-input-group">
+                                    <input type="text" id="product-barcode" placeholder="Digite o código de barras do produto" maxlength="20">
+                                    <button class="clear-search" onclick="document.getElementById('product-barcode').value = ''">
+                                        <i class="fas fa-times"></i>
                                     </button>
                                 </div>
-                                
-                                <div id="products-grid" class="product-grid">
-                                    <div class="empty-state">
-                                        <div class="icon"><i class="fas fa-shopping-basket"></i></div>
-                                        <h3>Sua cesta está vazia</h3>
-                                        <p>Adicione produtos usando o código de barras acima</p>
-                                    </div>
+                                <button onclick="addProduct()" class="btn btn-primary">
+                                    <i class="fas fa-plus"></i> Adicionar Produto
+                                </button>
+                            </div>
+                            
+                            <div id="products-grid" class="product-grid">
+                                <div class="empty-state">
+                                    <div class="icon"><i class="fas fa-shopping-basket"></i></div>
+                                    <h3>Sua cesta está vazia</h3>
+                                    <p>Adicione produtos usando o código de barras acima</p>
                                 </div>
-                                
-                                <div class="basket-info">
-                                    <p><strong>Total de produtos:</strong> <span id="product-count">0</span>/25</p>
-                                    <button onclick="clearBasket()" class="btn btn-secondary">
-                                        <i class="fas fa-trash"></i> Limpar Cesta
-                                    </button>
-                                </div>
+                            </div>
+                            
+                            <div class="basket-info">
+                                <p><strong>Total de produtos:</strong> <span id="product-count">0</span>/25</p>
+                                <button onclick="clearBasket()" class="btn btn-secondary">
+                                    <i class="fas fa-trash"></i> Limpar Cesta
+                                </button>
                             </div>
                         </div>
                     </section>
 
-                    <!-- Seção de Instruções -->
-                    <section class="card basket-section">
+                    <!-- Seção Admin (apenas para administradores) -->
+                    <section class="card basket-section" id="admin-section" style="display: none;">
                         <div class="card-header">
-                            <h2><i class="fas fa-info-circle"></i> Como Usar</h2>
+                            <h2><i class="fas fa-users-cog"></i> Administração - Todas as Cestas</h2>
                         </div>
                         <div class="card-content">
-                            <div class="instructions">
-                                <div class="instruction-step">
-                                    <div class="step-number">1</div>
-                                    <div class="step-content">
-                                        <h4>Adicione Produtos</h4>
-                                        <p>Digite o código de barras do produto e clique em "Adicionar Produto". Se o produto não for encontrado automaticamente, você pode digitar o nome manualmente.</p>
-                                    </div>
-                                </div>
-                                <div class="instruction-step">
-                                    <div class="step-number">2</div>
-                                    <div class="step-content">
-                                        <h4>Gerencie sua Cesta</h4>
-                                        <p>Use os botões de edição ✏️ para alterar nomes de produtos ou ❌ para remover itens da cesta.</p>
-                                    </div>
-                                </div>
-                                <div class="instruction-step">
-                                    <div class="step-number">3</div>
-                                    <div class="step-content">
-                                        <h4>Crie Novas Cestas</h4>
-                                        <p>Use o botão "Nova Cesta" para começar uma cesta do zero (isso apagará a cesta atual).</p>
-                                    </div>
-                                </div>
+                            <div id="admin-baskets-content">
+                                <div class="loading">Carregando todas as cestas...</div>
                             </div>
                         </div>
                     </section>
@@ -401,7 +375,6 @@
     </div>
     
     <script src="mobile-menu.js"></script>
-    <script src="user-activity-monitor.js"></script>
     <script src="cesta.js"></script>
 </body>
 </html>
