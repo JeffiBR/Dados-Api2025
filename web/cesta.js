@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         createBasketModal.style.display = 'block';
     });
     
-    // Usa delegação de evento para botões de Gerenciar/Excluir nos cards
+    // Usa delegação de evento para botões de Gerenciar/Excluir/Comprar nos cards
     document.getElementById('basketsList').addEventListener('click', handleBasketActions);
     
     // Fechar modais ao clicar no X
@@ -118,6 +118,8 @@ function renderBaskets() {
 
     allBaskets.forEach(basket => {
         const productCount = (basket.produtos || []).length;
+        const productsWithBarcode = (basket.produtos || []).filter(p => p.codigo_barras).length;
+        
         const cardHtml = `
             <div class="product-card-v2">
                 <div class="card-v2-header">
@@ -139,13 +141,16 @@ function renderBaskets() {
                         </div>
                         <div class="detail-v2-text">
                             <div class="detail-v2-title">${productCount} de 25 produtos</div>
-                            <div class="detail-v2-subtitle">Limite da cesta</div>
+                            <div class="detail-v2-subtitle">${productsWithBarcode} com código de barras</div>
                         </div>
                     </div>
                 </div>
                 <div class="card-v2-actions">
                     <button class="btn btn-outline btn-manage-products" data-basket-id="${basket.id}" data-basket-name="${basket.nome}">
                         <i class="fas fa-edit"></i> Gerenciar Produtos
+                    </button>
+                    <button class="btn btn-success btn-buy-basket" data-basket-id="${basket.id}" data-basket-name="${basket.nome}">
+                        <i class="fas fa-shopping-cart"></i> Comprar
                     </button>
                     <button class="btn danger btn-delete-basket" data-basket-id="${basket.id}" data-basket-name="${basket.nome}">
                         <i class="fas fa-trash"></i> Excluir
@@ -214,7 +219,7 @@ async function handleCreateBasket(event) {
 }
 
 /**
- * Lida com as ações de Gerenciar Produtos e Excluir Cesta.
+ * Lida com as ações de Gerenciar Produtos, Comprar e Excluir Cesta.
  */
 async function handleBasketActions(event) {
     const target = event.target.closest('button');
@@ -237,6 +242,26 @@ async function handleBasketActions(event) {
         }
         
     } 
+    // Comprar Cesta
+    else if (target.classList.contains('btn-buy-basket')) {
+        currentBasketId = parseInt(basketId);
+        const basket = allBaskets.find(b => b.id === currentBasketId);
+        if (basket) {
+            currentBasketProducts = basket.produtos || [];
+            document.getElementById('buyBasketName').textContent = basketName;
+            document.getElementById('selectedMarketsCount').textContent = '0 mercados selecionados';
+            
+            // Verificar se há produtos com código de barras
+            const productsWithBarcode = currentBasketProducts.filter(p => p.codigo_barras);
+            if (productsWithBarcode.length === 0) {
+                showNotification('Esta cesta não possui produtos com código de barras para busca.', 'warning');
+                return;
+            }
+            
+            renderMarketsList();
+            buyBasketModal.style.display = 'block';
+        }
+    }
     // Excluir Cesta
     else if (target.classList.contains('btn-delete-basket')) {
         if (confirm(`Tem certeza que deseja excluir a cesta "${basketName || basketId}"? Esta ação não pode ser desfeita.`)) {
@@ -294,11 +319,15 @@ function renderProductsList() {
     }
 
     currentBasketProducts.forEach((product, index) => {
+        const hasBarcode = !!product.codigo_barras;
         const itemHtml = `
             <li class="list-group-item">
                 <div class="product-item">
                     <div class="product-info">
-                        <div class="product-name">${index + 1}. ${product.nome_produto}</div>
+                        <div class="product-name">
+                            ${index + 1}. ${product.nome_produto}
+                            ${hasBarcode ? '<i class="fas fa-barcode text-success" title="Possui código de barras"></i>' : '<i class="fas fa-exclamation-triangle text-warning" title="Sem código de barras"></i>'}
+                        </div>
                         <div class="product-barcode">${product.codigo_barras || 'Sem código de barras'}</div>
                     </div>
                     <div class="product-actions">
@@ -726,6 +755,53 @@ function renderRealtimeResults(results) {
     detailHtml += `</tbody></table></div>`;
     
     resultsElement.innerHTML = summaryHtml + comparisonHtml + detailHtml;
+}
+
+/**
+ * Renderiza a lista de mercados com checkboxes
+ */
+function renderMarketsList() {
+    const marketsList = document.getElementById('marketsCheckboxList');
+    marketsList.innerHTML = '';
+    
+    if (allSupermarkets.length === 0) {
+        marketsList.innerHTML = `
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                Nenhum mercado cadastrado no sistema.
+            </div>
+        `;
+        return;
+    }
+    
+    allSupermarkets.forEach(market => {
+        const marketHtml = `
+            <div class="checkbox-item">
+                <input type="checkbox" id="market-${market.cnpj}" value="${market.cnpj}" class="market-checkbox">
+                <label for="market-${market.cnpj}">
+                    <strong>${market.nome}</strong>
+                    ${market.endereco ? `<br><small class="text-muted">${market.endereco}</small>` : ''}
+                </label>
+            </div>
+        `;
+        marketsList.innerHTML += marketHtml;
+    });
+    
+    // Adicionar listener para atualizar contador
+    marketsList.querySelectorAll('.market-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', updateSelectedMarketsCount);
+    });
+    
+    updateSelectedMarketsCount();
+}
+
+/**
+ * Atualiza o contador de mercados selecionados
+ */
+function updateSelectedMarketsCount() {
+    const selectedCount = document.querySelectorAll('.market-checkbox:checked').length;
+    document.getElementById('selectedMarketsCount').textContent = 
+        `${selectedCount} mercado(s) selecionado(s)`;
 }
 
 /**
