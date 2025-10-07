@@ -192,36 +192,69 @@
     </div>
 
     <!-- Modal de compra de cesta -->
-    <div id="buyBasketModal" class="modal">
-        <div class="modal-content" style="max-width: 700px;">
-            <div class="modal-header">
-                <h5>Comprar Cesta: <span id="buyBasketName"></span></h5>
-                <span class="close">&times;</span>
+<div id="buyBasketModal" class="modal">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+            <h5>Comprar Cesta: <span id="buyBasketName"></span></h5>
+            <span class="close">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                Selecione os mercados onde deseja comparar os preços da cesta básica.
+                <strong>O sistema buscará apenas pelos códigos de barras</strong> dos produtos cadastrados.
             </div>
-            <div class="modal-body">
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle"></i>
-                    Selecione os mercados onde deseja comparar os preços da cesta básica.
-                    <strong>O sistema buscará apenas pelos códigos de barras</strong> dos produtos cadastrados.
+            
+            <div class="card">
+                <div class="card-header">
+                    <h3>Supermercados para Comparação</h3>
                 </div>
-                
-                <form id="compareBasketForm">
-                    <div class="form-section">
-                        <h6>Mercados Disponíveis <small id="selectedMarketsCount">0 mercados selecionados</small></h6>
-                        <div id="marketsCheckboxList" class="checkbox-list">
-                            <!-- Lista de mercados será renderizada aqui -->
+                <div class="card-content">
+                    <details class="market-filters" open>
+                        <summary>
+                            <div class="summary-content">
+                                <i class="fas fa-store"></i>
+                                <span>Selecionar Supermercados</span>
+                                <span class="selection-count" id="selectedMarketsCount">0 selecionados</span>
+                            </div>
+                        </summary>
+                        <div class="filters-container">
+                            <div class="market-search-controls">
+                                <div class="search-box">
+                                    <i class="fas fa-search"></i>
+                                    <input type="text" id="marketSearch" placeholder="Buscar supermercados...">
+                                    <button class="clear-btn" id="clearMarketSearch">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <div class="selection-actions">
+                                    <button class="btn small outline" id="selectAllMarkets">
+                                        <i class="fas fa-check-double"></i>
+                                        Selecionar Todos
+                                    </button>
+                                    <button class="btn small outline" id="deselectAllMarkets">
+                                        <i class="fas fa-times"></i>
+                                        Limpar Seleção
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="supermarket-grid" id="supermarketGrid">
+                                <!-- Grid de supermercados será preenchido via JavaScript -->
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="modal-footer">
-                        <button type="submit" class="btn btn-success" id="btnCompareBasket">
-                            <i class="fas fa-shopping-cart"></i> Comparar Cesta Básica
+                    </details>
+
+                    <div class="form-actions">
+                        <button id="btnCompareBasket" class="btn btn-success" disabled>
+                            <i class="fas fa-shopping-cart"></i>
+                            Comparar Cesta Básica
                         </button>
                     </div>
-                </form>
+                </div>
             </div>
         </div>
     </div>
+</div>
 
     <!-- Modal de detalhes do mercado -->
     <div id="marketDetailsModal" class="modal">
