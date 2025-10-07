@@ -2,7 +2,7 @@
 import logging
 import asyncio
 from datetime import datetime
-from typing import List, Optional, Dict, Any, Callable
+from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
@@ -76,24 +76,56 @@ async def get_user_basket(current_user: dict = Depends(get_configured_current_us
         response = await asyncio.to_thread(
             lambda: supabase.table('user_baskets').select('*').eq('user_id', current_user.id).execute()
         )
+        
         if response.data:
             return response.data[0]  # Retorna a primeira cesta do usuário
         else:
-            # Cria uma cesta vazia se não existir
-            new_basket = {
-                'user_id': current_user.id,
-                'basket_name': 'Minha Cesta',
-                'products': [],
-                'created_at': datetime.now().isoformat(),
-                'updated_at': datetime.now().isoformat()
-            }
-            create_response = await asyncio.to_thread(
-                lambda: supabase.table('user_baskets').insert(new_basket).execute()
-            )
-            return create_response.data[0]
+            raise HTTPException(status_code=404, detail="Cesta não encontrada")
+            
     except Exception as e:
         logging.error(f"Erro ao buscar cesta do usuário: {e}")
         raise HTTPException(status_code=500, detail="Erro ao carregar cesta")
+
+@basket_router.post("/")
+async def create_user_basket(current_user: dict = Depends(get_configured_current_user)):
+    """
+    Cria uma nova cesta para o usuário
+    """
+    try:
+        # Verifica se já existe uma cesta
+        existing_response = await asyncio.to_thread(
+            lambda: supabase.table('user_baskets')
+            .select('*')
+            .eq('user_id', current_user.id)
+            .execute()
+        )
+        
+        if existing_response.data:
+            return existing_response.data[0]
+        
+        # Cria nova cesta
+        new_basket = {
+            'user_id': current_user.id,
+            'basket_name': 'Minha Cesta',
+            'products': [],
+            'created_at': datetime.now().isoformat(),
+            'updated_at': datetime.now().isoformat()
+        }
+        
+        create_response = await asyncio.to_thread(
+            lambda: supabase.table('user_baskets').insert(new_basket).execute()
+        )
+        
+        if create_response.data:
+            return create_response.data[0]
+        else:
+            raise HTTPException(status_code=500, detail="Erro ao criar cesta")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Erro ao criar cesta: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao criar cesta")
 
 @basket_router.get("/all")
 async def get_all_baskets(current_user: dict = Depends(get_configured_current_user)):
@@ -135,41 +167,6 @@ async def get_all_baskets(current_user: dict = Depends(get_configured_current_us
     except Exception as e:
         logging.error(f"Erro ao buscar todas as cestas: {e}")
         raise HTTPException(status_code=500, detail="Erro ao carregar cestas")
-
-@basket_router.post("/")
-async def create_user_basket(current_user: dict = Depends(get_configured_current_user)):
-    """
-    Cria uma nova cesta para o usuário
-    """
-    try:
-        # Verifica se já existe uma cesta
-        existing_response = await asyncio.to_thread(
-            lambda: supabase.table('user_baskets')
-            .select('*')
-            .eq('user_id', current_user.id)
-            .execute()
-        )
-        
-        if existing_response.data:
-            return existing_response.data[0]
-        
-        # Cria nova cesta
-        new_basket = {
-            'user_id': current_user.id,
-            'basket_name': 'Minha Cesta',
-            'products': [],
-            'created_at': datetime.now().isoformat(),
-            'updated_at': datetime.now().isoformat()
-        }
-        
-        create_response = await asyncio.to_thread(
-            lambda: supabase.table('user_baskets').insert(new_basket).execute()
-        )
-        return create_response.data[0]
-        
-    except Exception as e:
-        logging.error(f"Erro ao criar cesta: {e}")
-        raise HTTPException(status_code=500, detail="Erro ao criar cesta")
 
 @basket_router.patch("/")
 async def update_user_basket(
@@ -265,7 +262,10 @@ async def remove_product_from_basket(
             .execute()
         )
         
-        return response.data[0]
+        if response.data:
+            return response.data[0]
+        else:
+            raise HTTPException(status_code=500, detail="Erro ao remover produto")
         
     except HTTPException:
         raise
@@ -304,7 +304,10 @@ async def clear_user_basket(current_user: dict = Depends(get_configured_current_
             .execute()
         )
         
-        return response.data[0]
+        if response.data:
+            return response.data[0]
+        else:
+            raise HTTPException(status_code=500, detail="Erro ao limpar cesta")
         
     except HTTPException:
         raise
