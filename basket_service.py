@@ -1,4 +1,4 @@
-# basket_service.py - VERSÃO FOCADA NAS FUNÇÕES ESSENCIAIS
+# basket_service.py - VERSÃO CORRIGIDA
 import logging
 import asyncio
 from datetime import datetime
