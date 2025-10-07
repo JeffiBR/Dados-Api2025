@@ -92,7 +92,7 @@
                         <i class="fas fa-shopping-basket"></i>
                         <h2>Minhas Cestas Básicas</h2>
                     </div>
-                    <p class="panel-description">Crie até 3 cestas, cada uma com no máximo 25 produtos.</p>
+                    <p class="panel-description">Crie até 3 cestas, cada uma com no máximo 25 produtos. Use a função "Comprar" para comparar preços por código de barras.</p>
                     
                     <button class="btn" id="btnCreateBasket">
                         <i class="fas fa-plus-circle"></i> Criar Nova Cesta
@@ -102,7 +102,7 @@
                         <!-- As cestas serão carregadas aqui -->
                     </div>
 
-                    <h2 class="mt-5" id="resultsTitle" style="display: none;">Resultados da Busca em Tempo Real</h2>
+                    <h2 class="mt-5" id="resultsTitle" style="display: none;">Resultados da Busca por Código de Barras</h2>
                     <div id="realtimeResults" class="table-responsive">
                         <!-- Resultados da busca em tempo real -->
                     </div>
@@ -191,9 +191,57 @@
         </div>
     </div>
 
+    <!-- Modal de compra de cesta -->
+    <div id="buyBasketModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h5>Comprar Cesta: <span id="buyBasketName"></span></h5>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    Selecione os mercados onde deseja comparar os preços da cesta básica.
+                    <strong>O sistema buscará apenas pelos códigos de barras</strong> dos produtos cadastrados.
+                </div>
+                
+                <form id="compareBasketForm">
+                    <div class="form-section">
+                        <h6>Mercados Disponíveis <small id="selectedMarketsCount">0 mercados selecionados</small></h6>
+                        <div id="marketsCheckboxList" class="checkbox-list">
+                            <!-- Lista de mercados será renderizada aqui -->
+                        </div>
+                    </div>
+                    
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-success" id="btnCompareBasket">
+                            <i class="fas fa-shopping-cart"></i> Comparar Cesta Básica
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de detalhes do mercado -->
+    <div id="marketDetailsModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h5>Detalhes do Mercado</h5>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="marketDetailsContent">
+                    <!-- Conteúdo dos detalhes será renderizado aqui -->
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="user-menu.js"></script>
     <script src="mobile-menu.js"></script>
     <script src="user-activity-monitor.js"></script>
     <script src="cesta.js"></script>
+    <script src="cesta-comprar.js"></script>
 </body>
 </html>
