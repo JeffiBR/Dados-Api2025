@@ -4,61 +4,195 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Minhas Cestas Básicas - Comparador de Preços</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth.js"></script>
+    <script src="user-menu.js"></script>
+    <script src="theme.js"></script>
 </head>
-<body class="bg-light">
+<body class="theme-dark">
+    <script>routeGuard('baskets');</script>
 
-    <div id="user-menu-placeholder"></div>
-    
-    <div class="container my-5">
-        <h1 class="mb-4">Gerenciamento de Cestas Básicas</h1>
-        <p class="text-muted">Crie até 3 cestas, cada uma com no máximo 25 produtos.</p>
-        
-        <button class="btn btn-primary mb-4" data-bs-toggle="modal" data-bs-target="#createBasketModal" id="btnCreateBasket">
-            <i class="bi bi-plus-circle"></i> Criar Nova Cesta
-        </button>
-        
-        <div id="basketsList" class="row">
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-bolt"></i>
+                <h1>Preços AL</h1>
             </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="nav-header">ANÁLISE</li>
+                    <li><a href="/search.html"><i class="fas fa-search"></i> Busca</a></li>
+                    <li data-permission="compare"><a href="/compare.html"><i class="fas fa-chart-bar"></i> Comparador</a></li>
+                    <li data-permission="dashboard"><a href="/dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+                    
+                    <li class="nav-header">ADMINISTRAÇÃO</li>
+                    <li data-permission="coleta"><a href="/admin.html"><i class="fas fa-database"></i> Coleta</a></li>
+                    <li data-permission="collections"><a href="/collections.html"><i class="fas fa-history"></i> Histórico de Coletas</a></li>
+                    <li data-permission="product_log"><a href="/product-log.html"><i class="fas fa-file-alt"></i> Log de Produtos</a></li>
+                    <li data-permission="user_logs"><a href="/user-logs.html"><i class="fas fa-user-clock"></i> Logs de Usuários</a></li>
+                    <li data-permission="prune"><a href="/prune.html"><i class="fas fa-broom"></i> Limpeza de Dados</a></li>
+                    
 
-        <h2 class="mt-5" id="resultsTitle" style="display: none;">Resultados da Busca em Tempo Real</h2>
-        <div id="realtimeResults" class="table-responsive">
+                    <li class="nav-header">CONFIGURAÇÃO</li>
+                    <li data-permission="markets"><a href="/markets.html"><i class="fas fa-store"></i> Gerenciar Mercados</a></li>
+                    <li data-permission="users"><a href="/users.html"><i class="fas fa-users"></i> Gerenciar Usuários</a></li>
+                </ul>
+            </nav>
+            <div class="theme-switcher">
+                <span>Tema</span>
+                <button id="themeToggle"><i class="fas fa-moon"></i></button>
             </div>
+        </aside>
+
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <div class="main-content">
+            <header class="top-bar">
+                <div class="top-bar-left">
+                    <button class="mobile-menu-btn" id="mobileMenuBtn">
+                        <span></span><span></span><span></span>
+                    </button>
+                </div>
+                <div class="top-bar-right">
+                    <div class="user-menu" id="userMenu">
+                        <button class="user-menu-btn" id="userMenuBtn">
+                            <div class="user-avatar">
+                                <img src="https://ui-avatars.com/api/?name=U" alt="User" id="userAvatar">
+                            </div>
+                            <div class="user-info">
+                                <span class="user-name">Usuário</span>
+                                <span class="user-role">...</span>
+                            </div>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="user-dropdown" id="userDropdown">
+                            <a href="/profile.html" class="dropdown-item">
+                                <i class="fas fa-user"></i>
+                                <span>Meu Perfil</span>
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="#" class="dropdown-item logout-btn" id="logoutBtn">
+                                <i class="fas fa-sign-out-alt"></i>
+                                <span>Sair</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="page-content">
+                <main class="admin-panel">
+                    <div class="panel-header">
+                        <i class="fas fa-shopping-basket"></i>
+                        <h2>Minhas Cestas Básicas</h2>
+                    </div>
+                    <p class="panel-description">Crie até 3 cestas, cada uma com no máximo 25 produtos.</p>
+                    
+                    <button class="btn" id="btnCreateBasket">
+                        <i class="fas fa-plus-circle"></i> Criar Nova Cesta
+                    </button>
+                    
+                    <div id="basketsList" class="results-grid">
+                        <!-- As cestas serão carregadas aqui -->
+                    </div>
+
+                    <h2 class="mt-5" id="resultsTitle" style="display: none;">Resultados da Busca em Tempo Real</h2>
+                    <div id="realtimeResults" class="table-responsive">
+                        <!-- Resultados da busca em tempo real -->
+                    </div>
+                </main>
+            </div>
+        </div>
     </div>
 
-    <div class="modal fade" id="createBasketModal" tabindex="-1" aria-labelledby="createBasketModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="createBasketModalLabel">Criar Nova Cesta</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="createBasketForm">
-                        <div class="mb-3">
-                            <label for="basketName" class="form-label">Nome da Cesta:</label>
-                            <input type="text" class="form-control" id="basketName" required maxlength="100">
-                        </div>
-                        <p class="text-muted small">Você pode adicionar os produtos na próxima tela.</p>
+    <!-- Modal de criação de cesta -->
+    <div id="createBasketModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5>Criar Nova Cesta</h5>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="createBasketForm">
+                    <div class="form-group">
+                        <label for="basketName">Nome da Cesta:</label>
+                        <input type="text" class="form-control" id="basketName" required maxlength="100">
+                    </div>
+                    <p class="text-muted small">Você pode adicionar os produtos na próxima tela.</p>
+                    <div class="modal-footer">
                         <button type="submit" class="btn btn-success" id="btnSaveNewBasket">Criar Cesta</button>
-                    </form>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de gerenciamento de produtos -->
+    <div id="manageProductsModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h5>Gerenciar Produtos da Cesta: <span id="currentBasketName"></span></h5>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info small" id="productCountAlert">0 de 25 produtos.</div>
+                
+                <form id="addProductForm" class="form-inline mb-4">
+                    <div class="form-group">
+                        <input type="text" class="form-control" id="productName" placeholder="Nome do Produto" required maxlength="150">
+                    </div>
+                    <div class="form-group">
+                        <input type="text" class="form-control" id="productBarcode" placeholder="Código de Barras (opcional)" maxlength="20">
+                    </div>
+                    <button type="submit" class="btn" id="btnAddProduct">Adicionar</button>
+                </form>
+
+                <ul id="productsList" class="list-group">
+                    <!-- Lista de produtos será renderizada aqui -->
+                </ul>
+
+                <div class="modal-footer">
+                    <button class="btn btn-danger" id="btnClearBasket">Limpar Cesta</button>
+                    <button class="btn" id="btnSearchPrices">Buscar Preços em Mercados</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="modal fade" id="manageProductsModal" tabindex="-1" aria-labelledby="manageProductsModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="manageProductsModalLabel">Gerenciar Produtos da Cesta: <span id="currentBasketName"></span></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="alert alert-info small" id="productCountAlert">0 de 25 produtos.</div>
-                    
-                    <form id="addProductForm" class="row g-3 mb-4">
-                        <div class="col-md-5">
-                            <input type="text" class="form-control" id="productName" placeholder="Nome do Produto" required maxlength="150">
-                        </div>
+    <!-- Modal de edição de produto -->
+    <div id="editProductModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5>Editar Produto</h5>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="editProductForm">
+                    <input type="hidden" id="editProductIndex">
+                    <div class="form-group">
+                        <label for="editProductName">Nome do Produto:</label>
+                        <input type="text" class="form-control" id="editProductName" required maxlength="150">
+                    </div>
+                    <div class="form-group">
+                        <label for="editProductBarcode">Código de Barras:</label>
+                        <input type="text" class="form-control" id="editProductBarcode" placeholder="Opcional" maxlength="20">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-success">Salvar Alterações</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="user-menu.js"></script>
+    <script src="mobile-menu.js"></script>
+    <script src="user-activity-monitor.js"></script>
+    <script src="cesta.js"></script>
+</body>
+</html>
