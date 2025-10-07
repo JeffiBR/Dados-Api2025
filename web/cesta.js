@@ -7,25 +7,60 @@ let currentBasketId = null;
 let currentBasketProducts = [];
 let allSupermarkets = [];
 
+// Modais
+let createBasketModal, manageProductsModal, editProductModal;
+
 document.addEventListener('DOMContentLoaded', async () => {
     // 1. Proteger a rota e exigir permissão 'baskets'
     await routeGuard('baskets');
     
-    // 2. Carregar lista de mercados (necessário para a busca de preços)
+    // 2. Inicializar modais
+    initializeModals();
+    
+    // 3. Carregar lista de mercados (necessário para a busca de preços)
     await fetchSupermarkets();
 
-    // 3. Carregar cestas do usuário
+    // 4. Carregar cestas do usuário
     await loadBaskets();
     
-    // 4. Adicionar event listeners
+    // 5. Adicionar event listeners
     document.getElementById('createBasketForm').addEventListener('submit', handleCreateBasket);
     document.getElementById('addProductForm').addEventListener('submit', handleAddProduct);
     document.getElementById('btnClearBasket').addEventListener('click', handleClearBasket);
     document.getElementById('btnSearchPrices').addEventListener('click', handleSearchPrices);
     document.getElementById('editProductForm').addEventListener('submit', handleEditProductSubmit);
+    
+    // Botão para abrir modal de criação
+    document.getElementById('btnCreateBasket').addEventListener('click', () => {
+        createBasketModal.style.display = 'block';
+    });
+    
     // Usa delegação de evento para botões de Gerenciar/Excluir nos cards
     document.getElementById('basketsList').addEventListener('click', handleBasketActions);
+    
+    // Fechar modais ao clicar no X
+    document.querySelectorAll('.close').forEach(closeBtn => {
+        closeBtn.addEventListener('click', function() {
+            this.closest('.modal').style.display = 'none';
+        });
+    });
+    
+    // Fechar modais ao clicar fora
+    window.addEventListener('click', function(event) {
+        if (event.target.classList.contains('modal')) {
+            event.target.style.display = 'none';
+        }
+    });
 });
+
+/**
+ * Inicializa os modais da página
+ */
+function initializeModals() {
+    createBasketModal = document.getElementById('createBasketModal');
+    manageProductsModal = document.getElementById('manageProductsModal');
+    editProductModal = document.getElementById('editProductModal');
+}
 
 /**
  * Carrega a lista de supermercados para o modal de busca de preços.
@@ -37,7 +72,7 @@ async function fetchSupermarkets() {
         allSupermarkets = await response.json();
     } catch (error) {
         console.error("Erro ao carregar mercados:", error);
-        alert('Erro ao carregar lista de supermercados.');
+        showNotification('Erro ao carregar lista de supermercados.', 'error');
     }
 }
 
@@ -53,7 +88,13 @@ async function loadBaskets() {
         renderBaskets();
     } catch (error) {
         console.error("Erro ao carregar cestas:", error);
-        document.getElementById('basketsList').innerHTML = '<p class="text-danger">Não foi possível carregar suas cestas.</p>';
+        document.getElementById('basketsList').innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-shopping-basket"></i>
+                <h3>Não foi possível carregar suas cestas</h3>
+                <p>${error.message}</p>
+            </div>
+        `;
     }
 }
 
@@ -65,23 +106,50 @@ function renderBaskets() {
     listElement.innerHTML = '';
     
     if (allBaskets.length === 0) {
-        listElement.innerHTML = '<div class="col-12"><p>Você ainda não tem cestas básicas cadastradas. Crie uma!</p></div>';
+        listElement.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-shopping-basket"></i>
+                <h3>Nenhuma cesta encontrada</h3>
+                <p>Você ainda não tem cestas básicas cadastradas. Crie uma!</p>
+            </div>
+        `;
         return;
     }
 
     allBaskets.forEach(basket => {
         const productCount = (basket.produtos || []).length;
         const cardHtml = `
-            <div class="col-md-4 mb-4">
-                <div class="card shadow-sm">
-                    <div class="card-body">
-                        <h5 class="card-title">${basket.nome}</h5>
-                        <p class="card-text small text-muted">ID: ${basket.id} | Produtos: ${productCount} de 25</p>
-                        <div class="btn-group w-100" role="group">
-                            <button class="btn btn-sm btn-info btn-manage-products" data-basket-id="${basket.id}" data-basket-name="${basket.nome}">Gerenciar Produtos</button>
-                            <button class="btn btn-sm btn-danger btn-delete-basket" data-basket-id="${basket.id}" data-basket-name="${basket.nome}">Excluir Cesta</button>
+            <div class="product-card-v2">
+                <div class="card-v2-header">
+                    <div class="product-v2-name">${basket.nome}</div>
+                </div>
+                <div class="card-v2-body">
+                    <div class="detail-v2-item">
+                        <div class="detail-v2-icon">
+                            <i class="fas fa-hashtag"></i>
+                        </div>
+                        <div class="detail-v2-text">
+                            <div class="detail-v2-title">ID: ${basket.id}</div>
+                            <div class="detail-v2-subtitle">Identificador único</div>
                         </div>
                     </div>
+                    <div class="detail-v2-item">
+                        <div class="detail-v2-icon">
+                            <i class="fas fa-boxes"></i>
+                        </div>
+                        <div class="detail-v2-text">
+                            <div class="detail-v2-title">${productCount} de 25 produtos</div>
+                            <div class="detail-v2-subtitle">Limite da cesta</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-v2-actions">
+                    <button class="btn btn-outline btn-manage-products" data-basket-id="${basket.id}" data-basket-name="${basket.nome}">
+                        <i class="fas fa-edit"></i> Gerenciar Produtos
+                    </button>
+                    <button class="btn danger btn-delete-basket" data-basket-id="${basket.id}" data-basket-name="${basket.nome}">
+                        <i class="fas fa-trash"></i> Excluir
+                    </button>
                 </div>
             </div>
         `;
@@ -92,10 +160,10 @@ function renderBaskets() {
     const btnCreate = document.getElementById('btnCreateBasket');
     if (allBaskets.length >= 3) {
         btnCreate.disabled = true;
-        btnCreate.textContent = `Limite de 3 cestas atingido.`;
+        btnCreate.innerHTML = '<i class="fas fa-ban"></i> Limite de 3 cestas atingido';
     } else {
         btnCreate.disabled = false;
-        btnCreate.textContent = 'Criar Nova Cesta';
+        btnCreate.innerHTML = '<i class="fas fa-plus-circle"></i> Criar Nova Cesta';
     }
 }
 
@@ -107,14 +175,20 @@ async function handleCreateBasket(event) {
     const basketName = document.getElementById('basketName').value.trim();
     const btn = document.getElementById('btnSaveNewBasket');
     
-    if (!basketName) return;
+    if (!basketName) {
+        showNotification('Por favor, informe um nome para a cesta.', 'warning');
+        return;
+    }
     
     btn.disabled = true;
-    btn.textContent = 'Criando...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Criando...';
 
     try {
         const response = await authenticatedFetch('/api/baskets', {
             method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify({ nome: basketName, produtos: [] })
         });
 
@@ -123,19 +197,19 @@ async function handleCreateBasket(event) {
             throw new Error(errorData.detail || 'Falha ao criar a cesta.');
         }
         
-        alert('Cesta criada com sucesso!');
+        showNotification('Cesta criada com sucesso!', 'success');
+        
         // Fechar o modal
-        const modal = bootstrap.Modal.getInstance(document.getElementById('createBasketModal'));
-        if (modal) modal.hide();
+        createBasketModal.style.display = 'none';
         
         await loadBaskets();
         document.getElementById('createBasketForm').reset();
     } catch (error) {
         console.error("Erro ao criar cesta:", error);
-        alert(`Erro: ${error.message}`);
+        showNotification(`Erro: ${error.message}`, 'error');
     } finally {
         btn.disabled = false;
-        btn.textContent = 'Criar Cesta';
+        btn.innerHTML = 'Criar Cesta';
     }
 }
 
@@ -143,7 +217,9 @@ async function handleCreateBasket(event) {
  * Lida com as ações de Gerenciar Produtos e Excluir Cesta.
  */
 async function handleBasketActions(event) {
-    const target = event.target;
+    const target = event.target.closest('button');
+    if (!target) return;
+    
     const basketId = target.dataset.basketId;
     const basketName = target.dataset.basketName;
     
@@ -157,14 +233,13 @@ async function handleBasketActions(event) {
             currentBasketProducts = basket.produtos || [];
             document.getElementById('currentBasketName').textContent = basketName;
             renderProductsList();
-            const modal = new bootstrap.Modal(document.getElementById('manageProductsModal'));
-            modal.show();
+            manageProductsModal.style.display = 'block';
         }
         
     } 
     // Excluir Cesta
     else if (target.classList.contains('btn-delete-basket')) {
-        if (confirm(`Tem certeza que deseja excluir a cesta "${basketName || basketId}"?`)) {
+        if (confirm(`Tem certeza que deseja excluir a cesta "${basketName || basketId}"? Esta ação não pode ser desfeita.`)) {
             try {
                 const response = await authenticatedFetch(`/api/baskets/${basketId}`, {
                     method: 'DELETE'
@@ -175,11 +250,11 @@ async function handleBasketActions(event) {
                     throw new Error(errorData.detail || 'Falha ao excluir a cesta.');
                 }
 
-                alert('Cesta excluída com sucesso!');
+                showNotification('Cesta excluída com sucesso!', 'success');
                 await loadBaskets();
             } catch (error) {
                 console.error("Erro ao excluir cesta:", error);
-                alert(`Erro: ${error.message}`);
+                showNotification(`Erro: ${error.message}`, 'error');
             }
         }
     }
@@ -201,28 +276,39 @@ function renderProductsList() {
     if (currentBasketProducts.length >= 25) {
         btnAdd.disabled = true;
         inputName.disabled = true;
-        btnAdd.textContent = 'Limite Atingido';
+        btnAdd.innerHTML = '<i class="fas fa-ban"></i> Limite Atingido';
     } else {
         btnAdd.disabled = false;
         inputName.disabled = false;
-        btnAdd.textContent = 'Adicionar';
+        btnAdd.innerHTML = 'Adicionar';
     }
 
     if (currentBasketProducts.length === 0) {
-        listElement.innerHTML = '<li class="list-group-item text-muted">Nenhum produto adicionado.</li>';
+        listElement.innerHTML = `
+            <li class="list-group-item text-muted text-center">
+                <i class="fas fa-inbox"></i><br>
+                Nenhum produto adicionado à cesta.
+            </li>
+        `;
         return;
     }
 
     currentBasketProducts.forEach((product, index) => {
         const itemHtml = `
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-                <div>
-                    <strong>${index + 1}. ${product.nome_produto}</strong>
-                    <small class="text-muted d-block">Código: ${product.codigo_barras || 'N/A'}</small>
-                </div>
-                <div>
-                    <button class="btn btn-sm btn-outline-secondary me-2 btn-edit-product" data-product-index="${index}">Editar</button>
-                    <button class="btn btn-sm btn-outline-danger btn-remove-product" data-product-index="${index}">Excluir</button>
+            <li class="list-group-item">
+                <div class="product-item">
+                    <div class="product-info">
+                        <div class="product-name">${index + 1}. ${product.nome_produto}</div>
+                        <div class="product-barcode">${product.codigo_barras || 'Sem código de barras'}</div>
+                    </div>
+                    <div class="product-actions">
+                        <button class="btn-icon btn-edit-product" data-product-index="${index}" title="Editar produto">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-icon danger btn-remove-product" data-product-index="${index}" title="Remover produto">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
                 </div>
             </li>
         `;
@@ -248,16 +334,25 @@ async function handleAddProduct(event) {
     const productBarcode = document.getElementById('productBarcode').value.trim();
     const btn = document.getElementById('btnAddProduct');
     
-    if (!productName || !currentBasketId) return;
+    if (!productName || !currentBasketId) {
+        showNotification('Por favor, informe o nome do produto.', 'warning');
+        return;
+    }
 
     btn.disabled = true;
-    btn.textContent = 'Adicionando...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adicionando...';
     
     try {
-        const newProduct = { nome_produto: productName, codigo_barras: productBarcode || null };
+        const newProduct = { 
+            nome_produto: productName, 
+            codigo_barras: productBarcode || null 
+        };
         
         const response = await authenticatedFetch(`/api/baskets/${currentBasketId}/products`, {
             method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify(newProduct)
         });
 
@@ -274,14 +369,16 @@ async function handleAddProduct(event) {
         document.getElementById('addProductForm').reset();
         
         // Atualizar a contagem no card principal
-        await loadBaskets(); 
+        await loadBaskets();
+        
+        showNotification('Produto adicionado com sucesso!', 'success');
 
     } catch (error) {
         console.error("Erro ao adicionar produto:", error);
-        alert(`Erro: ${error.message}`);
+        showNotification(`Erro: ${error.message}`, 'error');
     } finally {
         btn.disabled = false;
-        btn.textContent = 'Adicionar';
+        btn.innerHTML = 'Adicionar';
     }
 }
 
@@ -289,10 +386,12 @@ async function handleAddProduct(event) {
  * Remove um produto da cesta usando seu índice.
  */
 async function handleRemoveProduct(event) {
-    const index = event.target.dataset.productIndex;
+    const index = event.target.closest('button').dataset.productIndex;
     if (index === undefined || currentBasketId === null) return;
     
-    if (!confirm(`Deseja remover o produto "${currentBasketProducts[index].nome_produto}"?`)) return;
+    const productName = currentBasketProducts[index].nome_produto;
+    
+    if (!confirm(`Deseja remover o produto "${productName}"?`)) return;
 
     try {
         const response = await authenticatedFetch(`/api/baskets/${currentBasketId}/products/${index}`, {
@@ -307,11 +406,13 @@ async function handleRemoveProduct(event) {
         const updatedBasket = await response.json();
         currentBasketProducts = updatedBasket.produtos;
         renderProductsList();
-        await loadBaskets(); 
+        await loadBaskets();
+        
+        showNotification('Produto removido com sucesso!', 'success');
 
     } catch (error) {
         console.error("Erro ao remover produto:", error);
-        alert(`Erro: ${error.message}`);
+        showNotification(`Erro: ${error.message}`, 'error');
     }
 }
 
@@ -319,7 +420,7 @@ async function handleRemoveProduct(event) {
  * Abre o modal de edição e carrega os dados do produto.
  */
 function openEditProductModal(event) {
-    const index = event.target.dataset.productIndex;
+    const index = event.target.closest('button').dataset.productIndex;
     const product = currentBasketProducts[index];
 
     if (!product) return;
@@ -328,8 +429,7 @@ function openEditProductModal(event) {
     document.getElementById('editProductName').value = product.nome_produto;
     document.getElementById('editProductBarcode').value = product.codigo_barras || '';
 
-    const modal = new bootstrap.Modal(document.getElementById('editProductModal'));
-    modal.show();
+    editProductModal.style.display = 'block';
 }
 
 /**
@@ -341,11 +441,14 @@ async function handleEditProductSubmit(event) {
     const newName = document.getElementById('editProductName').value.trim();
     const newBarcode = document.getElementById('editProductBarcode').value.trim();
 
-    if (!newName || currentBasketId === null) return;
+    if (!newName || currentBasketId === null) {
+        showNotification('Por favor, informe o nome do produto.', 'warning');
+        return;
+    }
 
     const btn = event.target.querySelector('button[type="submit"]');
     btn.disabled = true;
-    btn.textContent = 'Salvando...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
 
     try {
         const updateData = { 
@@ -355,6 +458,9 @@ async function handleEditProductSubmit(event) {
         
         const response = await authenticatedFetch(`/api/baskets/${currentBasketId}/products/${index}`, {
             method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify(updateData)
         });
 
@@ -367,16 +473,17 @@ async function handleEditProductSubmit(event) {
         currentBasketProducts = updatedBasket.produtos;
         
         // Fechar o modal e atualizar lista
-        const modal = bootstrap.Modal.getInstance(document.getElementById('editProductModal'));
-        if (modal) modal.hide();
+        editProductModal.style.display = 'none';
         renderProductsList();
+        
+        showNotification('Produto atualizado com sucesso!', 'success');
 
     } catch (error) {
         console.error("Erro ao editar produto:", error);
-        alert(`Erro: ${error.message}`);
+        showNotification(`Erro: ${error.message}`, 'error');
     } finally {
         btn.disabled = false;
-        btn.textContent = 'Salvar Alterações';
+        btn.innerHTML = 'Salvar Alterações';
     }
 }
 
@@ -386,7 +493,7 @@ async function handleEditProductSubmit(event) {
 async function handleClearBasket() {
     if (currentBasketId === null) return;
     
-    if (!confirm('Tem certeza que deseja REMOVER TODOS os produtos desta cesta?')) return;
+    if (!confirm('Tem certeza que deseja REMOVER TODOS os produtos desta cesta? Esta ação não pode ser desfeita.')) return;
 
     try {
         const response = await authenticatedFetch(`/api/baskets/${currentBasketId}/products`, {
@@ -401,11 +508,12 @@ async function handleClearBasket() {
         const updatedBasket = await response.json();
         currentBasketProducts = updatedBasket.produtos;
         renderProductsList();
-        alert('Cesta limpa com sucesso!');
+        
+        showNotification('Cesta limpa com sucesso!', 'success');
         await loadBaskets(); // Atualiza a contagem no card
     } catch (error) {
         console.error("Erro ao limpar cesta:", error);
-        alert(`Erro: ${error.message}`);
+        showNotification(`Erro: ${error.message}`, 'error');
     }
 }
 
@@ -414,32 +522,38 @@ async function handleClearBasket() {
  */
 async function handleSearchPrices() {
     if (currentBasketId === null || currentBasketProducts.length === 0) {
-        alert('Adicione produtos à cesta antes de buscar os preços.');
+        showNotification('Adicione produtos à cesta antes de buscar os preços.', 'warning');
         return;
     }
 
     // Usaremos todos os mercados disponíveis
     const cnpjs = allSupermarkets.map(m => m.cnpj);
     if (cnpjs.length === 0) {
-        alert('Nenhum mercado cadastrado para realizar a busca.');
+        showNotification('Nenhum mercado cadastrado para realizar a busca.', 'warning');
         return;
     }
 
     // Fecha o modal de gerenciamento de produtos
-    const manageModal = bootstrap.Modal.getInstance(document.getElementById('manageProductsModal'));
-    if (manageModal) manageModal.hide();
+    manageProductsModal.style.display = 'none';
     
     const btn = document.getElementById('btnSearchPrices');
     btn.disabled = true;
-    btn.textContent = 'Buscando Preços...';
-    document.getElementById('realtimeResults').innerHTML = '<p class="text-info">Buscando preços em tempo real, aguarde...</p>';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando...';
+    
+    document.getElementById('realtimeResults').innerHTML = `
+        <div class="loader-container">
+            <div class="loader"></div>
+            <p>Buscando preços em tempo real, aguarde...</p>
+        </div>
+    `;
     document.getElementById('resultsTitle').style.display = 'block';
 
     try {
         // Envia a lista de CNPJs como query parameters
-        const urlParams = cnpjs.map(c => 'cnpjs=' + c).join('&');
+        const urlParams = new URLSearchParams();
+        cnpjs.forEach(cnpj => urlParams.append('cnpjs', cnpj));
         
-        const response = await authenticatedFetch(`/api/baskets/${currentBasketId}/realtime-prices?${urlParams}`, {
+        const response = await authenticatedFetch(`/api/baskets/${currentBasketId}/realtime-prices?${urlParams.toString()}`, {
             method: 'POST' 
         });
 
@@ -449,16 +563,22 @@ async function handleSearchPrices() {
         }
         
         const data = await response.json();
-        renderRealtimeResults(data.results);
+        renderRealtimeResults(data.results || []);
+        
+        showNotification('Busca de preços concluída!', 'success');
 
     } catch (error) {
         console.error("Erro na busca em tempo real:", error);
-        document.getElementById('realtimeResults').innerHTML = `<p class="text-danger">Erro ao buscar preços: ${error.message}</p>`;
+        document.getElementById('realtimeResults').innerHTML = `
+            <div class="result-message error">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>Erro ao buscar preços: ${error.message}</p>
+            </div>
+        `;
+        showNotification(`Erro na busca: ${error.message}`, 'error');
     } finally {
-        // O botão é reabilitado na próxima vez que o modal for aberto, pois ele é um elemento DOM estático.
-        // No entanto, para fins de feedback visual se o modal não fechar por algum motivo:
-        // btn.disabled = false;
-        // btn.textContent = 'Buscar Preços em Mercados';
+        btn.disabled = false;
+        btn.innerHTML = 'Buscar Preços em Mercados';
     }
 }
 
@@ -469,12 +589,19 @@ function renderRealtimeResults(results) {
     const resultsElement = document.getElementById('realtimeResults');
     
     if (results.length === 0) {
-        resultsElement.innerHTML = '<p class="text-muted">Nenhum preço encontrado para os produtos da cesta nos mercados selecionados.</p>';
+        resultsElement.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-search"></i>
+                <h3>Nenhum preço encontrado</h3>
+                <p>Nenhum preço encontrado para os produtos da cesta nos mercados selecionados.</p>
+            </div>
+        `;
         return;
     }
 
     // Calcular o total de cada cesta
     const basketTotals = {};
+    const productsByMarket = {};
     
     results.forEach(item => {
         const marketName = item.nome_supermercado;
@@ -482,74 +609,163 @@ function renderRealtimeResults(results) {
         
         if (!basketTotals[marketName]) {
             basketTotals[marketName] = 0;
+            productsByMarket[marketName] = [];
         }
         
-        // Simplesmente soma os produtos encontrados. 
-        // Para uma cesta ideal, precisaríamos de lógica de agrupamento (e.g., o mais barato de cada produto).
-        // Aqui, somamos todos os resultados encontrados para dar uma estimativa.
-        basketTotals[marketName] += price; 
+        basketTotals[marketName] += price;
+        productsByMarket[marketName].push(item);
     });
 
-    // 1. Tabela de Totais (Resumo)
-    let summaryHtml = `
-        <h3 class="mt-4">Resumo da Cesta</h3>
-        <table class="table table-bordered table-sm">
-            <thead>
-                <tr>
-                    <th>Mercado</th>
-                    <th>Total Estimado (R$)</th>
-                </tr>
-            </thead>
-            <tbody>
+    // 1. Resumo da Cesta (Cards)
+    const summaryHtml = `
+        <div class="results-summary">
+            <div class="summary-stats">
+                <div class="stat">
+                    <span class="stat-value">${results.length}</span>
+                    <span class="stat-label">Preços Encontrados</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value">${Object.keys(basketTotals).length}</span>
+                    <span class="stat-label">Mercados Consultados</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value">${currentBasketProducts.length}</span>
+                    <span class="stat-label">Produtos na Cesta</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value">${allSupermarkets.length}</span>
+                    <span class="stat-label">Total de Mercados</span>
+                </div>
+            </div>
+        </div>
     `;
     
+    // 2. Tabela de Comparação de Mercados
     const sortedTotals = Object.entries(basketTotals).sort(([, a], [, b]) => a - b);
+    let comparisonHtml = `
+        <div class="table-container">
+            <h3><i class="fas fa-chart-bar"></i> Comparação entre Mercados</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Mercado</th>
+                        <th>Total Estimado (R$)</th>
+                        <th>Produtos Encontrados</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
     
-    sortedTotals.forEach(([market, total]) => {
-        summaryHtml += `
-            <tr class="${total === sortedTotals[0][1] ? 'table-success fw-bold' : ''}">
-                <td>${market}</td>
-                <td>R$ ${total.toFixed(2)}</td>
+    sortedTotals.forEach(([market, total], index) => {
+        const isCheapest = index === 0;
+        const productCount = productsByMarket[market].length;
+        comparisonHtml += `
+            <tr class="${isCheapest ? 'highlight' : ''}">
+                <td><strong>${market}</strong></td>
+                <td class="price ${isCheapest ? 'price-cheapest' : ''}">R$ ${total.toFixed(2)}</td>
+                <td>${productCount} de ${currentBasketProducts.length}</td>
+                <td>
+                    <span class="status-badge ${isCheapest ? 'concluída' : 'em-andamento'}">
+                        ${isCheapest ? 'Melhor Preço' : 'Disponível'}
+                    </span>
+                </td>
             </tr>
         `;
     });
     
-    summaryHtml += `</tbody></table>`;
+    comparisonHtml += `</tbody></table></div>`;
     
-    // 2. Tabela de Detalhes
+    // 3. Tabela de Detalhes dos Produtos
     let detailHtml = `
-        <h3 class="mt-5">Detalhes dos Produtos Encontrados</h3>
-        <table class="table table-striped table-hover">
-            <thead>
-                <tr>
-                    <th>Produto</th>
-                    <th>Mercado</th>
-                    <th>Preço (R$)</th>
-                    <th>Unidade</th>
-                </tr>
-            </thead>
-            <tbody>
+        <div class="table-container">
+            <h3><i class="fas fa-list"></i> Detalhes dos Produtos Encontrados</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Produto</th>
+                        <th>Mercado</th>
+                        <th>Preço (R$)</th>
+                        <th>Unidade</th>
+                        <th>Código</th>
+                    </tr>
+                </thead>
+                <tbody>
     `;
 
     // Ordena por nome do produto (para agrupar) e depois por preço
     results.sort((a, b) => {
         if (a.nome_produto < b.nome_produto) return -1;
         if (a.nome_produto > b.nome_produto) return 1;
-        return a.preco_produto - b.preco_produto;
+        return (a.preco_produto || 0) - (b.preco_produto || 0);
     });
 
     results.forEach(item => {
+        // Encontra o preço mínimo para este produto
+        const minPrice = Math.min(...results
+            .filter(p => p.nome_produto === item.nome_produto)
+            .map(p => p.preco_produto || Infinity)
+        );
+        
+        const isCheapest = item.preco_produto === minPrice;
+        
         detailHtml += `
             <tr>
                 <td>${item.nome_produto}</td>
                 <td>${item.nome_supermercado || 'N/A'}</td>
-                <td>${(item.preco_produto || 0).toFixed(2)}</td>
+                <td class="price ${isCheapest ? 'price-cheapest' : ''}">
+                    ${(item.preco_produto || 0).toFixed(2)}
+                    ${isCheapest ? '<i class="fas fa-trophy"></i>' : ''}
+                </td>
                 <td>${item.unidade || 'N/A'}</td>
+                <td><code>${item.codigo_barras || 'N/A'}</code></td>
             </tr>
         `;
     });
 
-    detailHtml += `</tbody></table>`;
+    detailHtml += `</tbody></table></div>`;
     
-    resultsElement.innerHTML = summaryHtml + detailHtml;
+    resultsElement.innerHTML = summaryHtml + comparisonHtml + detailHtml;
+}
+
+/**
+ * Exibe uma notificação para o usuário
+ */
+function showNotification(message, type = 'info') {
+    // Remove notificação existente
+    const existingNotification = document.querySelector('.notification');
+    if (existingNotification) {
+        existingNotification.remove();
+    }
+    
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.innerHTML = `
+        <i class="fas fa-${getNotificationIcon(type)}"></i>
+        <span>${message}</span>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Mostrar notificação
+    setTimeout(() => notification.classList.add('show'), 100);
+    
+    // Remover após 5 segundos
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 300);
+    }, 5000);
+}
+
+/**
+ * Retorna o ícone apropriado para o tipo de notificação
+ */
+function getNotificationIcon(type) {
+    const icons = {
+        success: 'check-circle',
+        error: 'exclamation-circle',
+        warning: 'exclamation-triangle',
+        info: 'info-circle'
+    };
+    return icons[type] || 'info-circle';
 }
