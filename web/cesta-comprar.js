@@ -1,5 +1,5 @@
-// cesta-comprar.js - Funcionalidade de compra de cesta básica por código de barras
-// VERSÃO ATUALIZADA COM NOVO LAYOUT DE CARDS
+// cesta-comprar.js - VERSÃO CORRIGIDA
+// Corrigindo cálculo do valor total e quantidade de produtos
 
 let buyBasketModal;
 let marketDetailsModal;
@@ -14,7 +14,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Inicializar modais
     buyBasketModal = document.getElementById('buyBasketModal');
     marketDetailsModal = document.getElementById('marketDetailsModal');
-    bestBasketModal = document.getElementById('bestBasketModal');
     
     // Fechar modais ao clicar no X
     document.querySelectorAll('.close').forEach(closeBtn => {
@@ -340,11 +339,12 @@ function renderBasketComparison(results, selectedMarkets, productsWithBarcode) {
         return;
     }
     
-    // Agrupar resultados por mercado
+    // Agrupar resultados por mercado - CORREÇÃO: garantir agrupamento correto
     const resultsByMarket = {};
     const marketTotals = {};
     const productsFoundByMarket = {};
     const marketDetails = {};
+    const marketProductDetails = {};
     
     // Inicializar estruturas
     selectedMarkets.forEach(cnpj => {
@@ -354,23 +354,35 @@ function renderBasketComparison(results, selectedMarkets, productsWithBarcode) {
             marketTotals[market.nome] = 0;
             productsFoundByMarket[market.nome] = new Set();
             marketDetails[market.nome] = market;
+            marketProductDetails[market.nome] = [];
         }
     });
     
-    // Processar resultados
+    // Processar resultados - CORREÇÃO: garantir que cada produto seja contado apenas uma vez por mercado
     results.forEach(item => {
         const marketName = item.nome_supermercado;
-        const price = item.preco_produto || 0;
+        const price = parseFloat(item.preco_produto) || 0;
+        const productKey = `${item.original_product_name}_${item.original_barcode}`;
         
         if (resultsByMarket[marketName]) {
-            resultsByMarket[marketName].push(item);
-            marketTotals[marketName] += price;
-            productsFoundByMarket[marketName].add(item.original_product_name);
+            // Verificar se este produto já foi contabilizado para este mercado
+            if (!productsFoundByMarket[marketName].has(productKey)) {
+                resultsByMarket[marketName].push(item);
+                marketTotals[marketName] += price;
+                productsFoundByMarket[marketName].add(productKey);
+                marketProductDetails[marketName].push({
+                    ...item,
+                    price: price
+                });
+            }
         }
     });
     
     // Calcular melhor cesta básica (produtos mais baratos de todos os mercados)
     const bestBasket = calculateBestBasket(results, productsWithBarcode);
+    
+    // Encontrar supermercado com cesta completa mais barata
+    const completeBasketMarket = findCompleteBasketMarket(marketTotals, productsFoundByMarket, productsWithBarcode);
     
     // Ordenar mercados por preço total
     const sortedMarkets = Object.entries(marketTotals)
@@ -425,7 +437,64 @@ function renderBasketComparison(results, selectedMarkets, productsWithBarcode) {
         `;
     }
     
-    // 2. Cards dos Mercados (Top 1, Mais Caro e Outros)
+    // 2. Card do Supermercado com Cesta Completa Mais Barata
+    let completeBasketHtml = '';
+    if (completeBasketMarket) {
+        const marketName = completeBasketMarket.name;
+        const total = completeBasketMarket.total;
+        const productCount = completeBasketMarket.productCount;
+        const market = marketDetails[marketName];
+        
+        completeBasketHtml = `
+            <div class="results-section">
+                <h3><i class="fas fa-award text-success"></i> Supermercado com Cesta Completa Mais Barata</h3>
+                <div class="cards-grid">
+                    <div class="market-card complete-basket">
+                        <div class="card-header">
+                            <div class="market-rank best">#1 Completo</div>
+                            <div class="market-name">${marketName}</div>
+                            <div class="market-badge complete">
+                                <i class="fas fa-check-circle"></i> Cesta Completa
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="market-address">
+                                <i class="fas fa-map-marker-alt"></i>
+                                ${market.endereco || 'Endereço não disponível'}
+                            </div>
+                            <div class="market-total">
+                                R$ ${total.toFixed(2)}
+                                <div class="total-label">Valor Total</div>
+                            </div>
+                            <div class="market-stats">
+                                <div class="stat">
+                                    <span class="stat-value">${productCount}</span>
+                                    <span class="stat-label">Produtos Encontrados</span>
+                                </div>
+                                <div class="stat">
+                                    <span class="stat-value">${productsWithBarcode.length}</span>
+                                    <span class="stat-label">Total na Cesta</span>
+                                </div>
+                            </div>
+                            <div class="completion-rate">
+                                <div class="progress">
+                                    <div class="progress-bar" style="width: 100%"></div>
+                                </div>
+                                <span>100% de cobertura</span>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn btn-outline btn-view-details" data-market="${marketName}">
+                                <i class="fas fa-list"></i> Ver Detalhes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // 3. Cards dos Mercados (Top 1, Mais Caro e Outros)
     let marketsHtml = `
         <div class="results-section">
             <h3><i class="fas fa-store"></i> Comparação por Mercado</h3>
@@ -433,11 +502,17 @@ function renderBasketComparison(results, selectedMarkets, productsWithBarcode) {
     `;
     
     sortedMarkets.forEach(([marketName, total], index) => {
+        // CORREÇÃO: usar o Set para obter a contagem correta de produtos únicos
         const productCount = productsFoundByMarket[marketName].size;
         const completionRate = Math.round((productCount / productsWithBarcode.length) * 100);
         const market = marketDetails[marketName];
         const isCheapest = index === 0;
         const isMostExpensive = index === sortedMarkets.length - 1;
+        
+        // Pular se for o mercado da cesta completa (já mostrado acima)
+        if (completeBasketMarket && marketName === completeBasketMarket.name) {
+            return;
+        }
         
         let cardClass = 'market-card';
         let rankClass = '';
@@ -499,7 +574,7 @@ function renderBasketComparison(results, selectedMarkets, productsWithBarcode) {
     
     marketsHtml += `</div></div>`;
     
-    // 3. Resumo Estatístico
+    // 4. Resumo Estatístico
     const summaryHtml = `
         <div class="results-summary">
             <div class="summary-stats">
@@ -523,13 +598,13 @@ function renderBasketComparison(results, selectedMarkets, productsWithBarcode) {
         </div>
     `;
     
-    resultsElement.innerHTML = summaryHtml + bestBasketHtml + marketsHtml;
+    resultsElement.innerHTML = summaryHtml + bestBasketHtml + completeBasketHtml + marketsHtml;
     
     // Adicionar event listeners para os botões de detalhes
     resultsElement.querySelectorAll('.btn-view-details').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const marketName = e.target.closest('button').dataset.market;
-            showMarketDetails(marketName, resultsByMarket[marketName], marketDetails[marketName]);
+            showMarketDetails(marketName, marketProductDetails[marketName], marketDetails[marketName], productsWithBarcode);
         });
     });
     
@@ -542,12 +617,39 @@ function renderBasketComparison(results, selectedMarkets, productsWithBarcode) {
 }
 
 /**
+ * Encontra o supermercado com cesta completa mais barata (que tenha todos os produtos)
+ */
+function findCompleteBasketMarket(marketTotals, productsFoundByMarket, productsWithBarcode) {
+    let completeMarket = null;
+    let lowestTotal = Infinity;
+    
+    // Procurar por mercados que tenham todos os produtos
+    Object.entries(marketTotals).forEach(([marketName, total]) => {
+        const productCount = productsFoundByMarket[marketName].size;
+        
+        // Verificar se este mercado tem todos os produtos
+        if (productCount === productsWithBarcode.length) {
+            if (total < lowestTotal) {
+                lowestTotal = total;
+                completeMarket = {
+                    name: marketName,
+                    total: total,
+                    productCount: productCount
+                };
+            }
+        }
+    });
+    
+    return completeMarket;
+}
+
+/**
  * Calcula a melhor cesta básica (produtos mais baratos de todos os mercados)
  */
 function calculateBestBasket(results, productsWithBarcode) {
     const bestProducts = {};
     
-    // Para cada produto, encontrar o menor preço
+    // Para cada produto, encontrar o menor preço em qualquer mercado
     productsWithBarcode.forEach(product => {
         const productResults = results.filter(r => 
             r.original_product_name === product.nome_produto && 
@@ -555,61 +657,38 @@ function calculateBestBasket(results, productsWithBarcode) {
         );
         
         if (productResults.length > 0) {
-            const bestOffer = productResults.reduce((best, current) => 
-                (current.preco_produto < best.preco_produto) ? current : best
-            );
+            const bestOffer = productResults.reduce((best, current) => {
+                const currentPrice = parseFloat(current.preco_produto) || 0;
+                const bestPrice = parseFloat(best.preco_produto) || 0;
+                return currentPrice < bestPrice ? current : best;
+            });
             
-            bestProducts[product.nome_produto] = bestOffer;
+            bestProducts[product.nome_produto] = {
+                ...bestOffer,
+                price: parseFloat(bestOffer.preco_produto) || 0
+            };
         }
     });
     
     const bestProductsArray = Object.values(bestProducts);
-    const total = bestProductsArray.reduce((sum, product) => sum + (product.preco_produto || 0), 0);
+    const total = bestProductsArray.reduce((sum, product) => sum + product.price, 0);
     
     return {
         products: bestProductsArray,
-        total: total,
-        savings: calculateSavings(results, bestProductsArray)
+        total: total
     };
 }
 
 /**
- * Calcula a economia da melhor cesta em relação à média
+ * Mostra detalhes de um mercado específico - VERSÃO CORRIGIDA
  */
-function calculateSavings(allResults, bestProducts) {
-    // Calcular preço médio por produto
-    const productAverages = {};
-    
-    allResults.forEach(item => {
-        const productName = item.original_product_name;
-        if (!productAverages[productName]) {
-            productAverages[productName] = [];
-        }
-        productAverages[productName].push(item.preco_produto);
-    });
-    
-    // Calcular média por produto
-    let averageTotal = 0;
-    Object.keys(productAverages).forEach(productName => {
-        const prices = productAverages[productName];
-        const average = prices.reduce((sum, price) => sum + price, 0) / prices.length;
-        averageTotal += average;
-    });
-    
-    const bestTotal = bestProducts.reduce((sum, product) => sum + product.preco_produto, 0);
-    
-    return {
-        amount: averageTotal - bestTotal,
-        percentage: ((averageTotal - bestTotal) / averageTotal) * 100
-    };
-}
-
-/**
- * Mostra detalhes de um mercado específico
- */
-function showMarketDetails(marketName, products, marketInfo) {
+function showMarketDetails(marketName, products, marketInfo, allProducts) {
     const content = document.getElementById('marketDetailsContent');
-    const total = products.reduce((sum, p) => sum + (p.preco_produto || 0), 0);
+    
+    // CORREÇÃO: calcular o total corretamente a partir dos produtos
+    const total = products.reduce((sum, product) => sum + (product.price || 0), 0);
+    const productCount = products.length;
+    const totalProducts = allProducts.length;
     
     let detailsHtml = `
         <div class="market-details-header">
@@ -618,8 +697,12 @@ function showMarketDetails(marketName, products, marketInfo) {
             
             <div class="market-stats-grid">
                 <div class="market-stat">
-                    <div class="stat-value">${products.length}</div>
+                    <div class="stat-value">${productCount}</div>
                     <div class="stat-label">Produtos Encontrados</div>
+                </div>
+                <div class="market-stat">
+                    <div class="stat-value">${totalProducts}</div>
+                    <div class="stat-label">Total na Cesta</div>
                 </div>
                 <div class="market-stat">
                     <div class="stat-value">R$ ${total.toFixed(2)}</div>
@@ -633,12 +716,12 @@ function showMarketDetails(marketName, products, marketInfo) {
         </div>
         
         <div class="products-list">
-            <h5>Produtos Encontrados:</h5>
+            <h5>Produtos Encontrados (${productCount} de ${totalProducts}):</h5>
             <table class="table">
                 <thead>
                     <tr>
                         <th>Produto</th>
-                        <th>Código</th>
+                        <th>Código de Barras</th>
                         <th>Preço (R$)</th>
                         <th>Unidade</th>
                         <th>Última Venda</th>
@@ -662,12 +745,36 @@ function showMarketDetails(marketName, products, marketInfo) {
                       `<div class="product-alias">(${product.nome_produto})</div>` : ''}
                 </td>
                 <td><code class="barcode">${product.codigo_barras || 'N/A'}</code></td>
-                <td class="price">R$ ${(product.preco_produto || 0).toFixed(2)}</td>
+                <td class="price">R$ ${(product.price || 0).toFixed(2)}</td>
                 <td>${product.unidade || 'UN'}</td>
                 <td>${lastSaleDate}</td>
             </tr>
         `;
     });
+    
+    // Mostrar produtos não encontrados
+    const foundProductNames = products.map(p => p.original_product_name);
+    const missingProducts = allProducts.filter(p => !foundProductNames.includes(p.nome_produto));
+    
+    if (missingProducts.length > 0) {
+        detailsHtml += `
+            <tr class="section-divider">
+                <td colspan="5">
+                    <strong>Produtos Não Encontrados neste Mercado:</strong>
+                </td>
+            </tr>
+        `;
+        
+        missingProducts.forEach(product => {
+            detailsHtml += `
+                <tr class="text-muted">
+                    <td>${product.nome_produto}</td>
+                    <td><code>${product.codigo_barras || 'N/A'}</code></td>
+                    <td colspan="3" class="text-center">Produto não encontrado</td>
+                </tr>
+            `;
+        });
+    }
     
     detailsHtml += `</tbody></table></div>`;
     content.innerHTML = detailsHtml;
@@ -695,8 +802,8 @@ function showBestBasketDetails(bestBasket, originalProducts) {
                     <div class="stat-label">Valor Total</div>
                 </div>
                 <div class="market-stat">
-                    <div class="stat-value">R$ ${bestBasket.savings.amount.toFixed(2)}</div>
-                    <div class="stat-label">Economia</div>
+                    <div class="stat-value">${originalProducts.length}</div>
+                    <div class="stat-label">Total na Cesta</div>
                 </div>
             </div>
         </div>
@@ -734,7 +841,7 @@ function showBestBasketDetails(bestBasket, originalProducts) {
                       `<div class="product-alias">(${product.nome_produto})</div>` : ''}
                 </td>
                 <td><code class="barcode">${product.codigo_barras || 'N/A'}</code></td>
-                <td class="price price-cheapest">R$ ${(product.preco_produto || 0).toFixed(2)}</td>
+                <td class="price price-cheapest">R$ ${(product.price || 0).toFixed(2)}</td>
                 <td><strong>${product.nome_supermercado}</strong></td>
                 <td>${marketAddress}</td>
                 <td>${lastSaleDate}</td>
@@ -750,7 +857,7 @@ function showBestBasketDetails(bestBasket, originalProducts) {
         detailsHtml += `
             <tr class="section-divider">
                 <td colspan="6">
-                    <strong>Produtos Não Encontrados:</strong>
+                    <strong>Produtos Não Encontrados em Nenhum Mercado:</strong>
                 </td>
             </tr>
         `;
@@ -783,7 +890,7 @@ function showBestBasketDetails(bestBasket, originalProducts) {
 function createBestBasketModal() {
     const modalHtml = `
         <div id="bestBasketModal" class="modal">
-            <div class="modal-content" style="max-width: 1000px;">
+            <div class="modal-content" style="max-width: 1200px;">
                 <div class="modal-header">
                     <h5>Detalhes da Melhor Cesta Básica</h5>
                     <span class="close">&times;</span>
