@@ -1,64 +1,11 @@
-// cesta.js - VERSÃO COMPLETA E SIMPLIFICADA
+// cesta.js - VERSÃO FOCADA NAS FUNÇÕES ESSENCIAIS
 let userBasket = { 
     id: null, 
     basket_name: "Minha Cesta", 
     products: [] 
 };
-let allMarkets = [];
-let selectedMarkets = new Set();
 let currentUser = null;
 let isAdmin = false;
-
-// =============================================
-// FUNÇÕES DE CONTROLE DE INTERFACE
-// =============================================
-
-function updateInterfaceState() {
-    const productCount = userBasket.products.length;
-    const marketSection = document.getElementById('market-selection-section');
-    const progressAlert = document.getElementById('progress-alert');
-    const resultsSection = document.getElementById('results-section');
-    const calculateBtn = document.getElementById('calculate-btn');
-    
-    // Sempre mostra a seção de adição de produtos se tiver cesta
-    if (userBasket.id) {
-        document.getElementById('add-product-section').style.display = 'block';
-    }
-    
-    // Mostra/oculta seção de mercados baseado no número de produtos
-    if (productCount >= 5) {
-        if (marketSection) marketSection.style.display = 'block';
-        if (progressAlert) progressAlert.style.display = 'flex';
-        if (calculateBtn) calculateBtn.disabled = false;
-    } else {
-        if (marketSection) marketSection.style.display = 'none';
-        if (progressAlert) progressAlert.style.display = 'none';
-        if (resultsSection) resultsSection.style.display = 'none';
-        if (calculateBtn) calculateBtn.disabled = true;
-    }
-    
-    // Atualiza contador de produtos
-    document.getElementById('product-count').textContent = productCount;
-}
-
-function showStepInstructions() {
-    if (!userBasket.id) {
-        showMessage('🔄 Carregando sua cesta básica...', 'info');
-        return;
-    }
-    
-    const productCount = userBasket.products.length;
-    
-    if (productCount === 0) {
-        showMessage('🔍 Comece adicionando produtos à sua cesta usando o código de barras', 'info');
-    } else if (productCount < 5) {
-        showMessage(`📝 Continue adicionando produtos (${productCount}/5) para desbloquear a comparação`, 'info');
-    } else if (productCount >= 5 && selectedMarkets.size === 0) {
-        showMessage('🏪 Agora selecione os mercados para comparar os preços', 'success');
-    } else if (productCount >= 5 && selectedMarkets.size > 0) {
-        showMessage('✅ Pronto! Clique em "Comparar Preços" para ver os resultados', 'success');
-    }
-}
 
 // =============================================
 // FUNÇÕES PRINCIPAIS
@@ -105,14 +52,11 @@ async function loadUserBasket() {
             userBasket = basketData;
             console.log('✅ Cesta carregada:', userBasket);
             renderProducts();
-            updateInterfaceState();
-            showStepInstructions();
+            updateProductCount();
             return;
         } 
         
         console.error('❌ Erro ao carregar cesta:', response.status);
-        const errorText = await response.text();
-        console.error('Detalhes do erro:', errorText);
         showMessage('Erro ao carregar sua cesta', 'error');
         
     } catch (error) {
@@ -134,8 +78,7 @@ async function createUserBasket() {
             userBasket = basketData;
             console.log('✅ Cesta criada:', userBasket);
             renderProducts();
-            updateInterfaceState();
-            showStepInstructions();
+            updateProductCount();
             showMessage('✅ Nova cesta criada com sucesso!', 'success');
             return basketData;
         } else {
@@ -164,12 +107,6 @@ async function getProductName(barcode) {
             if (data.found && data.product) {
                 return data.product.nome_produto;
             }
-        } else if (response.status === 404) {
-            console.log('ℹ️ Produto não encontrado na base de dados');
-            return null;
-        } else {
-            console.warn('⚠️ Erro na busca do produto:', response.status);
-            return null;
         }
         return null;
     } catch (error) {
@@ -180,12 +117,6 @@ async function getProductName(barcode) {
 
 // Adiciona produto à cesta
 async function addProduct() {
-    // Verifica se a cesta existe
-    if (!userBasket.id) {
-        showMessage('❌ Sua cesta não está carregada. Tente recarregar a página.', 'warning');
-        return;
-    }
-    
     const barcodeInput = document.getElementById('product-barcode');
     const barcode = barcodeInput.value.trim();
     
@@ -234,8 +165,7 @@ async function addProduct() {
                 
                 await saveBasket();
                 renderProducts();
-                updateInterfaceState();
-                showStepInstructions();
+                updateProductCount();
                 showMessage('✅ Produto adicionado com nome personalizado!', 'success');
                 barcodeInput.value = '';
             } else {
@@ -250,8 +180,7 @@ async function addProduct() {
             
             await saveBasket();
             renderProducts();
-            updateInterfaceState();
-            showStepInstructions();
+            updateProductCount();
             showMessage('✅ Produto adicionado com sucesso!', 'success');
             barcodeInput.value = '';
         }
@@ -277,8 +206,7 @@ async function removeProduct(barcode) {
             if (response.ok) {
                 userBasket.products = userBasket.products.filter(p => p.product_barcode !== barcode);
                 renderProducts();
-                updateInterfaceState();
-                showStepInstructions();
+                updateProductCount();
                 showMessage('✅ Produto removido com sucesso!', 'success');
             } else {
                 throw new Error('Erro ao remover produto');
@@ -306,8 +234,7 @@ async function clearBasket() {
             if (response.ok) {
                 userBasket.products = [];
                 renderProducts();
-                updateInterfaceState();
-                showStepInstructions();
+                updateProductCount();
                 showMessage('✅ Cesta limpa com sucesso!', 'success');
             } else {
                 throw new Error('Erro ao limpar cesta');
@@ -319,14 +246,32 @@ async function clearBasket() {
     }
 }
 
+// Função para editar produto
+async function editProduct(barcode) {
+    const product = userBasket.products.find(p => p.product_barcode === barcode);
+    if (!product) return;
+    
+    const newName = prompt('Editar nome do produto:', product.product_name || '');
+    if (newName !== null) {
+        try {
+            // Atualiza o nome localmente
+            product.product_name = newName;
+            
+            // Salva no servidor
+            await saveBasket();
+            renderProducts();
+            showMessage('✅ Produto atualizado com sucesso!', 'success');
+        } catch (error) {
+            console.error('Erro ao editar produto:', error);
+            showMessage('Erro ao editar produto', 'error');
+        }
+    }
+}
+
 // Renderiza os produtos
 function renderProducts() {
     const grid = document.getElementById('products-grid');
-    const countElement = document.getElementById('product-count');
-    
     if (!grid) return;
-    
-    countElement.textContent = userBasket.products.length;
     
     if (userBasket.products.length === 0) {
         grid.innerHTML = `
@@ -341,7 +286,7 @@ function renderProducts() {
     
     grid.innerHTML = '';
     
-    userBasket.products.forEach((product, index) => {
+    userBasket.products.forEach((product) => {
         const productCard = document.createElement('div');
         productCard.className = 'product-card';
         productCard.innerHTML = `
@@ -364,25 +309,11 @@ function renderProducts() {
     });
 }
 
-// Função para editar produto
-async function editProduct(barcode) {
-    const product = userBasket.products.find(p => p.product_barcode === barcode);
-    if (!product) return;
-    
-    const newName = prompt('Editar nome do produto:', product.product_name || '');
-    if (newName !== null) {
-        try {
-            // Atualiza o nome localmente
-            product.product_name = newName;
-            
-            // Salva no servidor
-            await saveBasket();
-            renderProducts();
-            showMessage('✅ Produto atualizado com sucesso!', 'success');
-        } catch (error) {
-            console.error('Erro ao editar produto:', error);
-            showMessage('Erro ao editar produto', 'error');
-        }
+// Atualiza contador de produtos
+function updateProductCount() {
+    const countElement = document.getElementById('product-count');
+    if (countElement) {
+        countElement.textContent = userBasket.products.length;
     }
 }
 
@@ -417,6 +348,70 @@ async function saveBasket() {
     }
 }
 
+// =============================================
+// FUNÇÕES DE ADMIN
+// =============================================
+
+// Carrega todas as cestas (apenas admin)
+async function loadAllBaskets() {
+    try {
+        const response = await authenticatedFetch('/api/basket/all');
+        if (response.ok) {
+            const allBaskets = await response.json();
+            renderAllBaskets(allBaskets);
+        } else {
+            console.error('Erro ao carregar todas as cestas');
+        }
+    } catch (error) {
+        console.error('Erro ao carregar todas as cestas:', error);
+    }
+}
+
+// Renderiza todas as cestas (admin)
+function renderAllBaskets(baskets) {
+    const adminSection = document.getElementById('admin-baskets-content');
+    if (!adminSection) return;
+
+    if (baskets.length === 0) {
+        adminSection.innerHTML = '<p>Nenhuma cesta encontrada.</p>';
+        return;
+    }
+
+    adminSection.innerHTML = `
+        <div class="admin-baskets">
+            <h3><i class="fas fa-users"></i> Todas as Cestas dos Usuários</h3>
+            <div class="baskets-grid">
+                ${baskets.map(basket => `
+                    <div class="basket-card">
+                        <div class="basket-header">
+                            <h4>${basket.basket_name}</h4>
+                            <div class="user-info">
+                                <span class="user-badge">${basket.user_name || 'Usuário'}</span>
+                                <span class="user-email">${basket.user_email}</span>
+                            </div>
+                        </div>
+                        <div class="basket-info">
+                            <p><strong>Produtos:</strong> ${basket.products.length}</p>
+                            <p><strong>Criada:</strong> ${new Date(basket.created_at).toLocaleString('pt-BR')}</p>
+                        </div>
+                        <div class="basket-products">
+                            <h5>Produtos na Cesta:</h5>
+                            ${basket.products.slice(0, 5).map(product => `
+                                <div class="product-preview">
+                                    <span class="product-name">${product.product_name || product.product_barcode}</span>
+                                    <span class="product-barcode">${product.product_barcode}</span>
+                                </div>
+                            `).join('')}
+                            ${basket.products.length > 5 ? `<p class="more-products">... e mais ${basket.products.length - 5} produtos</p>` : ''}
+                            ${basket.products.length === 0 ? '<p class="empty-basket">Cesta vazia</p>' : ''}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
 // Função para mostrar mensagens
 function showMessage(message, type = 'info') {
     const existingMessage = document.querySelector('.flash-message');
@@ -438,24 +433,6 @@ function showMessage(message, type = 'info') {
             messageDiv.remove();
         }
     }, 5000);
-}
-
-// =============================================
-// FUNÇÕES DE MERCADO (para futura implementação)
-// =============================================
-
-async function loadMarkets() {
-    try {
-        const response = await fetch('/api/supermarkets/public');
-        if (response.ok) {
-            allMarkets = await response.json();
-            console.log('✅ Mercados carregados:', allMarkets.length);
-        } else {
-            console.error('❌ Erro ao carregar mercados');
-        }
-    } catch (error) {
-        console.error('💥 Erro ao carregar mercados:', error);
-    }
 }
 
 // =============================================
@@ -498,8 +475,14 @@ document.addEventListener('DOMContentLoaded', async function() {
             // Carrega a cesta do usuário (cria automaticamente se não existir)
             await loadUserBasket();
             
-            // Carrega mercados para futura implementação
-            await loadMarkets();
+            // Se for admin, carrega todas as cestas
+            if (isAdmin) {
+                const adminSection = document.getElementById('admin-section');
+                if (adminSection) {
+                    adminSection.style.display = 'block';
+                    await loadAllBaskets();
+                }
+            }
             
         } else {
             console.log('❌ Usuário não autenticado');
