@@ -39,36 +39,44 @@ async function authenticatedFetch(url, options = {}) {
     }
 }
 
-// Carrega a cesta do usuário
+// Carrega a cesta do usuário - CORRIGIDO
 async function loadUserBasket() {
     try {
         console.log('🔍 Carregando cesta do usuário...');
         
-        const response = await authenticatedFetch('/api/basket');
+        const response = await authenticatedFetch('/api/basket/');
         
         if (response.ok) {
             const basketData = await response.json();
             userBasket = basketData;
             console.log('✅ Cesta carregada:', userBasket);
             renderProducts();
-        } else if (response.status === 404) {
+            return;
+        } 
+        
+        if (response.status === 404) {
+            console.log('ℹ️ Cesta não encontrada, criando nova...');
             // Cria uma cesta vazia se não existir
             await createUserBasket();
-        } else {
-            console.error('❌ Erro ao carregar cesta:', response.status);
-            const errorText = await response.text();
-            console.error('Detalhes do erro:', errorText);
+            return;
         }
+        
+        console.error('❌ Erro ao carregar cesta:', response.status);
+        const errorText = await response.text();
+        console.error('Detalhes do erro:', errorText);
+        showMessage('Erro ao carregar sua cesta', 'error');
+        
     } catch (error) {
         console.error('💥 Erro ao carregar cesta:', error);
         showMessage('Erro ao carregar sua cesta. Tente recarregar a página.', 'error');
     }
 }
 
-// Cria uma nova cesta para o usuário
+// Cria uma nova cesta para o usuário - CORRIGIDO
 async function createUserBasket() {
     try {
-        const response = await authenticatedFetch('/api/basket', {
+        console.log('🆕 Criando nova cesta...');
+        const response = await authenticatedFetch('/api/basket/', {
             method: 'POST'
         });
         
@@ -77,11 +85,15 @@ async function createUserBasket() {
             userBasket = basketData;
             console.log('✅ Cesta criada:', userBasket);
             renderProducts();
+            return basketData;
         } else {
-            throw new Error('Erro ao criar cesta');
+            const errorText = await response.text();
+            console.error('❌ Erro ao criar cesta:', response.status, errorText);
+            throw new Error(`Erro ${response.status}: ${errorText}`);
         }
     } catch (error) {
-        console.error('Erro ao criar cesta:', error);
+        console.error('💥 Erro ao criar cesta:', error);
+        showMessage('Erro ao criar cesta. Tente recarregar a página.', 'error');
         throw error;
     }
 }
@@ -147,41 +159,31 @@ function renderAllBaskets(baskets) {
     `;
 }
 
-// Busca o nome do produto pelo código de barras - USANDO /api/realtime-search
+// Busca o nome do produto pelo código de barras - CORRIGIDO
 async function getProductName(barcode) {
     try {
-        console.log(`🔍 Buscando produto no endpoint realtime-search: ${barcode}`);
-
-        const response = await authenticatedFetch('/api/realtime-search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                produto: barcode,
-                cnpjs: [] // busca global, sem filtrar por mercado
-            })
-        });
-
-        if (!response.ok) {
-            console.warn('⚠️ Erro na busca:', response.status);
+        console.log(`🔍 Buscando produto: ${barcode}`);
+        
+        // CORREÇÃO: Use o endpoint correto para busca por código de barras
+        const response = await authenticatedFetch(`/api/search-product?barcode=${encodeURIComponent(barcode)}`);
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log('📦 Resultado da busca:', data);
+            
+            if (data.found && data.product) {
+                return data.product.nome_produto;
+            }
+        } else if (response.status === 404) {
+            console.log('ℹ️ Produto não encontrado na base de dados');
+            return null;
+        } else {
+            console.warn('⚠️ Erro na busca do produto:', response.status);
             return null;
         }
-
-        const data = await response.json();
-        console.log('📦 Resultados da busca:', data);
-
-        // Verifica se retornou resultados válidos
-        if (Array.isArray(data) && data.length > 0) {
-            // Busca produto com código exato
-            const exactMatch = data.find(p => p.codigo_barras === barcode);
-            if (exactMatch) return exactMatch.nome_produto;
-
-            // Ou retorna o primeiro nome da lista
-            return data[0].nome_produto || null;
-        }
-
         return null;
     } catch (error) {
-        console.error('💥 Erro ao buscar produto:', error);
+        console.error('💥 Erro na busca do produto:', error);
         return null;
     }
 }
@@ -379,7 +381,7 @@ async function saveBasket() {
         console.log('💾 Salvando cesta:', userBasket);
         
         // CORREÇÃO: Use PATCH em vez de PUT
-        const response = await authenticatedFetch('/api/basket', {
+        const response = await authenticatedFetch('/api/basket/', {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
