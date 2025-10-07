@@ -244,23 +244,7 @@ async function handleBasketActions(event) {
     } 
     // Comprar Cesta
     else if (target.classList.contains('btn-buy-basket')) {
-        currentBasketId = parseInt(basketId);
-        const basket = allBaskets.find(b => b.id === currentBasketId);
-        if (basket) {
-            currentBasketProducts = basket.produtos || [];
-            document.getElementById('buyBasketName').textContent = basketName;
-            document.getElementById('selectedMarketsCount').textContent = '0 mercados selecionados';
-            
-            // Verificar se há produtos com código de barras
-            const productsWithBarcode = currentBasketProducts.filter(p => p.codigo_barras);
-            if (productsWithBarcode.length === 0) {
-                showNotification('Esta cesta não possui produtos com código de barras para busca.', 'warning');
-                return;
-            }
-            
-            renderMarketsList();
-            buyBasketModal.style.display = 'block';
-        }
+        openBuyBasketModal(basketId, basketName);
     }
     // Excluir Cesta
     else if (target.classList.contains('btn-delete-basket')) {
@@ -284,7 +268,6 @@ async function handleBasketActions(event) {
         }
     }
 }
-
 /**
  * Renderiza a lista de produtos dentro do modal de gerenciamento.
  */
