@@ -1,4 +1,4 @@
-# main.py (completo e corrigido com Cestas Básicas)
+# main.py (completo e corrigido com Cestas Básicas) - VERSÃO ATUALIZADA
 import os
 import asyncio
 from datetime import date, timedelta, datetime
@@ -630,7 +630,7 @@ async def update_supermarket(id: int, market: Supermercado, user: UserProfile = 
         supabase.table('supermercados').update(market_data).eq('id', id).execute
     )
     if not resp.data: 
-        raise HTTPException(status_code=404, detail="Mercado não encontrado")
+        raise HTTPException(status_code=404, detail="Mercado não encontrada")
     return resp.data[0]
 
 @app.delete("/api/supermarkets/{id}", status_code=204)
@@ -1125,31 +1125,38 @@ async def create_basket(
     basket_data: CestaCreate,
     current_user: UserProfile = Depends(require_page_access('baskets')) # Requer acesso à página 'baskets'
 ):
-    # 1. Verificar limite de cestas do usuário
-    count_response = await asyncio.to_thread(
-        supabase.table('cestas_basicas').select('id', count='exact').eq('user_id', current_user.id).execute
-    )
-    current_baskets_count = count_response.count if count_response.count is not None else 0
-
-    if current_baskets_count >= BASKET_LIMIT_PER_USER:
-        raise HTTPException(status_code=403, detail=f"Limite de {BASKET_LIMIT_PER_USER} cestas básicas atingido.")
-
-    # 2. Preparar dados
-    new_basket = {
-        'user_id': current_user.id,
-        'nome': basket_data.nome,
-        'produtos': [item.dict() for item in basket_data.produtos]
-    }
-
-    # 3. Inserir
     try:
-        resp = await asyncio.to_thread(
-            supabase.table('cestas_basicas').insert(new_basket).execute
+        # 1. Verificar limite de cestas do usuário - USAR supabase_admin
+        count_response = await asyncio.to_thread(
+            supabase_admin.table('cestas_basicas').select('id', count='exact').eq('user_id', current_user.id).execute
         )
+        current_baskets_count = count_response.count if count_response.count is not None else 0
+
+        if current_baskets_count >= BASKET_LIMIT_PER_USER:
+            raise HTTPException(status_code=403, detail=f"Limite de {BASKET_LIMIT_PER_USER} cestas básicas atingido.")
+
+        # 2. Preparar dados
+        new_basket = {
+            'user_id': current_user.id,
+            'nome': basket_data.nome,
+            'produtos': [item.dict() for item in basket_data.produtos]
+        }
+
+        # 3. Inserir - USAR supabase_admin
+        resp = await asyncio.to_thread(
+            supabase_admin.table('cestas_basicas').insert(new_basket).execute
+        )
+        
+        if not resp.data:
+            raise HTTPException(status_code=500, detail="Nenhum dado retornado ao criar cesta")
+            
         return resp.data[0]
+        
+    except HTTPException:
+        raise
     except Exception as e:
-        logging.error(f"Erro ao criar cesta: {e}")
-        raise HTTPException(status_code=500, detail="Erro interno ao criar a cesta básica.")
+        logging.error(f"Erro ao criar cesta: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro interno ao criar a cesta básica: {str(e)}")
 
 # --- LISTAGEM DE CESTAS (ADMIN e USUÁRIO) ---
 @app.get("/api/baskets", response_model=List[Cesta])
@@ -1157,7 +1164,7 @@ async def list_baskets(
     current_user: UserProfile = Depends(require_page_access('baskets')),
     user_id: Optional[str] = Query(None) # Opcional para admin filtrar
 ):
-    query = supabase.table('cestas_basicas').select('*').order('id', desc=False)
+    query = supabase_admin.table('cestas_basicas').select('*').order('id', desc=False)
 
     # Lógica de Permissão
     if current_user.role == 'admin':
@@ -1183,7 +1190,7 @@ async def update_basket_name(
     # 1. Restrição: Usuário só pode editar a sua própria cesta.
     # Usamos o user_id na query de update para garantir isso.
     resp = await asyncio.to_thread(
-        supabase.table('cestas_basicas').update(basket_data.dict(exclude_none=True))
+        supabase_admin.table('cestas_basicas').update(basket_data.dict(exclude_none=True))
                  .eq('id', basket_id)
                  .eq('user_id', current_user.id)
                  .execute
@@ -1203,7 +1210,7 @@ async def add_product_to_basket(
 ):
     # 1. Buscar a cesta para checar a permissão e o limite de produtos
     basket_resp = await asyncio.to_thread(
-        supabase.table('cestas_basicas').select('user_id, produtos').eq('id', basket_id).single().execute
+        supabase_admin.table('cestas_basicas').select('user_id, produtos').eq('id', basket_id).single().execute
     )
     
     basket_data = basket_resp.data
@@ -1220,7 +1227,7 @@ async def add_product_to_basket(
     
     # 3. Atualizar no banco de dados
     update_resp = await asyncio.to_thread(
-        supabase.table('cestas_basicas').update({'produtos': new_product_list}).eq('id', basket_id).execute
+        supabase_admin.table('cestas_basicas').update({'produtos': new_product_list}).eq('id', basket_id).execute
     )
     return update_resp.data[0]
 
@@ -1234,7 +1241,7 @@ async def edit_product_in_basket(
 ):
     # 1. Buscar a cesta para checar a permissão
     basket_resp = await asyncio.to_thread(
-        supabase.table('cestas_basicas').select('user_id, produtos').eq('id', basket_id).single().execute
+        supabase_admin.table('cestas_basicas').select('user_id, produtos').eq('id', basket_id).single().execute
     )
     
     basket_data = basket_resp.data
@@ -1259,7 +1266,7 @@ async def edit_product_in_basket(
     
     # 4. Atualizar no banco
     update_resp = await asyncio.to_thread(
-        supabase.table('cestas_basicas').update({'produtos': current_products}).eq('id', basket_id).execute
+        supabase_admin.table('cestas_basicas').update({'produtos': current_products}).eq('id', basket_id).execute
     )
     return update_resp.data[0]
 
@@ -1271,7 +1278,7 @@ async def remove_product_from_basket(
     current_user: UserProfile = Depends(require_page_access('baskets'))
 ):
     basket_resp = await asyncio.to_thread(
-        supabase.table('cestas_basicas').select('user_id, produtos').eq('id', basket_id).single().execute
+        supabase_admin.table('cestas_basicas').select('user_id, produtos').eq('id', basket_id).single().execute
     )
     
     basket_data = basket_resp.data
@@ -1291,7 +1298,7 @@ async def remove_product_from_basket(
     
     # 3. Atualizar no banco
     update_resp = await asyncio.to_thread(
-        supabase.table('cestas_basicas').update({'produtos': new_product_list}).eq('id', basket_id).execute
+        supabase_admin.table('cestas_basicas').update({'produtos': new_product_list}).eq('id', basket_id).execute
     )
     return update_resp.data[0]
 
@@ -1303,7 +1310,7 @@ async def clear_basket_products(
 ):
     # 1. Verificar permissão
     basket_resp = await asyncio.to_thread(
-        supabase.table('cestas_basicas').select('user_id').eq('id', basket_id).single().execute
+        supabase_admin.table('cestas_basicas').select('user_id').eq('id', basket_id).single().execute
     )
     
     if not basket_resp.data or basket_resp.data['user_id'] != current_user.id:
@@ -1311,7 +1318,7 @@ async def clear_basket_products(
     
     # 2. Limpar a lista de produtos (setar como array vazio)
     update_resp = await asyncio.to_thread(
-        supabase.table('cestas_basicas').update({'produtos': []}).eq('id', basket_id).execute
+        supabase_admin.table('cestas_basicas').update({'produtos': []}).eq('id', basket_id).execute
     )
     return update_resp.data[0]
 
@@ -1323,7 +1330,7 @@ async def delete_basket(
 ):
     # Usuário só pode excluir a sua própria cesta
     resp = await asyncio.to_thread(
-        lambda: supabase.table('cestas_basicas').delete()
+        lambda: supabase_admin.table('cestas_basicas').delete()
                         .eq('id', basket_id)
                         .eq('user_id', current_user.id)
                         .execute()
@@ -1342,7 +1349,7 @@ async def get_basket_realtime_prices(
 ):
     # 1. Obter a cesta e verificar permissão
     basket_resp = await asyncio.to_thread(
-        supabase.table('cestas_basicas').select('user_id, nome, produtos').eq('id', basket_id).single().execute
+        supabase_admin.table('cestas_basicas').select('user_id, nome, produtos').eq('id', basket_id).single().execute
     )
     
     basket_data = basket_resp.data
