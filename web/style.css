@@ -7353,3 +7353,27 @@ body.light-mode .modal-footer {
         font-size: 16px; /* Prevenir zoom no iOS */
     }
 }
+/* Melhorias para dispositivos touch */
+.touch-device .modal-content {
+    margin: 0;
+    max-width: 100%;
+    max-height: 100vh;
+    height: 100vh;
+    border-radius: 0;
+}
+
+.touch-device .modal-body {
+    -webkit-overflow-scrolling: touch; /* Scroll suave no iOS */
+}
+
+.touch-device .market-card {
+    padding: 1.25rem;
+    min-height: 60px;
+}
+
+.touch-device .btn {
+    min-height: 44px; /* Tamanho mínimo para toque */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
