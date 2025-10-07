@@ -63,9 +63,13 @@ class UserProfile(BaseModel):
     allowed_pages: List[str] = []
     email: Optional[str] = None
 
-async def get_current_user(authorization: str = Header(None)) -> UserProfile:
-    if not authorization or not authorization.startswith("Bearer "):
+from typing import Optional # Garanta que Optional está importado
+
+async def get_current_user(authorization: Optional[str] = Header(None)) -> UserProfile:
+    # A única mudança necessária é aqui:
+    if not authorization or not str(authorization).startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Token de autorização ausente ou mal formatado")
+    
     jwt = authorization.split(" ")[1]
     try:
         user_response = supabase.auth.get_user(jwt)
@@ -1143,5 +1147,6 @@ app.mount("/", StaticFiles(directory="web", html=True), name="static")
 @app.get("/")
 def read_root():
     return {"message": "Bem-vindo à API de Preços AL - Versão 3.1.2"}
+
 
 
