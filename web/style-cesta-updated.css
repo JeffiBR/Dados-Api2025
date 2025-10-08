@@ -16,15 +16,50 @@
     background-color: var(--panel-dark);
     margin: 2rem auto;
     padding: 0;
-    border-radius: var(--radius);
-    box-shadow: 0 5px 30px rgba(0, 0, 0, 0.3);
-    width: 90%;
-    max-width: 600px;
-    max-height: calc(100vh - 4rem);
+    border-radius: 16px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+    width: 90vw; /* largura em % da tela */
+    max-width: 1000px; /* limite em telas grandes */
+    height: auto;
+    max-height: 90vh; /* altura máxima = 90% da tela */
     border: 1px solid var(--border-dark);
     display: flex;
     flex-direction: column;
     position: relative;
+    overflow: hidden;
+}
+
+/* Área de rolagem dentro do modal */
+.modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+    max-height: calc(90vh - 10rem); /* ajusta a altura interna */
+}
+
+/* Telas médias (tablet) */
+@media (max-width: 992px) {
+    .modal-content {
+        width: 95vw;
+        max-width: 800px;
+    }
+}
+
+/* Telas pequenas (celular) */
+@media (max-width: 600px) {
+    .modal-content {
+        width: 100vw;
+        height: 100vh; /* ocupa a tela toda */
+        max-width: 100%;
+        max-height: 100%;
+        border-radius: 0;
+        margin: 0;
+    }
+
+    .modal-body {
+        max-height: calc(100vh - 8rem);
+        padding: 1rem;
+    }
 }
 
 body.light-mode .modal-content {
@@ -1711,5 +1746,54 @@ body.light-mode .market-card.selected .market-address {
     
     .comparison-price .price-value {
         font-size: 1.75rem;
+    }
+}
+/* ===== MODAL DE COMPARAÇÃO DE CESTAS (AJUSTE RESPONSIVO) ===== */
+#compareCestaModal .modal-content {
+    width: 90vw;              /* usa 90% da largura da tela */
+    max-width: 1100px;        /* máximo em monitores grandes */
+    max-height: 90vh;         /* não ultrapassa a altura da tela */
+    height: auto;
+    margin: 2rem auto;
+    border-radius: 16px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: var(--panel-dark);
+    border: 1px solid var(--border-dark);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    transition: all 0.3s ease;
+}
+
+/* corpo rolável */
+#compareCestaModal .modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+    max-height: calc(90vh - 8rem);
+}
+
+/* para tablets */
+@media (max-width: 992px) {
+    #compareCestaModal .modal-content {
+        width: 95vw;
+        max-width: 850px;
+    }
+}
+
+/* para celulares */
+@media (max-width: 600px) {
+    #compareCestaModal .modal-content {
+        width: 100vw;
+        height: 100vh;
+        max-width: 100%;
+        max-height: 100%;
+        border-radius: 0;
+        margin: 0;
+    }
+
+    #compareCestaModal .modal-body {
+        padding: 1rem;
+        max-height: calc(100vh - 7rem);
     }
 }
