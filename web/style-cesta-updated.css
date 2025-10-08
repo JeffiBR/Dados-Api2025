@@ -467,19 +467,11 @@ body.light-mode .modal-footer {
 }
 
 .market-address {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: flex-start;
-    gap: 0.5rem;
-    padding: 0.6rem;
-    background: var(--bg-secondary);
-    border-radius: 6px;
-    border-left: 3px solid var(--primary);
-    line-height: 1.3;
+    border-left: 2px solid rgba(79, 70, 229, 0.5); /* cor suave */
+    padding-left: 0.75rem;
+    margin: 0;
+    background: transparent;
 }
-
 .market-total {
     text-align: center;
     margin: 1rem 0;
@@ -1311,13 +1303,20 @@ body.light-mode .search-box input {
 
 .supermarket-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1rem;
-    max-height: calc(100vh - 300px);
+    grid-template-columns: repeat(2, 1fr); /* dois cards por linha */
+    gap: 1rem; /* espaço entre os cards */
+    max-height: 600px; /* mais altura pro scroll */
     overflow-y: auto;
-    padding: 0.5rem;
-    margin: 0 -0.5rem;
+    padding: 1rem;
 }
+
+/* Responsivo — volta pra 1 por linha em telas pequenas */
+@media (max-width: 768px) {
+    .supermarket-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 
 /* Scrollbar personalizada */
 .supermarket-grid::-webkit-scrollbar {
@@ -1341,16 +1340,28 @@ body.light-mode .supermarket-grid::-webkit-scrollbar-track {
 /* CORREÇÃO CRÍTICA: REMOVER pointer-events: none DOS CARDS */
 .market-card {
     border: 2px solid var(--border-dark);
-    border-radius: 12px;
-    padding: 0.875rem 1rem;
+    border-radius: 10px;
+    padding: 0.5rem 0.75rem; /* menos espaço interno */
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.25s ease;
     background: var(--input-dark);
     display: flex;
-    align-items: center;
-    gap: 0.875rem;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 0.3rem; /* espaço menor entre nome e endereço */
     position: relative;
     overflow: hidden;
+    min-height: 70px; /* 🔽 altura bem reduzida */
+    box-sizing: border-box;
+}
+
+.market-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(79, 70, 229, 0.15);
+}
+
+}
 }
 
 body.light-mode .market-card {
