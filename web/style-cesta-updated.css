@@ -243,7 +243,6 @@ body.light-mode .modal-footer {
     font-size: 0.9em;
 }
 
-
 /* ESTILOS PROFISSIONAIS PARA O SISTEMA DE CESTAS BÁSICAS */
 
 .results-section {
@@ -1118,140 +1117,480 @@ body.light-mode .detail-v2-subtitle {
     }
 }
 
+/* ====== MELHORIAS PARA A SEÇÃO DE FILTROS DE SUPERMERCADO ====== */
 
-/* Estilo para o elemento details do filtro de mercados */
 .market-filters {
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    margin-bottom: 1rem;
+    border: 1px solid var(--border-dark);
+    border-radius: 16px;
+    margin-top: 1.5rem;
+    background: var(--panel-dark);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .market-filters {
+    border: 1px solid var(--border-light);
+    background: var(--panel-light);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.market-filters[open] {
+    border-color: var(--primary);
+    box-shadow: 0 8px 40px rgba(79, 70, 229, 0.15);
 }
 
 .market-filters summary {
-    padding: 1rem;
-    cursor: pointer;
-    background-color: var(--card-bg);
-    transition: background-color 0.2s;
     list-style: none;
+    padding: 1.5rem 2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 600;
+    color: var(--text-dark);
+    transition: all 0.3s ease;
+    position: relative;
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.03), transparent);
+}
+
+body.light-mode .market-filters summary {
+    color: var(--text-light);
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.02), transparent);
+}
+
+.market-filters summary:hover {
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), transparent);
 }
 
 .market-filters summary::-webkit-details-marker {
     display: none;
 }
 
-.market-filters summary:hover {
-    background-color: var(--hover-color);
+.market-filters summary::after {
+    content: '\f078';
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    font-size: 0.9em;
+    color: var(--primary);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.market-filters[open] summary::after {
+    transform: rotate(180deg);
+    color: var(--accent);
 }
 
 .summary-content {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    font-weight: 600;
+    gap: 1rem;
+    flex: 1;
+}
+
+.summary-content i {
+    font-size: 1.2rem;
+    color: var(--primary);
+    width: 24px;
+    text-align: center;
 }
 
 .selection-count {
-    background-color: var(--primary-color);
+    background: linear-gradient(135deg, var(--primary), var(--accent));
     color: white;
-    padding: 0.25rem 0.5rem;
-    border-radius: 12px;
-    font-size: 0.8rem;
-}
-
-/* Container dos filtros com altura máxima e scroll */
-.filters-container {
-    max-height: 400px;
-    overflow-y: auto;
-    padding: 1rem;
-    border-top: 1px solid var(--border-color);
-}
-
-/* Estilo para a grid de supermercados */
-.supermarket-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1rem;
-}
-
-/* Cards de mercado no modal de seleção */
-.market-card {
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 1rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    background-color: var(--card-bg);
-}
-
-.market-card:hover {
-    border-color: var(--primary-color);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-
-.market-card.selected {
-    border-color: var(--primary-color);
-    background-color: rgba(74, 144, 226, 0.1);
-}
-
-.market-info {
-    display: flex;
-    flex-direction: column;
-}
-
-.market-name {
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    font-size: 0.85em;
     font-weight: 600;
-    margin-bottom: 0.5rem;
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
 }
 
-.market-address {
-    font-size: 0.85rem;
-    color: var(--text-muted);
+.filters-container {
+    padding: 0 2rem 2rem;
+    border-top: 1px solid var(--border-dark);
 }
 
-/* Controles de busca */
+body.light-mode .filters-container {
+    border-top: 1px solid var(--border-light);
+}
+
 .market-search-controls {
     display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    margin-bottom: 1rem;
+    gap: 1.5rem;
+    margin-top: 1.2rem;
+    margin-bottom: 2rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
 }
 
 .search-box {
     position: relative;
-    display: flex;
-    align-items: center;
+    flex: 1;
+    min-width: 300px;
+    margin-top: 0.5rem;
 }
 
 .search-box i {
     position: absolute;
-    left: 12px;
-    color: var(--text-muted);
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted-dark);
+    z-index: 2;
+}
+
+body.light-mode .search-box i {
+    color: var(--muted-light);
 }
 
 .search-box input {
     width: 100%;
-    padding: 0.75rem 1rem 0.75rem 2.5rem;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    background-color: var(--input-bg);
-    color: var(--text-color);
+    padding: 1rem 1rem 1rem 3rem;
+    border: 2px solid var(--border-dark);
+    border-radius: 12px;
+    background: var(--input-dark);
+    color: var(--text-dark);
+    font-size: 0.95em;
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 1;
+}
+
+body.light-mode .search-box input {
+    background: var(--input-light);
+    color: var(--text-light);
+    border: 2px solid var(--border-light);
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+    transform: translateY(-1px);
 }
 
 .clear-btn {
     position: absolute;
-    right: 8px;
-    background: none;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(79, 70, 229, 0.15);
     border: none;
-    color: var(--text-muted);
+    color: var(--primary);
     cursor: pointer;
-    padding: 4px;
+    padding: 0.6rem;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    font-size: 1.1rem;
+    backdrop-filter: blur(6px);
+}
+
+.clear-btn:hover {
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: #fff;
+    transform: translateY(-50%) scale(1.15);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
 }
 
 .selection-actions {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.75rem;
+}
+
+.btn.small {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.85em;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.supermarket-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 0.5rem;
+    margin: 0 -0.5rem;
+}
+
+/* Scrollbar personalizada */
+.supermarket-grid::-webkit-scrollbar {
+    width: 8px;
+}
+
+.supermarket-grid::-webkit-scrollbar-track {
+    background: var(--border-dark);
+    border-radius: 4px;
+}
+
+.supermarket-grid::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    border-radius: 4px;
+}
+
+body.light-mode .supermarket-grid::-webkit-scrollbar-track {
+    background: var(--border-light);
+}
+
+/* CORREÇÃO CRÍTICA: REMOVER pointer-events: none DOS CARDS */
+.market-card {
+    border: 2px solid var(--border-dark);
+    border-radius: 12px;
+    padding: 0.875rem 1rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: var(--input-dark);
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    position: relative;
+    overflow: hidden;
+}
+
+body.light-mode .market-card {
+    border: 2px solid var(--border-light);
+    background: var(--input-light);
+}
+
+.market-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
+}
+
+.market-card.selected {
+    border-color: var(--primary);
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(124, 58, 237, 0.05));
+}
+
+/* CORREÇÃO: market-info DEVE SER CLICÁVEL */
+.market-info {
+    flex: 1;
+}
+
+.market-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 0.125rem;
+    line-height: 1.2;
+    color: var(--text-dark);
+    transition: color 0.3s ease;
+}
+
+body.light-mode .market-name {
+    color: var(--text-light);
+}
+
+.market-address {
+    font-size: 0.75rem;
+    color: var(--muted-dark);
+    line-height: 1.2;
+    margin-top: 0.25rem;
+}
+
+body.light-mode .market-address {
+    color: var(--muted-light);
+}
+
+/* Bola de seleção (sempre visível) */
+.market-card::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border-dark);
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    background: var(--panel-dark);
+    z-index: 1;
+}
+
+body.light-mode .market-card::before {
+    border: 2px solid var(--border-light);
+    background: var(--panel-light);
+}
+
+/* Estado selecionado - bola fica verde */
+.market-card.selected::before {
+    background: var(--success);
+    border-color: var(--success);
+}
+
+/* Ícone de check - aparece SOBRE a bola verde quando selecionado */
+.market-card.selected::after {
+    content: '\f00c';
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    transform: translateY(-50%);
+    color: #fff;
+    font-size: 0.7em;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+
+/* Feedback visual para seleção */
+.market-card.selected .market-name {
+    color: var(--primary);
+    font-weight: 700;
+}
+
+.market-card.selected .market-address {
+    color: var(--primary);
+    opacity: 0.8;
+}
+
+/* Estados de foco para acessibilidade */
+.market-card:focus {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* Efeito de clique */
+.market-card:active {
+    transform: scale(0.98);
+}
+
+/* Estados vazios */
+.supermarket-grid:empty::before {
+    content: 'Nenhum supermercado encontrado';
+    text-align: center;
+    color: var(--muted-dark);
+    padding: 2rem;
+    grid-column: 1 / -1;
+    font-style: italic;
+}
+
+body.light-mode .supermarket-grid:empty::before {
+    color: var(--muted-light);
+}
+
+/* Animações */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.market-filters[open] .filters-container {
+    animation: slideDown 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .market-search-controls {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .search-box {
+        min-width: 100%;
+    }
+    
+    .selection-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .supermarket-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .market-filters summary {
+        padding: 1.25rem 1.5rem;
+    }
+    
+    .filters-container {
+        padding: 0 1.5rem 1.5rem;
+    }
+    
+    .summary-content {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .selection-count {
+        font-size: 0.8em;
+        padding: 0.3rem 0.8rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .market-filters summary {
+        padding: 1rem 1.25rem;
+    }
+    
+    .filters-container {
+        padding: 0 1.25rem 1.25rem;
+    }
+    
+    .market-card {
+        padding: 0.75rem;
+        gap: 0.75rem;
+    }
+    
+    .market-name {
+        font-size: 0.9rem;
+    }
+    
+    .market-address {
+        font-size: 0.7rem;
+    }
+}
+
+/* CORREÇÃO DA BOLINHA DE SELEÇÃO NO MODO CLARO */
+body.light-mode .market-card.selected::before {
+    background: var(--success) !important;
+    border-color: var(--success) !important;
+}
+
+body.light-mode .market-card.selected::after {
+    content: '\f00c' !important;
+    font-family: 'Font Awesome 5 Free' !important;
+    font-weight: 900 !important;
+    position: absolute !important;
+    top: 50% !important;
+    right: 12px !important;
+    transform: translateY(-50%) !important;
+    color: #fff !important;
+    font-size: 0.7em !important;
+    width: 18px !important;
+    height: 18px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 2 !important;
+}
+
+/* Garantir que o texto fique visível no modo claro */
+body.light-mode .market-card.selected .market-name {
+    color: var(--primary) !important;
+    font-weight: 700 !important;
+}
+
+body.light-mode .market-card.selected .market-address {
+    color: var(--primary) !important;
+    opacity: 0.8 !important;
 }
 
 /* Botões de ação */
@@ -1260,17 +1599,6 @@ body.light-mode .detail-v2-subtitle {
     justify-content: flex-end;
     padding-top: 1rem;
     border-top: 1px solid var(--border-color);
-}
-
-/* Responsividade para grid de mercados */
-@media (max-width: 768px) {
-    .supermarket-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .filters-container {
-        max-height: 300px;
-    }
 }
 
 /* ====== ESTILOS ESPECÍFICOS PARA CARDS EM 3 COLUNAS ====== */
