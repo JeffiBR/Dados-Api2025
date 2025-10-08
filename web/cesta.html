@@ -93,7 +93,7 @@
                         <i class="fas fa-shopping-basket"></i>
                         <h2>Minhas Cestas Básicas</h2>
                     </div>
-                    <p class="panel-description">Crie até 3 cestas, cada uma com no máximo 25 produtos. Use a função "Comparar" para comparar preços por código de barras.</p>
+                    <p class="panel-description">Crie até 3 cestas, cada uma com no máximo 25 produtos. Use a função "Comprar" para comparar preços por código de barras.</p>
                     
                     <button class="btn" id="btnCreateBasket">
                         <i class="fas fa-plus-circle"></i> Criar Nova Cesta
@@ -104,6 +104,23 @@
                     </div>
 
                     <h2 class="mt-5" id="resultsTitle" style="display: none;">Resultados da Busca por Código de Barras</h2>
+                    
+                    <!-- Seção de Cards de Destaque -->
+                    <div class="results-section" id="highlightResults" style="display: none;">
+                        <h3>Cestas em Destaque</h3>
+                        <div class="highlight-cards" id="highlightCards">
+                            <!-- Cards de destaque serão inseridos aqui: most-expensive, best-basket, complete-basket -->
+                        </div>
+                    </div>
+
+                    <!-- Seção de Demais Mercados -->
+                    <div class="results-section" id="allMarketsResults" style="display: none;">
+                        <h3>Todos os Mercados Comparados</h3>
+                        <div class="cards-grid" id="allMarketsCards">
+                            <!-- Demais cards de mercado serão inseridos aqui -->
+                        </div>
+                    </div>
+
                     <div id="realtimeResults" class="table-responsive">
                         <!-- Resultados da busca em tempo real -->
                     </div>
@@ -272,11 +289,26 @@
         </div>
     </div>
 
+    <!-- Modal de comparação de cestas -->
+    <div id="compareCestaModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5>Comparação de Cestas Básicas</h5>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="compareCestaContent">
+                    <!-- Conteúdo da comparação será renderizado aqui -->
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="user-menu.js"></script>
     <script src="mobile-menu.js"></script>
     <script src="user-activity-monitor.js"></script>
     <script src="cesta.js"></script>
     <script src="cesta-comprar.js"></script>
-
+   
 </body>
 </html>
