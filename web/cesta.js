@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         createBasketModal.style.display = 'block';
     });
     
-    // Usa delegação de evento para botões de Gerenciar/Excluir/Comprar nos cards
+    // Usa delegação de evento para botões de Gerenciar/Excluir/Comparar nos cards
     document.getElementById('basketsList').addEventListener('click', handleBasketActions);
     
     // Fechar modais ao clicar no X
@@ -150,7 +150,7 @@ function renderBaskets() {
                         <i class="fas fa-edit"></i> Gerenciar Produtos
                     </button>
                     <button class="btn btn-success btn-buy-basket" data-basket-id="${basket.id}" data-basket-name="${basket.nome}">
-                        <i class="fas fa-shopping-cart"></i> Comprar
+                        <i class="fas fa-shopping-cart"></i> Comparar
                     </button>
                     <button class="btn danger btn-delete-basket" data-basket-id="${basket.id}" data-basket-name="${basket.nome}">
                         <i class="fas fa-trash"></i> Excluir
@@ -219,7 +219,7 @@ async function handleCreateBasket(event) {
 }
 
 /**
- * Lida com as ações de Gerenciar Produtos, Comprar e Excluir Cesta.
+ * Lida com as ações de Gerenciar Produtos, Comparar e Excluir Cesta.
  */
 async function handleBasketActions(event) {
     const target = event.target.closest('button');
@@ -242,7 +242,7 @@ async function handleBasketActions(event) {
         }
         
     } 
-    // Comprar Cesta
+    // Comparar Cesta
     else if (target.classList.contains('btn-buy-basket')) {
         openBuyBasketModal(basketId, basketName);
     }
