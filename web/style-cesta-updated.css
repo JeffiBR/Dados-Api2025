@@ -1408,52 +1408,6 @@ body.light-mode .market-address {
     color: var(--muted-light);
 }
 
-/* Bola de seleção (sempre visível) */
-.market-card::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    right: 12px;
-    transform: translateY(-50%);
-    width: 18px;
-    height: 18px;
-    border: 2px solid var(--border-dark);
-    border-radius: 50%;
-    transition: all 0.3s ease;
-    background: var(--panel-dark);
-    z-index: 1;
-}
-
-body.light-mode .market-card::before {
-    border: 2px solid var(--border-light);
-    background: var(--panel-light);
-}
-
-/* Estado selecionado - bola fica verde */
-.market-card.selected::before {
-    background: var(--success);
-    border-color: var(--success);
-}
-
-/* Ícone de check - aparece SOBRE a bola verde quando selecionado */
-.market-card.selected::after {
-    content: '\f00c';
-    font-family: 'Font Awesome 5 Free';
-    font-weight: 900;
-    position: absolute;
-    top: 50%;
-    right: 12px;
-    transform: translateY(-50%);
-    color: #fff;
-    font-size: 0.7em;
-    width: 18px;
-    height: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 2;
-}
-
 /* Feedback visual para seleção */
 .market-card.selected .market-name {
     color: var(--primary);
@@ -1566,30 +1520,6 @@ body.light-mode .supermarket-grid:empty::before {
     .market-address {
         font-size: 0.7rem;
     }
-}
-
-/* CORREÇÃO DA BOLINHA DE SELEÇÃO NO MODO CLARO */
-body.light-mode .market-card.selected::before {
-    background: var(--success) !important;
-    border-color: var(--success) !important;
-}
-
-body.light-mode .market-card.selected::after {
-    content: '\f00c' !important;
-    font-family: 'Font Awesome 5 Free' !important;
-    font-weight: 900 !important;
-    position: absolute !important;
-    top: 50% !important;
-    right: 12px !important;
-    transform: translateY(-50%) !important;
-    color: #fff !important;
-    font-size: 0.7em !important;
-    width: 18px !important;
-    height: 18px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    z-index: 2 !important;
 }
 
 /* Garantir que o texto fique visível no modo claro */
