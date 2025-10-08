@@ -305,29 +305,28 @@ body.light-mode .modal-footer {
     background: linear-gradient(90deg, var(--primary), transparent);
 }
 
-/* ====== LAYOUT DE 3 COLUNAS PARA OS CARDS ====== */
-.cards-grid {
+/* ====== LAYOUT ESPECIAL PARA CESTAS DESTAQUE ====== */
+.highlight-cards {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 1.5rem;
     margin-bottom: 2rem;
 }
 
-/* Cards Base - Altura consistente */
+/* Cards Base - Layout Compacto */
 .market-card {
     background: var(--card-bg);
-    border-radius: 16px;
-    padding: 1.5rem;
+    border-radius: 12px;
+    padding: 1.25rem;
     border: 1px solid var(--border-color);
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     position: relative;
     overflow: hidden;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
     display: flex;
     flex-direction: column;
     height: 100%;
-    min-height: 380px;
+    min-height: 280px;
 }
 
 .market-card::before {
@@ -336,7 +335,7 @@ body.light-mode .modal-footer {
     top: 0;
     left: 0;
     right: 0;
-    height: 4px;
+    height: 3px;
     background: linear-gradient(90deg, var(--primary), var(--secondary));
     opacity: 0;
     transition: opacity 0.3s ease;
@@ -347,32 +346,25 @@ body.light-mode .modal-footer {
 }
 
 .market-card:hover {
-    transform: translateY(-8px) scale(1.02);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    transform: translateY(-5px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
     border-color: var(--primary);
 }
 
-/* Card da Cesta Mais Barata - VERDE */
-.market-card.cheapest {
-    border: 2px solid #10b981;
-    background: linear-gradient(135deg, var(--card-bg) 0%, rgba(16, 185, 129, 0.08) 100%);
-    box-shadow: 0 8px 30px rgba(16, 185, 129, 0.2);
+/* ====== LAYOUT DE 3 COLUNAS PARA OS DEMAIS CARDS ====== */
+.cards-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 2rem;
 }
 
-.market-card.cheapest::before {
-    background: linear-gradient(90deg, #10b981, #34d399);
-    opacity: 1;
-}
-
-.market-card.cheapest:hover {
-    box-shadow: 0 20px 50px rgba(16, 185, 129, 0.3);
-}
-
-/* Card da Cesta Mais Cara - VERMELHO */
+/* Card da Cesta Mais Cara - VERMELHO - AGORA NO TOPO */
 .market-card.most-expensive {
     border: 2px solid #ef4444;
     background: linear-gradient(135deg, var(--card-bg) 0%, rgba(239, 68, 68, 0.08) 100%);
-    box-shadow: 0 8px 30px rgba(239, 68, 68, 0.2);
+    box-shadow: 0 6px 25px rgba(239, 68, 68, 0.15);
+    order: 1; /* Primeira posição */
 }
 
 .market-card.most-expensive::before {
@@ -381,14 +373,15 @@ body.light-mode .modal-footer {
 }
 
 .market-card.most-expensive:hover {
-    box-shadow: 0 20px 50px rgba(239, 68, 68, 0.3);
+    box-shadow: 0 15px 40px rgba(239, 68, 68, 0.25);
 }
 
-/* Card da Melhor Cesta Básica */
+/* Card da Melhor Cesta Básica - LADO ESQUERDO */
 .market-card.best-basket {
     border: 2px solid #f59e0b;
     background: linear-gradient(135deg, var(--card-bg) 0%, rgba(245, 158, 11, 0.1) 100%);
-    box-shadow: 0 8px 30px rgba(245, 158, 11, 0.2);
+    box-shadow: 0 6px 25px rgba(245, 158, 11, 0.15);
+    order: 2; /* Segunda posição */
 }
 
 .market-card.best-basket::before {
@@ -397,14 +390,15 @@ body.light-mode .modal-footer {
 }
 
 .market-card.best-basket:hover {
-    box-shadow: 0 20px 50px rgba(245, 158, 11, 0.3);
+    box-shadow: 0 15px 40px rgba(245, 158, 11, 0.25);
 }
 
-/* Card da Cesta Completa */
+/* Card da Cesta Completa Mais Barata - LADO DIREITO */
 .market-card.complete-basket {
     border: 2px solid #8b5cf6;
     background: linear-gradient(135deg, var(--card-bg) 0%, rgba(139, 92, 246, 0.1) 100%);
-    box-shadow: 0 8px 30px rgba(139, 92, 246, 0.2);
+    box-shadow: 0 6px 25px rgba(139, 92, 246, 0.15);
+    order: 3; /* Terceira posição */
 }
 
 .market-card.complete-basket::before {
@@ -413,110 +407,149 @@ body.light-mode .modal-footer {
 }
 
 .market-card.complete-basket:hover {
-    box-shadow: 0 20px 50px rgba(139, 92, 246, 0.3);
+    box-shadow: 0 15px 40px rgba(139, 92, 246, 0.25);
 }
 
-/* Ajustes no header do card para 3 colunas */
+/* Card da Cesta Mais Barata - VERDE */
+.market-card.cheapest {
+    border: 2px solid #10b981;
+    background: linear-gradient(135deg, var(--card-bg) 0%, rgba(16, 185, 129, 0.08) 100%);
+    box-shadow: 0 6px 25px rgba(16, 185, 129, 0.15);
+}
+
+.market-card.cheapest::before {
+    background: linear-gradient(90deg, #10b981, #34d399);
+    opacity: 1;
+}
+
+.market-card.cheapest:hover {
+    box-shadow: 0 15px 40px rgba(16, 185, 129, 0.25);
+}
+
+/* Header Compacto do Card */
 .card-header {
     display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    margin-bottom: 1.25rem;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 1rem;
     flex-shrink: 0;
+    gap: 0.5rem;
 }
 
 .market-rank {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 700;
-    padding: 0.4rem 0.8rem;
-    border-radius: 8px;
+    padding: 0.3rem 0.6rem;
+    border-radius: 6px;
     background: var(--bg-secondary);
     color: var(--text-primary);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    align-self: flex-start;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;
 }
 
 .market-card:hover .market-rank {
     transform: scale(1.05);
 }
 
-.market-rank.best {
-    background: linear-gradient(135deg, #10b981, #34d399);
+.market-rank.expensive {
+    background: linear-gradient(135deg, #ef4444, #f87171);
     color: white;
-    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.market-rank.best {
+    background: linear-gradient(135deg, #f59e0b, #fbbf24);
+    color: white;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
 }
 
 .market-rank.worst {
     background: linear-gradient(135deg, #ef4444, #f87171);
     color: white;
-    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
 }
 
 .market-rank.complete {
     background: linear-gradient(135deg, #8b5cf6, #a78bfa);
     color: white;
-    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
 }
 
 .market-name {
-    font-weight: 800;
-    font-size: 1.1rem;
+    font-weight: 700;
+    font-size: 1rem;
     color: var(--text-primary);
     line-height: 1.3;
     margin: 0;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    flex: 1;
 }
 
 .market-badge {
-    font-size: 0.7rem;
-    padding: 0.4rem 0.6rem;
-    border-radius: 6px;
+    font-size: 0.65rem;
+    padding: 0.3rem 0.5rem;
+    border-radius: 5px;
     font-weight: 700;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    align-self: flex-start;
-    transition: all 0.3s ease;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;
 }
 
 .market-card:hover .market-badge {
     transform: scale(1.05);
 }
 
+.market-badge.expensive {
+    background: linear-gradient(135deg, #ef4444, #f87171);
+    color: white;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
 .market-badge.best-price {
     background: linear-gradient(135deg, #f59e0b, #fbbf24);
     color: var(--text-dark);
-    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
 }
 
 .market-badge.complete {
     background: linear-gradient(135deg, #10b981, #34d399);
     color: white;
-    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
 }
 
-/* Ajustes no body do card */
+/* Body Compacto do Card */
 .card-body {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     flex: 1;
     display: flex;
     flex-direction: column;
+    gap: 0.75rem;
 }
 
 .market-address {
-    border-left: 2px solid rgba(79, 70, 229, 0.5); /* cor suave */
-    padding-left: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.3;
     margin: 0;
+    padding: 0;
+    border: none;
     background: transparent;
 }
+
+.address-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border-color), transparent);
+    margin: 0.5rem 0;
+}
+
 .market-total {
     text-align: center;
-    margin: 1rem 0;
-    padding: 1rem;
+    margin: 0.5rem 0;
+    padding: 0.75rem;
     background: var(--bg-secondary);
-    border-radius: 10px;
-    font-size: 1.75rem;
+    border-radius: 8px;
+    font-size: 1.5rem;
     font-weight: 800;
     color: var(--text-primary);
-    border: 2px solid transparent;
+    border: 1px solid transparent;
     position: relative;
     overflow: hidden;
     transition: all 0.3s ease;
@@ -525,14 +558,26 @@ body.light-mode .modal-footer {
 
 .market-card.cheapest .market-total {
     background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(52, 211, 153, 0.05));
-    border-color: rgba(16, 185, 129, 0.3);
+    border-color: rgba(16, 185, 129, 0.2);
     color: #10b981;
 }
 
 .market-card.most-expensive .market-total {
     background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(248, 113, 113, 0.05));
-    border-color: rgba(239, 68, 68, 0.3);
+    border-color: rgba(239, 68, 68, 0.2);
     color: #ef4444;
+}
+
+.market-card.best-basket .market-total {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(251, 191, 36, 0.05));
+    border-color: rgba(245, 158, 11, 0.2);
+    color: #f59e0b;
+}
+
+.market-card.complete-basket .market-total {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(167, 139, 250, 0.05));
+    border-color: rgba(139, 92, 246, 0.2);
+    color: #8b5cf6;
 }
 
 .market-total::before {
@@ -542,7 +587,7 @@ body.light-mode .modal-footer {
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
     transition: left 0.6s ease;
 }
 
@@ -551,10 +596,10 @@ body.light-mode .modal-footer {
 }
 
 .total-label {
-    font-size: 0.875rem;
+    font-size: 0.7rem;
     font-weight: 600;
     color: var(--text-secondary);
-    margin-top: 0.5rem;
+    margin-top: 0.25rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -562,18 +607,18 @@ body.light-mode .modal-footer {
 .market-stats {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.8rem;
-    margin-bottom: 1rem;
+    gap: 0.6rem;
+    margin-bottom: 0.75rem;
     flex-shrink: 0;
 }
 
 .stat {
     text-align: center;
-    padding: 0.8rem;
+    padding: 0.6rem;
     background: var(--bg-secondary);
-    border-radius: 8px;
+    border-radius: 6px;
     border: 1px solid var(--border-color);
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     position: relative;
     overflow: hidden;
 }
@@ -584,7 +629,7 @@ body.light-mode .modal-footer {
     top: 0;
     left: 0;
     width: 100%;
-    height: 3px;
+    height: 2px;
     background: linear-gradient(90deg, var(--primary), transparent);
     opacity: 0;
     transition: opacity 0.3s ease;
@@ -595,45 +640,45 @@ body.light-mode .modal-footer {
 }
 
 .market-card:hover .stat {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .stat-value {
     display: block;
-    font-size: 1.25rem;
+    font-size: 1.1rem;
     font-weight: 800;
     color: var(--text-primary);
-    margin-bottom: 0.2rem;
+    margin-bottom: 0.1rem;
 }
 
 .stat-label {
     display: block;
-    font-size: 0.7rem;
+    font-size: 0.6rem;
     color: var(--text-secondary);
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.4px;
     line-height: 1.2;
 }
 
 .completion-rate {
-    margin-top: 1rem;
+    margin-top: 0.5rem;
     flex-shrink: 0;
 }
 
 .completion-rate .progress {
-    height: 6px;
+    height: 4px;
     background: var(--bg-secondary);
-    border-radius: 8px;
-    margin-bottom: 0.5rem;
+    border-radius: 4px;
+    margin-bottom: 0.3rem;
     overflow: hidden;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .completion-rate .progress-bar {
     background: linear-gradient(90deg, #10b981, #34d399);
-    border-radius: 8px;
+    border-radius: 4px;
     transition: width 1s ease-in-out;
     position: relative;
     overflow: hidden;
@@ -651,16 +696,16 @@ body.light-mode .modal-footer {
 }
 
 .completion-rate span {
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     color: var(--text-secondary);
     font-weight: 600;
 }
 
-/* Footer do Card */
+/* Footer Compacto do Card */
 .card-footer {
     display: flex;
     justify-content: center;
-    padding-top: 1rem;
+    padding-top: 0.75rem;
     border-top: 1px solid var(--border-color);
     flex-shrink: 0;
 }
@@ -668,15 +713,15 @@ body.light-mode .modal-footer {
 .btn {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.6rem 1rem;
-    border-radius: 8px;
+    gap: 0.4rem;
+    padding: 0.5rem 0.8rem;
+    border-radius: 6px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    border: 2px solid transparent;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid transparent;
     text-decoration: none;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     position: relative;
     overflow: hidden;
 }
@@ -688,7 +733,7 @@ body.light-mode .modal-footer {
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
     transition: left 0.5s ease;
 }
 
@@ -705,8 +750,8 @@ body.light-mode .modal-footer {
 .btn-outline:hover {
     background: var(--primary);
     color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 /* Estilos para os detalhes do mercado */
@@ -836,23 +881,37 @@ body.light-mode .modal-footer {
     }
 }
 
-/* ====== RESPONSIVIDADE PARA 3 COLUNAS ====== */
+/* ====== RESPONSIVIDADE ====== */
 @media (max-width: 1200px) {
+    .highlight-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
     .cards-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 1.25rem;
     }
+    
+    /* Em telas médias, most-expensive fica sozinho no topo */
+    .market-card.most-expensive {
+        grid-column: 1 / -1;
+    }
 }
 
 @media (max-width: 768px) {
+    .highlight-cards {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
     .cards-grid {
         grid-template-columns: 1fr;
         gap: 1rem;
     }
     
     .market-card {
-        padding: 1.25rem;
-        min-height: 350px;
+        padding: 1rem;
+        min-height: 260px;
     }
     
     .market-stats {
@@ -866,33 +925,34 @@ body.light-mode .modal-footer {
     .card-header {
         flex-direction: column;
         align-items: flex-start;
+        gap: 0.5rem;
     }
     
     .market-name {
-        margin: 0.5rem 0;
-        font-size: 1.25rem;
+        margin: 0;
+        font-size: 1.1rem;
     }
     
     .market-total {
-        font-size: 1.5rem;
-        padding: 0.8rem;
+        font-size: 1.3rem;
+        padding: 0.6rem;
     }
 }
 
 @media (max-width: 480px) {
     .market-card {
-        padding: 1rem;
-        min-height: 320px;
-        border-radius: 12px;
+        padding: 0.875rem;
+        min-height: 240px;
+        border-radius: 10px;
     }
     
     .market-total {
-        font-size: 1.4rem;
+        font-size: 1.2rem;
     }
     
     .btn {
-        padding: 0.625rem 1.25rem;
-        font-size: 0.85rem;
+        padding: 0.5rem 1rem;
+        font-size: 0.7rem;
     }
 }
 
