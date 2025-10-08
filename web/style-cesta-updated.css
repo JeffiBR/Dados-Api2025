@@ -836,42 +836,6 @@ body.light-mode .modal-footer {
     }
 }
 
-/* Efeito de brilho nos cards */
-.market-card::after {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-    transform: rotate(45deg);
-    transition: all 0.6s ease;
-    opacity: 0;
-}
-
-.market-card:hover::after {
-    opacity: 1;
-    transform: rotate(45deg) translate(10%, 10%);
-}
-
-/* Loading Skeleton */
-.skeleton {
-    background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--border-color) 50%, var(--bg-secondary) 75%);
-    background-size: 200% 100%;
-    animation: loading 1.5s infinite;
-    border-radius: 8px;
-}
-
-@keyframes loading {
-    0% {
-        background-position: 200% 0;
-    }
-    100% {
-        background-position: -200% 0;
-    }
-}
-
 /* ====== RESPONSIVIDADE PARA 3 COLUNAS ====== */
 @media (max-width: 1200px) {
     .cards-grid {
