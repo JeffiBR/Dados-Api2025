@@ -1,6 +1,8 @@
 /* Correções de cores: definir tokens usados por este arquivo para
    garantir consistência com o tema principal (style.css).
-   Não alterei o bloco .product-card-v2 (mantido exatamente como pediu).
+   Não alterei o bloco .product-card-v2 (mantido exatamente como pediu),
+   mas corrigi alguns seletores com pontos faltando e adicionei variação
+   "compact" para deixar os cards menores e mais organizados.
 */
 :root{
     /* Mapeamentos para tokens ausentes neste arquivo,
@@ -335,7 +337,15 @@ body.light-mode .modal-footer {
     margin-bottom: 2rem;
 }
 
-/* Cards Base - Altura consistente */
+/* COMPACT: variação para deixar os cards menores e mais organizados.
+   Use adicionando a classe "compact" no container .cards-grid ou em cada .market-card:
+   - <div class="cards-grid compact"> ... </div>
+   - ou <article class="market-card compact"> ... </article>
+*/
+.cards-grid.compact {
+    gap: 1rem;
+}
+
 .market-card {
     background: var(--card-bg);
     border-radius: 16px;
@@ -349,7 +359,7 @@ body.light-mode .modal-footer {
     display: flex;
     flex-direction: column;
     height: 100%;
-    min-height: 380px;
+    min-height: 340px; /* reduzido para ser menos alto por padrão */
 }
 
 .market-card::before {
@@ -369,16 +379,16 @@ body.light-mode .modal-footer {
 }
 
 .market-card:hover {
-    transform: translateY(-8px) scale(1.02);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    transform: translateY(-6px) scale(1.01);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
     border-color: var(--primary);
 }
 
 /* Card da Cesta Mais Barata - VERDE */
 .market-card.cheapest {
     border: 2px solid #10b981;
-    background: linear-gradient(135deg, var(--card-bg) 0%, rgba(16, 185, 129, 0.08) 100%);
-    box-shadow: 0 8px 30px rgba(16, 185, 129, 0.2);
+    background: linear-gradient(135deg, var(--card-bg) 0%, rgba(16, 185, 129, 0.06) 100%);
+    box-shadow: 0 8px 30px rgba(16, 185, 129, 0.12);
 }
 
 .market-card.cheapest::before {
@@ -386,15 +396,11 @@ body.light-mode .modal-footer {
     opacity: 1;
 }
 
-.market-card.cheapest:hover {
-    box-shadow: 0 20px 50px rgba(16, 185, 129, 0.3);
-}
-
 /* Card da Cesta Mais Cara - VERMELHO */
 .market-card.most-expensive {
     border: 2px solid #ef4444;
-    background: linear-gradient(135deg, var(--card-bg) 0%, rgba(239, 68, 68, 0.08) 100%);
-    box-shadow: 0 8px 30px rgba(239, 68, 68, 0.2);
+    background: linear-gradient(135deg, var(--card-bg) 0%, rgba(239, 68, 68, 0.06) 100%);
+    box-shadow: 0 8px 30px rgba(239, 68, 68, 0.12);
 }
 
 .market-card.most-expensive::before {
@@ -402,15 +408,11 @@ body.light-mode .modal-footer {
     opacity: 1;
 }
 
-.market-card.most-expensive:hover {
-    box-shadow: 0 20px 50px rgba(239, 68, 68, 0.3);
-}
-
 /* Card da Melhor Cesta Básica */
 .market-card.best-basket {
     border: 2px solid #f59e0b;
-    background: linear-gradient(135deg, var(--card-bg) 0%, rgba(245, 158, 11, 0.1) 100%);
-    box-shadow: 0 8px 30px rgba(245, 158, 11, 0.2);
+    background: linear-gradient(135deg, var(--card-bg) 0%, rgba(245, 158, 11, 0.06) 100%);
+    box-shadow: 0 8px 30px rgba(245, 158, 11, 0.12);
 }
 
 .market-card.best-basket::before {
@@ -418,24 +420,16 @@ body.light-mode .modal-footer {
     opacity: 1;
 }
 
-.market-card.best-basket:hover {
-    box-shadow: 0 20px 50px rgba(245, 158, 11, 0.3);
-}
-
 /* Card da Cesta Completa */
 .market-card.complete-basket {
     border: 2px solid #8b5cf6;
-    background: linear-gradient(135deg, var(--card-bg) 0%, rgba(139, 92, 246, 0.1) 100%);
-    box-shadow: 0 8px 30px rgba(139, 92, 246, 0.2);
+    background: linear-gradient(135deg, var(--card-bg) 0%, rgba(139, 92, 246, 0.06) 100%);
+    box-shadow: 0 8px 30px rgba(139, 92, 246, 0.12);
 }
 
 .market-card.complete-basket::before {
     background: linear-gradient(90deg, #8b5cf6, #a78bfa);
     opacity: 1;
-}
-
-.market-card.complete-basket:hover {
-    box-shadow: 0 20px 50px rgba(139, 92, 246, 0.3);
 }
 
 /* Ajustes no header do card para 3 colunas */
@@ -450,7 +444,7 @@ body.light-mode .modal-footer {
 .market-rank {
     font-size: 0.75rem;
     font-weight: 700;
-    padding: 0.4rem 0.8rem;
+    padding: 0.35rem 0.6rem;
     border-radius: 8px;
     background: var(--bg-secondary);
     color: var(--text-primary);
@@ -482,16 +476,16 @@ body.light-mode .modal-footer {
 
 .market-name {
     font-weight: 800;
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     color: var(--text-primary);
-    line-height: 1.3;
+    line-height: 1.2;
     margin: 0;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
 }
 
 .market-badge {
     font-size: 0.7rem;
-    padding: 0.4rem 0.6rem;
+    padding: 0.35rem 0.5rem;
     border-radius: 6px;
     font-weight: 700;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
@@ -500,45 +494,45 @@ body.light-mode .modal-footer {
 }
 
 .market-card:hover .market-badge {
-    transform: scale(1.05);
+    transform: scale(1.03);
 }
 
 .market-badge.best-price {
     background: linear-gradient(135deg, #f59e0b, #fbbf24);
     color: var(--text-dark);
-    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.25);
 }
 
 .market-badge.complete {
     background: linear-gradient(135deg, #10b981, #34d399);
     color: white;
-    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.25);
 }
 
 /* Ajustes no body do card */
 .card-body {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     flex: 1;
     display: flex;
     flex-direction: column;
 }
 
 .market-address {
-    border-left: 2px solid rgba(79, 70, 229, 0.5); /* cor suave */
-    padding-left: 0.75rem;
-    margin: 0;
+    border-left: 2px solid rgba(79, 70, 229, 0.18); /* cor suave */
+    padding-left: 0.6rem;
+    margin: 0 0 0.8rem 0;
     background: transparent;
 }
 .market-total {
     text-align: center;
-    margin: 1rem 0;
-    padding: 1rem;
+    margin: 0.75rem 0;
+    padding: 0.9rem;
     background: var(--bg-secondary);
     border-radius: 10px;
-    font-size: 1.75rem;
+    font-size: 1.35rem;
     font-weight: 800;
     color: var(--text-primary);
-    border: 2px solid transparent;
+    border: 1px solid transparent;
     position: relative;
     overflow: hidden;
     transition: all 0.3s ease;
@@ -546,14 +540,14 @@ body.light-mode .modal-footer {
 }
 
 .market-card.cheapest .market-total {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(52, 211, 153, 0.05));
-    border-color: rgba(16, 185, 129, 0.3);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.06), rgba(52, 211, 153, 0.03));
+    border-color: rgba(16, 185, 129, 0.18);
     color: #10b981;
 }
 
 .market-card.most-expensive .market-total {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(248, 113, 113, 0.05));
-    border-color: rgba(239, 68, 68, 0.3);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.06), rgba(248, 113, 113, 0.03));
+    border-color: rgba(239, 68, 68, 0.18);
     color: #ef4444;
 }
 
@@ -564,7 +558,7 @@ body.light-mode .modal-footer {
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
     transition: left 0.6s ease;
 }
 
@@ -573,10 +567,10 @@ body.light-mode .modal-footer {
 }
 
 .total-label {
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     font-weight: 600;
     color: var(--text-secondary);
-    margin-top: 0.5rem;
+    margin-top: 0.4rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -591,7 +585,7 @@ body.light-mode .modal-footer {
 
 .stat {
     text-align: center;
-    padding: 0.8rem;
+    padding: 0.6rem;
     background: var(--bg-secondary);
     border-radius: 8px;
     border: 1px solid var(--border-color);
@@ -618,20 +612,20 @@ body.light-mode .modal-footer {
 
 .market-card:hover .stat {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
 .stat-value {
     display: block;
-    font-size: 1.25rem;
+    font-size: 1.05rem;
     font-weight: 800;
     color: var(--text-primary);
-    margin-bottom: 0.2rem;
+    margin-bottom: 0.15rem;
 }
 
 .stat-label {
     display: block;
-    font-size: 0.7rem;
+    font-size: 0.72rem;
     color: var(--text-secondary);
     font-weight: 600;
     text-transform: uppercase;
@@ -640,7 +634,7 @@ body.light-mode .modal-footer {
 }
 
 .completion-rate {
-    margin-top: 1rem;
+    margin-top: 0.75rem;
     flex-shrink: 0;
 }
 
@@ -650,7 +644,7 @@ body.light-mode .modal-footer {
     border-radius: 8px;
     margin-bottom: 0.5rem;
     overflow: hidden;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .completion-rate .progress-bar {
@@ -682,25 +676,27 @@ body.light-mode .modal-footer {
 .card-footer {
     display: flex;
     justify-content: center;
-    padding-top: 1rem;
+    padding-top: 0.9rem;
     border-top: 1px solid var(--border-color);
     flex-shrink: 0;
+    gap: 0.6rem;
 }
 
 .btn {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.6rem 1rem;
+    padding: 0.5rem 0.9rem;
     border-radius: 8px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     border: 2px solid transparent;
     text-decoration: none;
     font-size: 0.8rem;
     position: relative;
     overflow: hidden;
+    min-width: 120px;
 }
 
 .btn::before {
@@ -710,8 +706,8 @@ body.light-mode .modal-footer {
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-    transition: left 0.5s ease;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.18), transparent);
+    transition: left 0.45s ease;
 }
 
 .btn:hover::before {
@@ -728,47 +724,47 @@ body.light-mode .modal-footer {
     background: var(--primary);
     color: white;
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
 }
 
 /* Estilos para os detalhes do mercado */
 .market-details-header {
-    margin-bottom: 2.5rem;
-    padding-bottom: 1.5rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1.25rem;
     border-bottom: 2px solid var(--border-color);
-    animation: slideInDown 0.5s ease-out;
+    animation: slideInDown 0.45s ease-out;
 }
 
 .market-details-header h4 {
-    font-size: 1.75rem;
+    font-size: 1.5rem;
     font-weight: 800;
     color: var(--text-primary);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.4rem;
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.6rem;
 }
 
 .market-address {
-    font-size: 1rem;
+    font-size: 0.95rem;
     color: var(--text-secondary);
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 
 .market-stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 1.5rem;
-    margin-top: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
 }
 
 .market-stat {
     text-align: center;
-    padding: 1.5rem;
+    padding: 1rem;
     background: var(--bg-secondary);
     border-radius: 12px;
     border: 1px solid var(--border-color);
-    transition: all 0.3s ease;
+    transition: all 0.25s ease;
     position: relative;
     overflow: hidden;
 }
@@ -785,35 +781,36 @@ body.light-mode .modal-footer {
 
 .market-stat:hover {
     transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
 }
 
 .market-stat .stat-value {
-    font-size: 2rem;
+    font-size: 1.4rem;
     font-weight: 800;
     color: var(--text-primary);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.4rem;
 }
 
 .market-stat .stat-label {
-    font-size: 0.875rem;
+    font-size: 0.82rem;
     color: var(--text-secondary);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
+/* Produtos list */
 .products-list {
-    margin-top: 2.5rem;
-    animation: fadeIn 0.6s ease-out;
+    margin-top: 1.5rem;
+    animation: fadeIn 0.45s ease-out;
 }
 
 .products-list h5 {
-    font-size: 1.25rem;
+    font-size: 1.05rem;
     font-weight: 700;
     color: var(--text-primary);
-    margin-bottom: 1.5rem;
-    padding-bottom: 0.5rem;
+    margin-bottom: 0.9rem;
+    padding-bottom: 0.4rem;
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -821,7 +818,7 @@ body.light-mode .modal-footer {
 @keyframes fadeInUp {
     from {
         opacity: 0;
-        transform: translateY(30px);
+        transform: translateY(20px);
     }
     to {
         opacity: 1;
@@ -832,7 +829,7 @@ body.light-mode .modal-footer {
 @keyframes slideInDown {
     from {
         opacity: 0;
-        transform: translateY(-20px);
+        transform: translateY(-12px);
     }
     to {
         opacity: 1;
@@ -943,7 +940,8 @@ body.light-mode .product-card-v2 {
     font-size: 1rem;
 }
 
-detail-v2-subtitle {
+/* Corrigido: faltava o ponto no seletor (era detail-v2-subtitle) */
+.detail-v2-subtitle {
     font-size: 0.85rem;
     color: var(--muted-dark);
 }
@@ -952,24 +950,108 @@ body.light-mode .detail-v2-subtitle {
     color: var(--muted-light);
 }
 
-card-v2-actions {
+/* Corrigido: faltava o ponto no seletor (era card-v2-actions) */
+.card-v2-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.8rem;
+    gap: 0.6rem;
     justify-content: flex-end;
 }
 
 .card-v2-actions .btn {
     flex: 1;
-    min-width: 140px;
+    min-width: 120px;
     text-align: center;
     justify-content: center;
 }
 
-@media (max-width: 600px) {
-    .card-v2-actions {
-        flex-direction: column;
-        align-items: stretch;
+/* Compact variant: reduz espaços, tamanhos e margens para visual mais enxuto */
+.market-card.compact {
+    padding: 0.95rem;
+    border-radius: 12px;
+    min-height: 260px;
+}
+
+.market-card.compact .card-header {
+    gap: 0.4rem;
+    margin-bottom: 0.6rem;
+}
+
+.market-card.compact .market-name {
+    font-size: 0.98rem;
+    font-weight: 800;
+}
+
+.market-card.compact .market-rank {
+    font-size: 0.68rem;
+    padding: 0.25rem 0.45rem;
+}
+
+.market-card.compact .market-badge {
+    font-size: 0.65rem;
+    padding: 0.25rem 0.45rem;
+}
+
+.market-card.compact .market-address {
+    font-size: 0.88rem;
+    margin-bottom: 0.5rem;
+}
+
+.market-card.compact .market-total {
+    font-size: 1.05rem;
+    padding: 0.6rem;
+    border-radius: 8px;
+}
+
+.market-card.compact .market-stats {
+    gap: 0.45rem;
+}
+
+.market-card.compact .stat {
+    padding: 0.5rem;
+}
+
+.market-card.compact .stat-value {
+    font-size: 0.95rem;
+}
+
+.market-card.compact .card-footer {
+    padding-top: 0.6rem;
+}
+
+.market-card.compact .btn {
+    padding: 0.45rem 0.7rem;
+    min-width: 100px;
+    font-size: 0.78rem;
+}
+
+/* Torna os cards ainda mais responsivos em telas menores */
+@media (max-width: 1100px) {
+    .cards-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 760px) {
+    .cards-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .market-card {
+        min-height: auto;
+    }
+
+    .market-card.compact {
+        padding: 0.85rem;
+    }
+
+    .product-card-v2 {
+        padding: 1rem;
+        gap: 0.8rem;
+    }
+
+    .card-v2-actions .btn {
+        min-width: 100%;
     }
 }
 
