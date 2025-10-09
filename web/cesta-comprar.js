@@ -1,67 +1,66 @@
-// cesta-comprar.js - VERSÃO CORRIGIDA
-// Corrigindo cálculo do valor total e quantidade de produtos
+// cesta-comprar.js - VERSÃO AJUSTADA PARA O NOVO LAYOUT
+// Mantive a lógica de busca por código de barras e melhorei renderização/responsividade
 
 let buyBasketModal;
 let marketDetailsModal;
 let bestBasketModal;
 
-// Variáveis para controle de mercados
 let allMarkets = [];
 let filteredMarkets = [];
 let selectedMarkets = new Set();
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Inicializar modais
     buyBasketModal = document.getElementById('buyBasketModal');
     marketDetailsModal = document.getElementById('marketDetailsModal');
-    
-    // Fechar modais ao clicar no X
+
     document.querySelectorAll('.close').forEach(closeBtn => {
         closeBtn.addEventListener('click', function() {
-            this.closest('.modal').style.display = 'none';
+            const modal = this.closest('.modal');
+            if (modal) {
+                modal.style.display = 'none';
+                modal.setAttribute('aria-hidden', 'true');
+            }
         });
     });
-    
-    // Fechar modais ao clicar fora
+
     window.addEventListener('click', function(event) {
-        if (event.target.classList.contains('modal')) {
+        if (event.target.classList && event.target.classList.contains('modal')) {
             event.target.style.display = 'none';
+            event.target.setAttribute('aria-hidden', 'true');
         }
     });
-    
-    // Event listener para o formulário de comparação
-    document.getElementById('btnCompareBasket').addEventListener('click', handleCompareBasket);
+
+    const btnCompare = document.getElementById('btnCompareBasket');
+    if (btnCompare) btnCompare.addEventListener('click', handleCompareBasket);
 });
 
 /**
- * Abre o modal de compra com a interface de seleção de mercados
+ * Abre modal de compra (seleção de mercados)
  */
 function openBuyBasketModal(basketId, basketName) {
     currentBasketId = parseInt(basketId);
     const basket = allBaskets.find(b => b.id === currentBasketId);
-    
+
     if (basket) {
         currentBasketProducts = basket.produtos || [];
         document.getElementById('buyBasketName').textContent = basketName;
-        
-        // Verificar se há produtos com código de barras
+
         const productsWithBarcode = currentBasketProducts.filter(p => p.codigo_barras);
         if (productsWithBarcode.length === 0) {
             showNotification('Esta cesta não possui produtos com código de barras para busca.', 'warning');
             return;
         }
-        
-        // Inicializar a interface de mercados
+
         initializeMarketsInterface();
-        buyBasketModal.style.display = 'block';
+        buyBasketModal.style.display = 'flex';
+        buyBasketModal.setAttribute('aria-hidden', 'false');
     }
 }
 
 /**
- * Inicializa a interface de seleção de mercados
+ * Inicializa interface de seleção de mercados
  */
 async function initializeMarketsInterface() {
-    // Elementos da interface
     const supermarketGrid = document.getElementById('supermarketGrid');
     const marketSearch = document.getElementById('marketSearch');
     const clearMarketSearch = document.getElementById('clearMarketSearch');
@@ -70,106 +69,81 @@ async function initializeMarketsInterface() {
     const selectedMarketsCount = document.getElementById('selectedMarketsCount');
     const btnCompareBasket = document.getElementById('btnCompareBasket');
 
-    // Limpar seleções anteriores
     selectedMarkets.clear();
     filteredMarkets = [];
 
     try {
-        // Carregar lista de mercados
         const response = await authenticatedFetch('/api/supermarkets/public');
         if (!response.ok) throw new Error('Falha ao carregar mercados');
-        
+
         allMarkets = await response.json();
-        renderMarketGrid(allMarkets);
         filteredMarkets = [...allMarkets];
-        
+        renderMarketGrid(allMarkets);
     } catch (error) {
         console.error('Erro ao carregar mercados:', error);
         showNotification('Erro ao carregar lista de mercados', 'error');
         return;
     }
 
-    // Configurar event listeners
-    function setupEventListeners() {
-        // Busca em mercados
-        marketSearch.addEventListener('input', debounce(filterMarkets, 300));
-        clearMarketSearch.addEventListener('click', clearMarketSearchFilter);
-        
-        // Seleção em massa
-        selectAllMarkets.addEventListener('click', selectAllFilteredMarkets);
-        deselectAllMarkets.addEventListener('click', clearMarketSelection);
-    }
-
     function renderMarketGrid(markets) {
+        if (!supermarketGrid) return;
         supermarketGrid.innerHTML = '';
-        
+
         if (markets.length === 0) {
             supermarketGrid.innerHTML = '<div class="empty-state">Nenhum mercado encontrado</div>';
             return;
         }
 
         markets.forEach(market => {
-            const marketCard = document.createElement('div');
-            marketCard.className = `market-card ${selectedMarkets.has(market.cnpj) ? 'selected' : ''}`;
-            marketCard.innerHTML = `
-                <div class="market-info">
-                    <div class="market-name">${market.nome}</div>
-                    <div class="market-address">${market.endereco || 'Endereço não disponível'}</div>
+            const card = document.createElement('div');
+            card.className = `market-card ${selectedMarkets.has(market.cnpj) ? 'selected' : ''}`;
+            card.setAttribute('data-cnpj', market.cnpj);
+            card.innerHTML = `
+                <div>
+                    <div style="font-weight:700;">${market.nome}</div>
+                    <div class="small text-muted">${market.endereco || 'Endereço não disponível'}</div>
+                    <div class="small text-muted" style="margin-top:6px;">CNPJ: ${market.cnpj}</div>
                 </div>
             `;
-            
-            marketCard.addEventListener('click', () => toggleMarketSelection(market.cnpj));
-            supermarketGrid.appendChild(marketCard);
+            card.addEventListener('click', () => toggleMarketSelection(market.cnpj));
+            supermarketGrid.appendChild(card);
         });
-        
+
+        updateSelectionCount();
         updateCompareButtonState();
     }
 
     function toggleMarketSelection(cnpj) {
-        if (selectedMarkets.has(cnpj)) {
-            selectedMarkets.delete(cnpj);
-        } else {
-            selectedMarkets.add(cnpj);
-        }
-        updateSelectionCount();
+        if (selectedMarkets.has(cnpj)) selectedMarkets.delete(cnpj);
+        else selectedMarkets.add(cnpj);
         renderMarketGrid(filteredMarkets);
     }
 
     function updateSelectionCount() {
-        selectedMarketsCount.textContent = `${selectedMarkets.size} selecionados`;
-        updateCompareButtonState();
+        if (selectedMarketsCount) selectedMarketsCount.textContent = `${selectedMarkets.size} selecionados`;
     }
 
     function updateCompareButtonState() {
         const hasMarkets = selectedMarkets.size >= 1;
         const hasProductsWithBarcode = currentBasketProducts.filter(p => p.codigo_barras).length > 0;
-        
-        btnCompareBasket.disabled = !(hasMarkets && hasProductsWithBarcode);
+        if (btnCompareBasket) btnCompareBasket.disabled = !(hasMarkets && hasProductsWithBarcode);
     }
 
     function filterMarkets() {
-        const searchTerm = marketSearch.value.toLowerCase().trim();
-        
-        if (!searchTerm) {
-            filteredMarkets = [...allMarkets];
-        } else {
-            filteredMarkets = allMarkets.filter(market => 
-                market.nome.toLowerCase().includes(searchTerm) ||
-                (market.endereco && market.endereco.toLowerCase().includes(searchTerm)) ||
-                market.cnpj.includes(searchTerm)
-            );
-        }
-        
+        const term = (marketSearch.value || '').toLowerCase().trim();
+        if (!term) filteredMarkets = [...allMarkets];
+        else filteredMarkets = allMarkets.filter(m => (m.nome || '').toLowerCase().includes(term) || (m.endereco || '').toLowerCase().includes(term) || (m.cnpj || '').includes(term));
         renderMarketGrid(filteredMarkets);
     }
 
     function clearMarketSearchFilter() {
+        if (!marketSearch) return;
         marketSearch.value = '';
         filterMarkets();
     }
 
     function selectAllFilteredMarkets() {
-        filteredMarkets.forEach(market => selectedMarkets.add(market.cnpj));
+        filteredMarkets.forEach(m => selectedMarkets.add(m.cnpj));
         updateSelectionCount();
         renderMarketGrid(filteredMarkets);
     }
@@ -180,29 +154,30 @@ async function initializeMarketsInterface() {
         renderMarketGrid(filteredMarkets);
     }
 
-    // Inicializar
-    setupEventListeners();
+    marketSearch && marketSearch.addEventListener('input', debounce(filterMarkets, 300));
+    clearMarketSearch && clearMarketSearch.addEventListener('click', clearMarketSearchFilter);
+    selectAllMarkets && selectAllMarkets.addEventListener('click', selectAllFilteredMarkets);
+    deselectAllMarkets && deselectAllMarkets.addEventListener('click', clearMarketSelection);
+
     updateSelectionCount();
     updateCompareButtonState();
 }
 
 /**
- * Lida com a comparação de preços da cesta por código de barras
+ * Compara preços por código de barras
  */
 async function handleCompareBasket() {
     const selectedCnpjs = Array.from(selectedMarkets);
-    
     if (selectedCnpjs.length === 0) {
         showNotification('Selecione pelo menos um mercado para comparar', 'error');
         return;
     }
-    
+
     if (currentBasketProducts.length === 0) {
         showNotification('A cesta selecionada não possui produtos.', 'warning');
         return;
     }
-    
-    // Verificar se há produtos com código de barras
+
     const productsWithBarcode = currentBasketProducts.filter(p => p.codigo_barras);
     if (productsWithBarcode.length === 0) {
         showNotification('Nenhum produto na cesta possui código de barras para busca.', 'warning');
@@ -212,11 +187,10 @@ async function handleCompareBasket() {
     const btn = document.getElementById('btnCompareBasket');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Comparando...';
-    
-    // Fechar modal
+
     buyBasketModal.style.display = 'none';
-    
-    // Mostrar área de resultados
+    buyBasketModal.setAttribute('aria-hidden', 'true');
+
     document.getElementById('resultsTitle').style.display = 'block';
     document.getElementById('realtimeResults').innerHTML = `
         <div class="loader-container">
@@ -225,14 +199,11 @@ async function handleCompareBasket() {
             <p><small>Produtos com código de barras: ${productsWithBarcode.length}</small></p>
         </div>
     `;
-    
+
     try {
-        // Buscar preços por código de barras
         const results = await searchBasketByBarcode(productsWithBarcode, selectedCnpjs);
         renderBasketComparison(results, selectedCnpjs, productsWithBarcode);
-        
         showNotification('Comparação de preços concluída!', 'success');
-        
     } catch (error) {
         console.error("Erro na comparação de cesta:", error);
         document.getElementById('realtimeResults').innerHTML = `
@@ -249,54 +220,40 @@ async function handleCompareBasket() {
 }
 
 /**
- * Busca preços por código de barras para todos os produtos da cesta
+ * Busca preços por código de barras (varre cada produto)
  */
 async function searchBasketByBarcode(products, selectedMarkets) {
     const allResults = [];
-    
-    // Para cada produto na cesta, buscar por código de barras
+
     for (const product of products) {
-        if (product.codigo_barras) {
-            try {
-                const productResults = await fetchProductPrices(
-                    product.codigo_barras, 
-                    selectedMarkets
-                );
-                
-                if (productResults && productResults.length > 0) {
-                    // Adicionar informações do produto original
-                    productResults.forEach(result => {
-                        result.original_product_name = product.nome_produto;
-                        result.original_barcode = product.codigo_barras;
-                    });
-                    
-                    allResults.push(...productResults);
-                }
-            } catch (error) {
-                console.error(`Erro ao buscar produto ${product.nome_produto}:`, error);
-                // Continuar com os outros produtos mesmo se um falhar
+        if (!product.codigo_barras) continue;
+        try {
+            const productResults = await fetchProductPrices(product.codigo_barras, selectedMarkets);
+            if (productResults && productResults.length > 0) {
+                productResults.forEach(r => {
+                    r.original_product_name = product.nome_produto;
+                    r.original_barcode = product.codigo_barras;
+                });
+                allResults.push(...productResults);
             }
+        } catch (error) {
+            console.error(`Erro ao buscar produto ${product.nome_produto}:`, error);
         }
     }
-    
+
     return allResults;
 }
 
 /**
- * Busca preços para um produto específico por código de barras
+ * Chama API de busca para um código de barras
  */
 async function fetchProductPrices(barcode, cnpjs) {
     try {
-        const requestBody = { 
-            produto: barcode, 
-            cnpjs: cnpjs 
-        };
+        const requestBody = { produto: barcode, cnpjs: cnpjs };
 
         const response = await authenticatedFetch('/api/realtime-search', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody)
         });
 
@@ -308,13 +265,8 @@ async function fetchProductPrices(barcode, cnpjs) {
         const data = await response.json();
         const results = data.results || [];
 
-        // Filtrar apenas resultados que correspondem exatamente ao código de barras
-        const exactMatches = results.filter(item => 
-            item.codigo_barras && item.codigo_barras.toString() === barcode.toString()
-        );
-
+        const exactMatches = results.filter(item => item.codigo_barras && item.codigo_barras.toString() === barcode.toString());
         return exactMatches;
-        
     } catch (error) {
         console.error(`Erro na busca por código de barras ${barcode}:`, error);
         return [];
@@ -322,33 +274,31 @@ async function fetchProductPrices(barcode, cnpjs) {
 }
 
 /**
- * Renderiza os resultados da comparação da cesta com NOVO LAYOUT DE CARDS
+ * Renderiza resultados com layout profissional (melhor cesta, cesta completa, demais)
  */
 function renderBasketComparison(results, selectedMarkets, productsWithBarcode) {
     const resultsElement = document.getElementById('realtimeResults');
-    
+
     if (results.length === 0) {
         resultsElement.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-search"></i>
                 <h3>Nenhum preço encontrado</h3>
                 <p>Não foram encontrados preços para os produtos da cesta (com código de barras) nos mercados selecionados.</p>
-                <p class="text-muted">Verifique se os códigos de barras estão corretos e se os mercados possuem estes produtos em estoque.</p>
             </div>
         `;
         return;
     }
-    
-    // Agrupar resultados por mercado - CORREÇÃO: garantir agrupamento correto
+
+    // Agrupar por mercado
     const resultsByMarket = {};
     const marketTotals = {};
     const productsFoundByMarket = {};
     const marketDetails = {};
     const marketProductDetails = {};
-    
-    // Inicializar estruturas
+
     selectedMarkets.forEach(cnpj => {
-        const market = allMarkets.find(m => m.cnpj === cnpj);
+        const market = allMarkets.find(m => m.cnpj === cnpj) || allSupermarkets.find(m => m.cnpj === cnpj);
         if (market) {
             resultsByMarket[market.nome] = [];
             marketTotals[market.nome] = 0;
@@ -357,258 +307,161 @@ function renderBasketComparison(results, selectedMarkets, productsWithBarcode) {
             marketProductDetails[market.nome] = [];
         }
     });
-    
-    // Processar resultados - CORREÇÃO: garantir que cada produto seja contado apenas uma vez por mercado
+
     results.forEach(item => {
-        const marketName = item.nome_supermercado;
+        const marketName = item.nome_supermercado || item.filial || 'Desconhecido';
         const price = parseFloat(item.preco_produto) || 0;
         const productKey = `${item.original_product_name}_${item.original_barcode}`;
-        
-        if (resultsByMarket[marketName]) {
-            // Verificar se este produto já foi contabilizado para este mercado
-            if (!productsFoundByMarket[marketName].has(productKey)) {
-                resultsByMarket[marketName].push(item);
-                marketTotals[marketName] += price;
-                productsFoundByMarket[marketName].add(productKey);
-                marketProductDetails[marketName].push({
-                    ...item,
-                    price: price
-                });
-            }
+
+        if (!resultsByMarket[marketName]) {
+            resultsByMarket[marketName] = [];
+            marketTotals[marketName] = 0;
+            productsFoundByMarket[marketName] = new Set();
+            marketProductDetails[marketName] = [];
+        }
+
+        if (!productsFoundByMarket[marketName].has(productKey)) {
+            productsFoundByMarket[marketName].add(productKey);
+            resultsByMarket[marketName].push(item);
+            marketTotals[marketName] += price;
+            marketProductDetails[marketName].push({...item, price});
         }
     });
-    
-    // Calcular melhor cesta básica (produtos mais baratos de todos os mercados)
+
     const bestBasket = calculateBestBasket(results, productsWithBarcode);
-    
-    // Encontrar supermercado com cesta completa mais barata
     const completeBasketMarket = findCompleteBasketMarket(marketTotals, productsFoundByMarket, productsWithBarcode);
-    
-    // Ordenar mercados por preço total
-    const sortedMarkets = Object.entries(marketTotals)
-        .sort(([, a], [, b]) => a - b)
-        .filter(([, total]) => total > 0);
-    
-    // 1. Card da Melhor Cesta Básica
+
+    const sortedMarkets = Object.entries(marketTotals).sort(([, a], [, b]) => a - b).filter(([, total]) => total > 0);
+
+    // Summary
+    const summaryHtml = `
+        <div class="results-summary">
+            <div class="summary-stats">
+                <div class="stat"><span class="stat-value">${results.length}</span><span class="stat-label">Preços Encontrados</span></div>
+                <div class="stat"><span class="stat-value">${Object.keys(resultsByMarket).length}</span><span class="stat-label">Mercados com Preços</span></div>
+                <div class="stat"><span class="stat-value">${productsWithBarcode.length}</span><span class="stat-label">Produtos com Código</span></div>
+                <div class="stat"><span class="stat-value">${selectedMarkets.length}</span><span class="stat-label">Mercados Selecionados</span></div>
+            </div>
+        </div>
+    `;
+
+    // Best Basket Card
     let bestBasketHtml = '';
     if (bestBasket.products.length > 0) {
         bestBasketHtml = `
             <div class="results-section">
-                <h3><i class="fas fa-crown text-warning"></i> Melhor Cesta Básica</h3>
+                <h3><i class="fas fa-crown text-warning"></i> Cesta Ideal (Otimizada)</h3>
                 <div class="cards-grid">
                     <div class="market-card best-basket">
-                        <div class="card-header">
-                            <div class="market-rank best">#1</div>
-                            <div class="market-name">Cesta Otimizada</div>
-                            <div class="market-badge best-price">
-                                <i class="fas fa-trophy"></i> Melhor Preço
-                            </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div style="font-weight:700;">Cesta Otimizada</div>
+                            <div class="market-badge best-price"><i class="fas fa-trophy"></i> Ideal</div>
                         </div>
-                        <div class="card-body">
-                            <div class="market-total">
-                                R$ ${bestBasket.total.toFixed(2)}
-                                <div class="total-label">Valor Total</div>
-                            </div>
-                            <div class="market-stats">
-                                <div class="stat">
-                                    <span class="stat-value">${bestBasket.products.length}</span>
-                                    <span class="stat-label">Produtos Encontrados</span>
-                                </div>
-                                <div class="stat">
-                                    <span class="stat-value">${productsWithBarcode.length}</span>
-                                    <span class="stat-label">Total na Cesta</span>
-                                </div>
-                            </div>
-                            <div class="completion-rate">
-                                <div class="progress">
-                                    <div class="progress-bar" style="width: ${(bestBasket.products.length / productsWithBarcode.length) * 100}%"></div>
-                                </div>
-                                <span>${Math.round((bestBasket.products.length / productsWithBarcode.length) * 100)}% de cobertura</span>
-                            </div>
+                        <div style="margin-top:0.5rem;">
+                            <div class="market-total">R$ ${bestBasket.total.toFixed(2)}</div>
+                            <div class="small text-muted">${bestBasket.products.length} de ${productsWithBarcode.length} produtos encontrados</div>
                         </div>
-                        <div class="card-footer">
-                            <button class="btn btn-outline btn-view-best-basket">
-                                <i class="fas fa-list"></i> Ver Detalhes da Cesta
-                            </button>
+                        <div style="margin-top:0.75rem;">
+                            <div class="progress" style="background:rgba(255,255,255,0.02); height:8px; border-radius:6px;">
+                                <div class="progress-bar" style="width:${Math.round((bestBasket.products.length/productsWithBarcode.length)*100)}%; background:linear-gradient(90deg,var(--primary),var(--accent)); height:100%; border-radius:6px;"></div>
+                            </div>
+                            <div class="small text-muted" style="margin-top:6px;">Cobertura: ${Math.round((bestBasket.products.length/productsWithBarcode.length)*100)}%</div>
+                        </div>
+                        <div style="margin-top:0.75rem;">
+                            <button class="btn btn-outline btn-view-best-basket"><i class="fas fa-list"></i> Ver Detalhes</button>
                         </div>
                     </div>
                 </div>
             </div>
         `;
     }
-    
-    // 2. Card do Supermercado com Cesta Completa Mais Barata
+
+    // Complete basket card
     let completeBasketHtml = '';
     if (completeBasketMarket) {
         const marketName = completeBasketMarket.name;
         const total = completeBasketMarket.total;
         const productCount = completeBasketMarket.productCount;
         const market = marketDetails[marketName];
-        
         completeBasketHtml = `
             <div class="results-section">
                 <h3><i class="fas fa-award text-success"></i> Supermercado com Cesta Completa Mais Barata</h3>
                 <div class="cards-grid">
                     <div class="market-card complete-basket">
-                        <div class="card-header">
-                            <div class="market-rank best">#1 Completo</div>
-                            <div class="market-name">${marketName}</div>
-                            <div class="market-badge complete">
-                                <i class="fas fa-check-circle"></i> Cesta Completa
-                            </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div style="font-weight:700;">${marketName}</div>
+                            <div class="market-badge complete"><i class="fas fa-check-circle"></i> Completo</div>
                         </div>
-                        <div class="card-body">
-                            <div class="market-address">
-                                <i class="fas fa-map-marker-alt"></i>
-                                ${market.endereco || 'Endereço não disponível'}
-                            </div>
-                            <div class="market-total">
-                                R$ ${total.toFixed(2)}
-                                <div class="total-label">Valor Total</div>
-                            </div>
-                            <div class="market-stats">
-                                <div class="stat">
-                                    <span class="stat-value">${productCount}</span>
-                                    <span class="stat-label">Produtos Encontrados</span>
-                                </div>
-                                <div class="stat">
-                                    <span class="stat-value">${productsWithBarcode.length}</span>
-                                    <span class="stat-label">Total na Cesta</span>
-                                </div>
-                            </div>
-                            <div class="completion-rate">
-                                <div class="progress">
-                                    <div class="progress-bar" style="width: 100%"></div>
-                                </div>
-                                <span>100% de cobertura</span>
-                            </div>
+                        <div style="margin-top:0.5rem;">
+                            <div class="market-address small text-muted">${market ? (market.endereco || '') : ''}</div>
+                            <div class="market-total">R$ ${total.toFixed(2)}</div>
+                            <div class="small text-muted">${productCount} de ${productsWithBarcode.length} produtos</div>
                         </div>
-                        <div class="card-footer">
-                            <button class="btn btn-outline btn-view-details" data-market="${marketName}">
-                                <i class="fas fa-list"></i> Ver Detalhes
-                            </button>
+                        <div style="margin-top:0.5rem;">
+                            <button class="btn btn-outline btn-view-details" data-market="${marketName}"><i class="fas fa-list"></i> Ver Detalhes</button>
                         </div>
                     </div>
                 </div>
             </div>
         `;
     }
-    
-    // 3. Cards dos Mercados (Top 1, Mais Caro e Outros)
+
+    // Markets cards
     let marketsHtml = `
         <div class="results-section">
             <h3><i class="fas fa-store"></i> Comparação por Mercado</h3>
             <div class="cards-grid">
     `;
-    
+
     sortedMarkets.forEach(([marketName, total], index) => {
-        // CORREÇÃO: usar o Set para obter a contagem correta de produtos únicos
-        const productCount = productsFoundByMarket[marketName].size;
+        const productCount = (productsFoundByMarket[marketName] && productsFoundByMarket[marketName].size) || 0;
         const completionRate = Math.round((productCount / productsWithBarcode.length) * 100);
-        const market = marketDetails[marketName];
+        const market = marketDetails[marketName] || {};
         const isCheapest = index === 0;
         const isMostExpensive = index === sortedMarkets.length - 1;
-        
-        // Pular se for o mercado da cesta completa (já mostrado acima)
-        if (completeBasketMarket && marketName === completeBasketMarket.name) {
-            return;
-        }
-        
+
+        if (completeBasketMarket && marketName === completeBasketMarket.name) return;
+
         let cardClass = 'market-card';
-        let rankClass = '';
-        let rankText = '';
-        
-        if (isCheapest) {
-            cardClass += ' cheapest';
-            rankClass = 'best';
-            rankText = '#1 Mais Barato';
-        } else if (isMostExpensive) {
-            cardClass += ' most-expensive';
-            rankClass = 'worst';
-            rankText = `#${sortedMarkets.length} Mais Caro`;
-        } else {
-            rankText = `#${index + 1}`;
-        }
-        
+        if (isCheapest) cardClass += ' cheapest';
+        if (isMostExpensive) cardClass += ' most-expensive';
+
         marketsHtml += `
             <div class="${cardClass}">
-                <div class="card-header">
-                    <div class="market-rank ${rankClass}">${rankText}</div>
-                    <div class="market-name">${marketName}</div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div style="font-weight:700;">${marketName}</div>
                     ${isCheapest ? '<div class="market-badge best-price"><i class="fas fa-trophy"></i> Melhor Preço</div>' : ''}
                 </div>
-                <div class="card-body">
-                    <div class="market-address">
-                        <i class="fas fa-map-marker-alt"></i>
-                        ${market.endereco || 'Endereço não disponível'}
-                    </div>
-                    <div class="market-total">
-                        R$ ${total.toFixed(2)}
-                        <div class="total-label">Valor Total</div>
-                    </div>
-                    <div class="market-stats">
-                        <div class="stat">
-                            <span class="stat-value">${productCount}</span>
-                            <span class="stat-label">Produtos Encontrados</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value">${productsWithBarcode.length}</span>
-                            <span class="stat-label">Total na Cesta</span>
-                        </div>
-                    </div>
-                    <div class="completion-rate">
-                        <div class="progress">
-                            <div class="progress-bar" style="width: ${completionRate}%"></div>
-                        </div>
-                        <span>${completionRate}% de cobertura</span>
-                    </div>
+                <div style="margin-top:0.5rem;">
+                    <div class="market-address small text-muted">${market.endereco || ''}</div>
+                    <div class="market-total">R$ ${total.toFixed(2)}</div>
+                    <div class="small text-muted">${productCount} de ${productsWithBarcode.length} produtos</div>
                 </div>
-                <div class="card-footer">
-                    <button class="btn btn-outline btn-view-details" data-market="${marketName}">
-                        <i class="fas fa-list"></i> Ver Detalhes
-                    </button>
+                <div style="margin-top:0.6rem;">
+                    <div class="progress" style="background:rgba(255,255,255,0.02); height:8px; border-radius:6px;">
+                        <div class="progress-bar" style="width:${completionRate}%; background:linear-gradient(90deg,var(--primary),var(--accent)); height:100%; border-radius:6px;"></div>
+                    </div>
+                    <div style="margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
+                        <div class="small text-muted">Cobertura: ${completionRate}%</div>
+                        <button class="btn btn-outline btn-view-details" data-market="${marketName}"><i class="fas fa-list"></i> Ver Detalhes</button>
+                    </div>
                 </div>
             </div>
         `;
     });
-    
+
     marketsHtml += `</div></div>`;
-    
-    // 4. Resumo Estatístico
-    const summaryHtml = `
-        <div class="results-summary">
-            <div class="summary-stats">
-                <div class="stat">
-                    <span class="stat-value">${results.length}</span>
-                    <span class="stat-label">Preços Encontrados</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-value">${Object.keys(resultsByMarket).length}</span>
-                    <span class="stat-label">Mercados com Preços</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-value">${productsWithBarcode.length}</span>
-                    <span class="stat-label">Produtos com Código</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-value">${selectedMarkets.length}</span>
-                    <span class="stat-label">Mercados Selecionados</span>
-                </div>
-            </div>
-        </div>
-    `;
-    
+
     resultsElement.innerHTML = summaryHtml + bestBasketHtml + completeBasketHtml + marketsHtml;
-    
-    // Adicionar event listeners para os botões de detalhes
+
+    // Attach actions
     resultsElement.querySelectorAll('.btn-view-details').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const marketName = e.target.closest('button').dataset.market;
-            showMarketDetails(marketName, marketProductDetails[marketName], marketDetails[marketName], productsWithBarcode);
+            const marketName = e.currentTarget.dataset.market;
+            showMarketDetails(marketName, marketProductDetails[marketName] || [], marketDetails[marketName] || {}, productsWithBarcode);
         });
     });
-    
-    // Adicionar event listener para o botão da melhor cesta
+
     resultsElement.querySelectorAll('.btn-view-best-basket').forEach(btn => {
         btn.addEventListener('click', () => {
             showBestBasketDetails(bestBasket, productsWithBarcode);
@@ -617,310 +470,189 @@ function renderBasketComparison(results, selectedMarkets, productsWithBarcode) {
 }
 
 /**
- * Encontra o supermercado com cesta completa mais barata (que tenha todos os produtos)
+ * Encontra mercado com cesta completa mais barata
  */
 function findCompleteBasketMarket(marketTotals, productsFoundByMarket, productsWithBarcode) {
     let completeMarket = null;
     let lowestTotal = Infinity;
-    
-    // Procurar por mercados que tenham todos os produtos
+
     Object.entries(marketTotals).forEach(([marketName, total]) => {
-        const productCount = productsFoundByMarket[marketName].size;
-        
-        // Verificar se este mercado tem todos os produtos
+        const productCount = (productsFoundByMarket[marketName] && productsFoundByMarket[marketName].size) || 0;
         if (productCount === productsWithBarcode.length) {
             if (total < lowestTotal) {
                 lowestTotal = total;
-                completeMarket = {
-                    name: marketName,
-                    total: total,
-                    productCount: productCount
-                };
+                completeMarket = { name: marketName, total: total, productCount: productCount };
             }
         }
     });
-    
+
     return completeMarket;
 }
 
 /**
- * Calcula a melhor cesta básica (produtos mais baratos de todos os mercados)
+ * Calcula a melhor cesta (produto por produto com menor preço)
  */
 function calculateBestBasket(results, productsWithBarcode) {
     const bestProducts = {};
-    
-    // Para cada produto, encontrar o menor preço em qualquer mercado
+
     productsWithBarcode.forEach(product => {
-        const productResults = results.filter(r => 
-            r.original_product_name === product.nome_produto && 
-            r.original_barcode === product.codigo_barras
-        );
-        
+        const productResults = results.filter(r => r.original_product_name === product.nome_produto && r.original_barcode === product.codigo_barras);
         if (productResults.length > 0) {
             const bestOffer = productResults.reduce((best, current) => {
-                const currentPrice = parseFloat(current.preco_produto) || 0;
-                const bestPrice = parseFloat(best.preco_produto) || 0;
-                return currentPrice < bestPrice ? current : best;
-            });
-            
-            bestProducts[product.nome_produto] = {
-                ...bestOffer,
-                price: parseFloat(bestOffer.preco_produto) || 0
-            };
+                const cur = parseFloat(current.preco_produto) || 0;
+                const b = parseFloat(best.preco_produto) || 0;
+                return cur < b ? current : best;
+            }, productResults[0]);
+            bestProducts[product.nome_produto] = { ...bestOffer, price: parseFloat(bestOffer.preco_produto) || 0 };
         }
     });
-    
+
     const bestProductsArray = Object.values(bestProducts);
-    const total = bestProductsArray.reduce((sum, product) => sum + product.price, 0);
-    
-    return {
-        products: bestProductsArray,
-        total: total
-    };
+    const total = bestProductsArray.reduce((sum, p) => sum + (p.price || 0), 0);
+
+    return { products: bestProductsArray, total: total };
 }
 
 /**
- * Mostra detalhes de um mercado específico - VERSÃO CORRIGIDA
+ * Exibe detalhes do mercado (modal)
  */
 function showMarketDetails(marketName, products, marketInfo, allProducts) {
     const content = document.getElementById('marketDetailsContent');
-    
-    // CORREÇÃO: calcular o total corretamente a partir dos produtos
-    const total = products.reduce((sum, product) => sum + (product.price || 0), 0);
+    if (!content) return;
+
+    const total = products.reduce((sum, p) => sum + (p.price || 0), 0);
     const productCount = products.length;
     const totalProducts = allProducts.length;
-    
-    let detailsHtml = `
-        <div class="market-details-header">
+
+    let html = `
+        <div>
             <h4><i class="fas fa-store"></i> ${marketName}</h4>
-            ${marketInfo.endereco ? `<p class="market-address"><i class="fas fa-map-marker-alt"></i> ${marketInfo.endereco}</p>` : ''}
-            
-            <div class="market-stats-grid">
-                <div class="market-stat">
-                    <div class="stat-value">${productCount}</div>
-                    <div class="stat-label">Produtos Encontrados</div>
-                </div>
-                <div class="market-stat">
-                    <div class="stat-value">${totalProducts}</div>
-                    <div class="stat-label">Total na Cesta</div>
-                </div>
-                <div class="market-stat">
-                    <div class="stat-value">R$ ${total.toFixed(2)}</div>
-                    <div class="stat-label">Valor Total</div>
-                </div>
-                <div class="market-stat">
-                    <div class="stat-value">${marketInfo.cnpj}</div>
-                    <div class="stat-label">CNPJ</div>
-                </div>
+            ${marketInfo.endereco ? `<p class="small text-muted"><i class="fas fa-map-marker-alt"></i> ${marketInfo.endereco}</p>` : ''}
+            <div style="display:flex; gap:1rem; margin-top:0.75rem; flex-wrap:wrap;">
+                <div class="market-stat"><div class="stat-value">${productCount}</div><div class="stat-label">Produtos Encontrados</div></div>
+                <div class="market-stat"><div class="stat-value">${totalProducts}</div><div class="stat-label">Total na Cesta</div></div>
+                <div class="market-stat"><div class="stat-value">R$ ${total.toFixed(2)}</div><div class="stat-label">Valor Total</div></div>
+                <div class="market-stat"><div class="stat-value">${marketInfo.cnpj || 'N/A'}</div><div class="stat-label">CNPJ</div></div>
             </div>
         </div>
-        
-        <div class="products-list">
-            <h5>Produtos Encontrados (${productCount} de ${totalProducts}):</h5>
+        <div style="margin-top:1rem;">
+            <h5>Produtos Encontrados (${productCount} de ${totalProducts})</h5>
             <table class="table">
-                <thead>
-                    <tr>
-                        <th>Produto</th>
-                        <th>Código de Barras</th>
-                        <th>Preço (R$)</th>
-                        <th>Unidade</th>
-                        <th>Última Venda</th>
-                    </tr>
-                </thead>
+                <thead><tr><th>Produto</th><th>Código</th><th>Preço (R$)</th><th>Unidade</th><th>Última Venda</th></tr></thead>
                 <tbody>
     `;
-    
-    // Ordenar produtos por nome
-    products.sort((a, b) => a.original_product_name.localeCompare(b.original_product_name));
-    
+
+    products.sort((a, b) => (a.original_product_name || '').localeCompare(b.original_product_name || ''));
+
     products.forEach(product => {
-        const lastSaleDate = product.data_ultima_venda ? 
-            new Date(product.data_ultima_venda).toLocaleDateString('pt-BR') : 'N/A';
-            
-        detailsHtml += `
+        const lastSaleDate = product.data_ultima_venda ? new Date(product.data_ultima_venda).toLocaleDateString('pt-BR') : 'N/A';
+        html += `
             <tr>
-                <td>
-                    <div class="product-name">${product.original_product_name}</div>
-                    ${product.nome_produto !== product.original_product_name ? 
-                      `<div class="product-alias">(${product.nome_produto})</div>` : ''}
-                </td>
-                <td><code class="barcode">${product.codigo_barras || 'N/A'}</code></td>
+                <td>${product.original_product_name} ${product.nome_produto !== product.original_product_name ? `<div class="small text-muted">(${product.nome_produto})</div>` : ''}</td>
+                <td><code>${product.codigo_barras || 'N/A'}</code></td>
                 <td class="price">R$ ${(product.price || 0).toFixed(2)}</td>
                 <td>${product.unidade || 'UN'}</td>
                 <td>${lastSaleDate}</td>
             </tr>
         `;
     });
-    
-    // Mostrar produtos não encontrados
-    const foundProductNames = products.map(p => p.original_product_name);
-    const missingProducts = allProducts.filter(p => !foundProductNames.includes(p.nome_produto));
-    
-    if (missingProducts.length > 0) {
-        detailsHtml += `
-            <tr class="section-divider">
-                <td colspan="5">
-                    <strong>Produtos Não Encontrados neste Mercado:</strong>
-                </td>
-            </tr>
-        `;
-        
-        missingProducts.forEach(product => {
-            detailsHtml += `
-                <tr class="text-muted">
-                    <td>${product.nome_produto}</td>
-                    <td><code>${product.codigo_barras || 'N/A'}</code></td>
-                    <td colspan="3" class="text-center">Produto não encontrado</td>
-                </tr>
-            `;
+
+    // missing
+    const foundNames = products.map(p => p.original_product_name);
+    const missing = allProducts.filter(p => !foundNames.includes(p.nome_produto));
+    if (missing.length > 0) {
+        html += `<tr class="section-divider"><td colspan="5"><strong>Produtos Não Encontrados neste Mercado:</strong></td></tr>`;
+        missing.forEach(p => {
+            html += `<tr class="text-muted"><td>${p.nome_produto}</td><td><code>${p.codigo_barras || 'N/A'}</code></td><td colspan="3" class="text-center">Produto não encontrado</td></tr>`;
         });
     }
-    
-    detailsHtml += `</tbody></table></div>`;
-    content.innerHTML = detailsHtml;
-    marketDetailsModal.style.display = 'block';
+
+    html += `</tbody></table></div>`;
+
+    content.innerHTML = html;
+    marketDetailsModal.style.display = 'flex';
+    marketDetailsModal.setAttribute('aria-hidden', 'false');
 }
 
 /**
- * Mostra detalhes da melhor cesta básica
+ * Exibe detalhes da melhor cesta (modal)
  */
 function showBestBasketDetails(bestBasket, originalProducts) {
+    if (!document.getElementById('bestBasketModal')) createBestBasketModal();
     const content = document.getElementById('bestBasketContent');
-    
-    let detailsHtml = `
-        <div class="market-details-header">
+
+    let html = `
+        <div>
             <h4><i class="fas fa-crown text-warning"></i> Melhor Cesta Básica</h4>
-            <p class="market-address"><i class="fas fa-lightbulb"></i> Combinação dos produtos mais baratos de todos os mercados</p>
-            
-            <div class="market-stats-grid">
-                <div class="market-stat">
-                    <div class="stat-value">${bestBasket.products.length}</div>
-                    <div class="stat-label">Produtos Otimizados</div>
-                </div>
-                <div class="market-stat">
-                    <div class="stat-value">R$ ${bestBasket.total.toFixed(2)}</div>
-                    <div class="stat-label">Valor Total</div>
-                </div>
-                <div class="market-stat">
-                    <div class="stat-value">${originalProducts.length}</div>
-                    <div class="stat-label">Total na Cesta</div>
-                </div>
+            <p class="small text-muted">Combinação dos produtos com menor preço entre os mercados selecionados</p>
+            <div style="display:flex; gap:1rem; margin-top:0.75rem;">
+                <div class="market-stat"><div class="stat-value">${bestBasket.products.length}</div><div class="stat-label">Produtos Otimizados</div></div>
+                <div class="market-stat"><div class="stat-value">R$ ${bestBasket.total.toFixed(2)}</div><div class="stat-label">Valor Total</div></div>
+                <div class="market-stat"><div class="stat-value">${originalProducts.length}</div><div class="stat-label">Total na Cesta</div></div>
             </div>
         </div>
-        
-        <div class="products-list">
-            <h5>Produtos da Cesta Otimizada:</h5>
+        <div style="margin-top:1rem;">
+            <h5>Produtos da Cesta Otimizada</h5>
             <table class="table">
-                <thead>
-                    <tr>
-                        <th>Produto</th>
-                        <th>Código</th>
-                        <th>Melhor Preço (R$)</th>
-                        <th>Mercado</th>
-                        <th>Endereço</th>
-                        <th>Última Venda</th>
-                    </tr>
-                </thead>
+                <thead><tr><th>Produto</th><th>Código</th><th>Melhor Preço (R$)</th><th>Mercado</th><th>Endereço</th><th>Última Venda</th></tr></thead>
                 <tbody>
     `;
-    
-    // Ordenar produtos por nome
-    bestBasket.products.sort((a, b) => a.original_product_name.localeCompare(b.original_product_name));
-    
-    bestBasket.products.forEach(product => {
-        const lastSaleDate = product.data_ultima_venda ? 
-            new Date(product.data_ultima_venda).toLocaleDateString('pt-BR') : 'N/A';
-        const market = allMarkets.find(m => m.nome === product.nome_supermercado);
+
+    bestBasket.products.sort((a,b) => (a.original_product_name||'').localeCompare(b.original_product_name||''));
+    bestBasket.products.forEach(p => {
+        const lastSaleDate = p.data_ultima_venda ? new Date(p.data_ultima_venda).toLocaleDateString('pt-BR') : 'N/A';
+        const market = allMarkets.find(m => m.nome === p.nome_supermercado) || allSupermarkets.find(m => m.nome === p.nome_supermercado);
         const marketAddress = market ? market.endereco : 'N/A';
-            
-        detailsHtml += `
+        html += `
             <tr>
-                <td>
-                    <div class="product-name">${product.original_product_name}</div>
-                    ${product.nome_produto !== product.original_product_name ? 
-                      `<div class="product-alias">(${product.nome_produto})</div>` : ''}
-                </td>
-                <td><code class="barcode">${product.codigo_barras || 'N/A'}</code></td>
-                <td class="price price-cheapest">R$ ${(product.price || 0).toFixed(2)}</td>
-                <td><strong>${product.nome_supermercado}</strong></td>
+                <td>${p.original_product_name} ${p.nome_produto !== p.original_product_name ? `<div class="small text-muted">(${p.nome_produto})</div>` : ''}</td>
+                <td><code>${p.codigo_barras || 'N/A'}</code></td>
+                <td class="price price-cheapest">R$ ${(p.price || 0).toFixed(2)}</td>
+                <td><strong>${p.nome_supermercado}</strong></td>
                 <td>${marketAddress}</td>
                 <td>${lastSaleDate}</td>
             </tr>
         `;
     });
-    
-    // Adicionar produtos não encontrados
-    const foundProductNames = bestBasket.products.map(p => p.original_product_name);
-    const missingProducts = originalProducts.filter(p => !foundProductNames.includes(p.nome_produto));
-    
-    if (missingProducts.length > 0) {
-        detailsHtml += `
-            <tr class="section-divider">
-                <td colspan="6">
-                    <strong>Produtos Não Encontrados em Nenhum Mercado:</strong>
-                </td>
-            </tr>
-        `;
-        
-        missingProducts.forEach(product => {
-            detailsHtml += `
-                <tr class="text-muted">
-                    <td>${product.nome_produto}</td>
-                    <td><code>${product.codigo_barras || 'N/A'}</code></td>
-                    <td colspan="4" class="text-center">Nenhum preço encontrado</td>
-                </tr>
-            `;
+
+    // missing
+    const found = bestBasket.products.map(p=>p.original_product_name);
+    const missing = originalProducts.filter(p => !found.includes(p.nome_produto));
+    if (missing.length) {
+        html += `<tr class="section-divider"><td colspan="6"><strong>Produtos Não Encontrados em Nenhum Mercado:</strong></td></tr>`;
+        missing.forEach(p => {
+            html += `<tr class="text-muted"><td>${p.nome_produto}</td><td><code>${p.codigo_barras || 'N/A'}</code></td><td colspan="4" class="text-center">Nenhum preço encontrado</td></tr>`;
         });
     }
-    
-    detailsHtml += `</tbody></table></div>`;
-    
-    // Criar modal da melhor cesta se não existir
-    if (!document.getElementById('bestBasketModal')) {
-        createBestBasketModal();
-    }
-    
-    document.getElementById('bestBasketContent').innerHTML = detailsHtml;
-    document.getElementById('bestBasketModal').style.display = 'block';
+
+    html += `</tbody></table></div>`;
+
+    content.innerHTML = html;
+    document.getElementById('bestBasketModal').style.display = 'flex';
+    document.getElementById('bestBasketModal').setAttribute('aria-hidden', 'false');
 }
 
-/**
- * Cria o modal da melhor cesta básica
- */
 function createBestBasketModal() {
     const modalHtml = `
-        <div id="bestBasketModal" class="modal">
-            <div class="modal-content" style="max-width: 1200px;">
-                <div class="modal-header">
-                    <h5>Detalhes da Melhor Cesta Básica</h5>
-                    <span class="close">&times;</span>
-                </div>
-                <div class="modal-body">
-                    <div id="bestBasketContent">
-                        <!-- Conteúdo será renderizado aqui -->
-                    </div>
-                </div>
+        <div id="bestBasketModal" class="modal" aria-hidden="true">
+            <div class="modal-content" style="max-width:1200px;" role="dialog" aria-modal="true">
+                <div class="modal-header"><h5>Detalhes da Melhor Cesta Básica</h5><span class="close">&times;</span></div>
+                <div class="modal-body"><div id="bestBasketContent"></div></div>
             </div>
         </div>
     `;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    
-    // Adicionar event listener para fechar
     document.getElementById('bestBasketModal').querySelector('.close').addEventListener('click', function() {
         document.getElementById('bestBasketModal').style.display = 'none';
+        document.getElementById('bestBasketModal').setAttribute('aria-hidden', 'true');
     });
 }
 
-/**
- * Função utilitária para debounce
- */
+/* debounce util */
 function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
+        const later = () => { clearTimeout(timeout); func(...args); };
         clearTimeout(timeout);
         timeout = setTimeout(later, wait);
     };
