@@ -4,6 +4,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
 
 :root {
+
+    /* Compatibilidade: aplicar overrides de tema claro também quando body.light-mode existir */
+body.light-mode {
+    --bg-primary: var(--bg-light);
+    --bg-secondary: var(--panel-light);
+    --bg-tertiary: var(--input-light);
+    --bg-card: var(--panel-light);
+    --bg-modal: rgba(255, 255, 255, 0.95);
+    --text-primary: var(--text-light);
+    --text-secondary: var(--muted-light);
+    --text-muted: var(--muted-light);
+    --border-color: var(--border-light);
+}
     /* Dark Theme */
     --bg-dark: #0b1020;
     --panel-dark: #0f1724;
@@ -31,6 +44,7 @@
     --sidebar-width: 260px;
     --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
+    
     /* Compatibilidade com nomes antigos */
     --bg-primary: var(--bg-dark);
     --bg-secondary: var(--panel-dark);
