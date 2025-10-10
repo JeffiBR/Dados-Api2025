@@ -45,18 +45,6 @@ body.light-mode {
     --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
     
-    /* Compatibilidade com nomes antigos */
-    --bg-primary: var(--bg-dark);
-    --bg-secondary: var(--panel-dark);
-    --bg-tertiary: var(--input-dark);
-    --bg-card: var(--panel-dark);
-    --bg-modal: rgba(15, 23, 42, 0.95);
-    --text-primary: var(--text-dark);
-    --text-secondary: var(--muted-dark);
-    --text-muted: var(--muted-dark);
-    --border-color: var(--border-dark);
-    --warning: var(--warn);
-}
 
 .theme-light {
     --bg-primary: var(--bg-light);
