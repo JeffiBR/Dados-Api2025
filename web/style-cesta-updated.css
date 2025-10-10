@@ -1,3 +1,4 @@
+
 /* style.css - Sistema de Comparação de Preços - VERSÃO COMPLETA ATUALIZADA */
 
 /* ===== VARIÁVEIS E RESET ===== */
@@ -239,22 +240,41 @@ body.light-mode .theme-switcher span {
 }
 
 /* ===== TOP BAR ===== */
-.top-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 32px;
-    background: var(--panel-dark);
-    border-bottom: 1px solid var(--border-dark);
-    position: sticky;
-    top: 0;
-    z-index: 90;
+.content-wrapper {
+    margin-left: var(--sidebar-width);
+    flex-grow: 1;
     transition: var(--transition);
+}
+
+.top-bar {
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    height: auto !important;
+    display: flex;
+    justify-content: flex-end;
 }
 
 body.light-mode .top-bar {
     background: var(--panel-light);
     border-bottom: 1px solid var(--border-light);
+    box-shadow: 0 0 15px rgba(0,0,0,0.05);
+}
+
+.mobile-menu-button {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--text-dark);
+    font-size: 1.5rem;
+    cursor: pointer;
+    margin-right: auto;
+    transition: var(--transition);
+}
+
+body.light-mode .mobile-menu-button {
+    color: var(--text-light);
 }
 
 .top-bar-left {
