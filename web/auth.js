@@ -94,17 +94,53 @@ async function routeGuard(requiredPermission = null) {
         window.location.href = `/login.html?redirect=${window.location.pathname}`;
         return;
     }
-    if (requiredPermission) {
-        const profile = await fetchUserProfile();
-        if (!profile || (profile.role !== 'admin' && (!profile.allowed_pages || !profile.allowed_pages.includes(requiredPermission)))) {
-            alert('Você não tem permissão para acessar esta página.');
-            window.location.href = '/search.html';
-        }
+    
+    // Se não há permissão específica requerida, apenas verifica se está logado
+    if (!requiredPermission) {
+        return;
+    }
+
+    const profile = await fetchUserProfile();
+    
+    if (!profile) {
+        alert('Erro ao carregar perfil do usuário.');
+        window.location.href = '/login.html';
+        return;
+    }
+
+    // Admin tem acesso a tudo
+    if (profile.role === 'admin') {
+        return;
+    }
+
+    // Para usuários não-admin, verificar permissões específicas
+    const userPermissions = profile.permissions || [];
+
+    // Mapeamento de páginas para permissões
+    const pagePermissions = {
+        'search': 'search',
+        'compare': 'compare',
+        'dashboard': 'dashboard',
+        'cesta': 'cesta', // Permissão para Cesta Básica
+        'admin': 'coleta',
+        'collections': 'collections',
+        'product-log': 'product_log',
+        'user-logs': 'user_logs',
+        'prune': 'prune',
+        'markets': 'markets',
+        'users': 'users'
+    };
+
+    const requiredPerm = pagePermissions[requiredPermission];
+    
+    // Se a página não está mapeada ou usuário não tem a permissão
+    if (!requiredPerm || !userPermissions.includes(requiredPerm)) {
+        alert('Você não tem permissão para acessar esta página.');
+        window.location.href = '/search.html';
+        return;
     }
 }
 
-// ==================================================================
-// --- FUNÇÃO ADICIONADA PARA LIMPEZA DE CACHE ---
 /**
  * Limpa a variável de cache do perfil do usuário (currentUserProfile).
  * Isso força a próxima chamada a fetchUserProfile a buscar dados frescos do servidor.
@@ -113,6 +149,5 @@ function clearUserProfileCache() {
     console.log('🧹 Cache de perfil em memória (auth.js) limpo.');
     currentUserProfile = null;
 }
-// ==================================================================
 
 // A função updateUIVisibility foi removida pois sua lógica agora está centralizada no user-menu.js
