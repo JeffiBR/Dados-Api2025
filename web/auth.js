@@ -3,7 +3,7 @@
 const SUPABASE_URL = 'https://zhaetrzpkkgzfrwxfqdw.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpoYWV0cnpwa2tnemZyd3hmcWR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0MjM3MzksImV4cCI6MjA3Mjk5OTczOX0.UHoWWZahvp_lMDH8pK539YIAFTAUnQk9mBX5tdixwN0';
 
-const supabase = self.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY );
+const supabase = self.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentUserProfile = null; // Variável de cache em memória
 
 /**
@@ -94,50 +94,25 @@ async function routeGuard(requiredPermission = null) {
         window.location.href = `/login.html?redirect=${window.location.pathname}`;
         return;
     }
-    
-    // Se não há permissão específica requerida, apenas verifica se está logado
-    if (!requiredPermission) {
-        return;
+    if (requiredPermission) {
+        const profile = await fetchUserProfile();
+        if (!profile || (profile.role !== 'admin' && (!profile.allowed_pages || !profile.allowed_pages.includes(requiredPermission)))) {
+            alert('Você não tem permissão para acessar esta página.');
+            window.location.href = '/search.html';
+        }
     }
+}
 
-    const profile = await fetchUserProfile();
-    
-    if (!profile) {
-        alert('Erro ao carregar perfil do usuário.');
-        window.location.href = '/login.html';
-        return;
-    }
-
-    // Admin tem acesso a tudo
-    if (profile.role === 'admin') {
-        return;
-    }
-
-    // Para usuários não-admin, verificar permissões específicas
-    const userPermissions = profile.permissions || [];
-
-    // Mapeamento de páginas para permissões
-    const pagePermissions = {
-        'search': 'search',
-        'compare': 'compare',
-        'dashboard': 'dashboard',
-        'cesta': 'cesta', // Permissão para Cesta Básica
-        'admin': 'coleta',
-        'collections': 'collections',
-        'product-log': 'product_log',
-        'user-logs': 'user_logs',
-        'prune': 'prune',
-        'markets': 'markets',
-        'users': 'users'
-    };
-
-    const requiredPerm = pagePermissions[requiredPermission];
-    
-    // Se a página não está mapeada ou usuário não tem a permissão
-    if (!requiredPerm || !userPermissions.includes(requiredPerm)) {
-        alert('Você não tem permissão para acessar esta página.');
-        window.location.href = '/search.html';
-        return;
+/**
+ * Função para verificar autenticação - compatibilidade com cesta.js
+ */
+async function checkAuth() {
+    try {
+        const session = await getSession();
+        return !!session;
+    } catch (error) {
+        console.error('Erro ao verificar autenticação:', error);
+        return false;
     }
 }
 
@@ -150,4 +125,136 @@ function clearUserProfileCache() {
     currentUserProfile = null;
 }
 
-// A função updateUIVisibility foi removida pois sua lógica agora está centralizada no user-menu.js
+/**
+ * Verifica se o usuário está autenticado e redireciona se necessário
+ */
+async function requireAuth(redirectUrl = '/login.html') {
+    const user = await getAuthUser();
+    if (!user) {
+        window.location.href = redirectUrl;
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Obtém o token de autenticação atual
+ */
+async function getAuthToken() {
+    const session = await getSession();
+    return session?.access_token || null;
+}
+
+/**
+ * Verifica se o usuário tem uma permissão específica
+ */
+async function hasPermission(permission) {
+    const profile = await fetchUserProfile();
+    if (!profile) return false;
+    
+    if (profile.role === 'admin') return true;
+    
+    return profile.allowed_pages && profile.allowed_pages.includes(permission);
+}
+
+/**
+ * Inicializa a autenticação e verifica o estado do usuário
+ */
+async function initAuth() {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_IN') {
+            console.log('Usuário fez login');
+            clearUserProfileCache(); // Limpa cache para buscar dados atualizados
+        } else if (event === 'SIGNED_OUT') {
+            console.log('Usuário fez logout');
+            clearUserProfileCache();
+            currentUserProfile = null;
+        } else if (event === 'TOKEN_REFRESHED') {
+            console.log('Token atualizado');
+        }
+    });
+
+    return subscription;
+}
+
+/**
+ * Função auxiliar para fazer login com email e senha
+ */
+async function signIn(email, password) {
+    const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password
+    });
+
+    if (error) {
+        throw error;
+    }
+
+    // Salva o token no localStorage para compatibilidade
+    if (data.session) {
+        localStorage.setItem('token', data.session.access_token);
+    }
+
+    clearUserProfileCache(); // Limpa cache para buscar dados atualizados
+    return data;
+}
+
+/**
+ * Função auxiliar para cadastrar novo usuário
+ */
+async function signUp(email, password, userMetadata = {}) {
+    const { data, error } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+        options: {
+            data: userMetadata
+        }
+    });
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+}
+
+/**
+ * Verifica e atualiza o estado de autenticação globalmente
+ */
+async function checkAndUpdateAuthState() {
+    const isAuthenticated = await checkAuth();
+    
+    // Dispara um evento customizado para que outras partes da aplicação saibam do estado
+    const authEvent = new CustomEvent('authStateChange', {
+        detail: { isAuthenticated, user: currentUserProfile }
+    });
+    window.dispatchEvent(authEvent);
+    
+    return isAuthenticated;
+}
+
+// Inicializa a autenticação quando o script é carregado
+document.addEventListener('DOMContentLoaded', function() {
+    initAuth().catch(console.error);
+});
+
+// Exporta funções para uso global (se necessário)
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        authenticatedFetch,
+        getAuthUser,
+        fetchUserProfile,
+        getSession,
+        signOut,
+        routeGuard,
+        checkAuth,
+        clearUserProfileCache,
+        requireAuth,
+        getAuthToken,
+        hasPermission,
+        initAuth,
+        signIn,
+        signUp,
+        checkAndUpdateAuthState
+    };
+}
