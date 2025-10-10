@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Comparador de Preços</title>
+    <title>Dashboard - Preços AL</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -12,9 +12,201 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth.js"></script>
     <script src="theme.js"></script>
+    <style>
+        /* ====== INDICADOR DE PÁGINA EM DESENVOLVIMENTO ====== */
+        .dev-notice {
+            background: linear-gradient(135deg, 
+                rgba(79, 70, 229, 0.08) 0%, 
+                rgba(124, 58, 237, 0.05) 50%, 
+                rgba(79, 70, 229, 0.08) 100%);
+            border-radius: 20px;
+            padding: 3rem 2rem;
+            margin: 2rem 0;
+            border: 2px dashed rgba(79, 70, 229, 0.3);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body.light-mode .dev-notice {
+            background: linear-gradient(135deg, 
+                rgba(79, 70, 229, 0.05) 0%, 
+                rgba(124, 58, 237, 0.03) 50%, 
+                rgba(79, 70, 229, 0.05) 100%);
+            border: 2px dashed rgba(79, 70, 229, 0.2);
+        }
+
+        .dev-notice::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><g fill="%234f46e5" fill-opacity="0.03"><path d="M30 0l8.66 15-8.66 15-8.66 15zM60 30l-8.66-15-8.66 15 8.66 15zM30 60l-8.66-15 8.66-15 8.66 15zM0 30l8.66-15 8.66 15-8.66 15z"/></g></g></svg>');
+            animation: floatBackground 20s linear infinite;
+        }
+
+        @keyframes floatBackground {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            100% { transform: translate(-30px, -30px) rotate(360deg); }
+        }
+
+        .dev-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .dev-content i {
+            font-size: 4rem;
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+            display: block;
+            text-shadow: 0 0 20px rgba(79, 70, 229, 0.3);
+        }
+
+        .dev-content h3 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        body.light-mode .dev-content h3 {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .dev-content p {
+            font-size: 1.2rem;
+            color: var(--muted-dark);
+            margin-bottom: 2rem;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.6;
+        }
+
+        body.light-mode .dev-content p {
+            color: var(--muted-light);
+        }
+
+        .dev-features {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .dev-badge {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .dev-badge:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
+        }
+
+        /* Animação da engrenagem */
+        .fa-spin {
+            animation: fa-spin 2s infinite linear;
+        }
+
+        @keyframes fa-spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Efeito de pulso adicional */
+        @keyframes pulse-glow {
+            0%, 100% {
+                filter: drop-shadow(0 0 10px rgba(79, 70, 229, 0.3));
+            }
+            50% {
+                filter: drop-shadow(0 0 20px rgba(79, 70, 229, 0.6));
+            }
+        }
+
+        .dev-content i {
+            animation: fa-spin 3s infinite linear, pulse-glow 2s ease-in-out infinite;
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .dev-notice {
+                padding: 2rem 1.5rem;
+                margin: 1.5rem 0;
+            }
+            
+            .dev-content i {
+                font-size: 3rem;
+            }
+            
+            .dev-content h3 {
+                font-size: 1.5rem;
+            }
+            
+            .dev-content p {
+                font-size: 1.1rem;
+            }
+            
+            .dev-badge {
+                padding: 0.6rem 1.2rem;
+                font-size: 0.85rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .dev-notice {
+                padding: 1.5rem 1rem;
+            }
+            
+            .dev-content i {
+                font-size: 2.5rem;
+            }
+            
+            .dev-content h3 {
+                font-size: 1.3rem;
+            }
+            
+            .dev-content p {
+                font-size: 1rem;
+            }
+            
+            .dev-features {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .dev-badge {
+                width: 100%;
+                max-width: 200px;
+                justify-content: center;
+            }
+        }
+    </style>
 </head>
 <body class="theme-dark">
-    <script>routeGuard('compare');</script>
+    <script>routeGuard('dashboard');</script>
 
     <div class="app-container">
         <aside class="sidebar">
@@ -26,9 +218,8 @@
                 <ul>
                     <li class="nav-header">ANÁLISE</li>
                     <li><a href="/search.html"><i class="fas fa-search"></i> Busca</a></li>
-                    <li data-permission="compare"><a href="/compare.html" class="active"><i class="fas fa-chart-bar"></i> Comparador</a></li>
-                    <li data-permission="dashboard"><a href="/dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
-                    <li data-permission="cesta"><a href="/cesta.html"><i class="fas fa-shopping-basket"></i> Cesta Básica</a></li>
+                    <li data-permission="compare"><a href="/compare.html"><i class="fas fa-chart-bar"></i> Comparador</a></li>
+                    <li data-permission="dashboard"><a href="/dashboard.html" class="active"><i class="fas fa-chart-line"></i> Dashboard</a></li>
                     
                     <li class="nav-header">ADMINISTRAÇÃO</li>
                     <li data-permission="coleta"><a href="/admin.html"><i class="fas fa-database"></i> Coleta</a></li>
@@ -89,165 +280,22 @@
             <div class="page-content">
                 <main class="admin-panel">
                     <div class="panel-header">
-                        <i class="fas fa-chart-bar"></i>
-                        <h2>Comparador de Preços</h2>
+                        <i class="fas fa-chart-line"></i>
+                        <h2>Dashboard Analítico</h2>
                     </div>
-                    <p class="panel-description">Compare preços de produtos entre diferentes supermercados em tempo real.</p>
+                    <p class="panel-description">Visualize métricas, estatísticas e insights sobre os dados de preços coletados.</p>
 
-                    <div class="card">
-                        <div class="card-header">
-                            <h3>Configuração da Comparação</h3>
-                        </div>
-                        <div class="card-content">
-                            <div class="form-group">
-                                <label for="barcodesInput">
-                                    <i class="fas fa-barcode"></i>
-                                    Códigos de Barras
-                                </label>
-                                <textarea 
-                                    id="barcodesInput" 
-                                    placeholder="Digite os códigos de barras separados por vírgula. Máximo: 10 códigos."
-                                    rows="4"
-                                ></textarea>
-                                <div class="input-info">
-                                    <i class="fas fa-info-circle"></i>
-                                    Insira até 10 códigos de barras separados por vírgula
-                                </div>
+                    <!-- Indicador de Desenvolvimento -->
+                    <div class="dev-notice">
+                        <div class="dev-content">
+                            <i class="fas fa-cog fa-spin"></i>
+                            <h3>Dashboard em Desenvolvimento</h3>
+                            <p>Estamos trabalhando para tracer análises avançadas e visualizações interativas dos dados de preços.</p>
+                            <div class="dev-features">
+                                <span class="dev-badge">📊 Gráficos Interativos</span>
+                                <span class="dev-badge">📈 Tendências</span>
+                                <span class="dev-badge">🔍 Insights</span>
                             </div>
-
-                            <!-- Novo campo para busca por nome -->
-                            <div class="form-group">
-                                <label for="productNameInput">
-                                    <i class="fas fa-search"></i>
-                                    Nome do Produto
-                                </label>
-                                <input 
-                                    type="text" 
-                                    id="productNameInput" 
-                                    placeholder="Digite o nome do produto para busca (ex: carne, alface, tomate)"
-                                >
-                                <div class="input-info">
-                                    <i class="fas fa-info-circle"></i>
-                                    Use para buscar produtos pesáveis como carnes, frutas e verduras
-                                </div>
-                            </div>
-
-                            <details class="market-filters" open>
-                                <summary>
-                                    <div class="summary-content">
-                                        <i class="fas fa-store"></i>
-                                        <span>Supermercados para Comparação</span>
-                                        <span class="selection-count" id="selectedCount">0 selecionados</span>
-                                    </div>
-                                </summary>
-                                <div class="filters-container">
-                                    <div class="market-search-controls">
-                                        <div class="search-box">
-                                            <i class="fas fa-search"></i>
-                                            <input type="text" id="marketSearch" placeholder="Buscar supermercados...">
-                                            <button class="clear-btn" id="clearMarketSearch">
-                                                <i class="fas fa-times"></i>
-                                            </button>
-                                        </div>
-                                        <div class="selection-actions">
-                                            <button class="btn small outline" id="selectAllMarkets">
-                                                <i class="fas fa-check-double"></i>
-                                                Selecionar Todos
-                                            </button>
-                                            <button class="btn small outline" id="deselectAllMarkets">
-                                                <i class="fas fa-times"></i>
-                                                Limpar Seleção
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="supermarket-grid" id="supermarketGrid">
-                                        <!-- Grid de supermercados será preenchido via JavaScript -->
-                                    </div>
-                                </div>
-                            </details>
-
-                            <div class="form-actions">
-                                <button id="compareButton" class="btn" disabled>
-                                    <i class="fas fa-chart-bar"></i>
-                                    Comparar Preços
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="loader" class="loader-container" style="display: none;">
-                        <div class="loader"></div>
-                        <p>Buscando preços atuais...</p>
-                    </div>
-
-                    <div id="emptyState" class="empty-state" style="display: none;">
-                        <i class="fas fa-chart-bar"></i>
-                        <h3>Nenhuma comparação realizada</h3>
-                        <p>Configure os filtros acima e clique em "Comparar Preços" para ver os resultados.</p>
-                    </div>
-
-                    <div id="resultsContainer" style="display: none;">
-                        <!-- Seção de Resumo com Cards Modernos -->
-                        <div class="summary-section">
-                            <div class="panel-header">
-                                <i class="fas fa-chart-pie"></i>
-                                <h2>Resultados da Comparação</h2>
-                            </div>
-                            
-                            <div class="summary-cards">
-                                <div class="summary-card">
-                                    <div class="summary-card-content">
-                                        <div class="summary-icon">
-                                            <i class="fas fa-box"></i>
-                                        </div>
-                                        <div class="summary-info">
-                                            <div class="summary-value" id="foundProducts">0</div>
-                                            <div class="summary-label">Produtos Encontrados</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="summary-card">
-                                    <div class="summary-card-content">
-                                        <div class="summary-icon">
-                                            <i class="fas fa-store"></i>
-                                        </div>
-                                        <div class="summary-info">
-                                            <div class="summary-value" id="activeMarkets">0</div>
-                                            <div class="summary-label">Mercados com Preços</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="summary-card">
-                                    <div class="summary-card-content">
-                                        <div class="summary-icon">
-                                            <i class="fas fa-piggy-bank"></i>
-                                        </div>
-                                        <div class="summary-info">
-                                            <div class="summary-value" id="maxSaving">0%</div>
-                                            <div class="summary-label">Maior Economia</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="summary-card">
-                                    <div class="summary-card-content">
-                                        <div class="summary-icon">
-                                            <i class="fas fa-clock"></i>
-                                        </div>
-                                        <div class="summary-info">
-                                            <div class="summary-value" id="lastUpdate">--:--:--</div>
-                                            <div class="summary-label">Última Atualização</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Lista de Produtos Comparados -->
-                        <div id="productsList" class="products-list">
-                            <!-- Produtos serão inseridos aqui via JavaScript -->
                         </div>
                     </div>
                 </main>
@@ -257,8 +305,5 @@
     
     <script src="mobile-menu.js"></script>
     <script src="user-menu.js"></script>
-    <script src="compare.js"></script>
 </body>
 </html>
-
-
