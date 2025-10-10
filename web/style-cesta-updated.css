@@ -1,4 +1,4 @@
-/* style-cesta-updated.css - Estilo Thunder para Sistema de Cestas Básicas 2025 */
+/* style-cesta-updated.css - Estilo Thunder para Sistema de Cestas Básicas 2025 - CORRIGIDO */
 
 /* ===== VARIÁVEIS E RESET ===== */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
@@ -241,38 +241,54 @@ body {
 
 /* ===== TOP BAR THUNDER STYLE ===== */
 .top-bar {
-    background: none !important;
-    border: none !important;
-    box-shadow: none !important;
+    background: var(--bg-secondary) !important;
+    border-bottom: 1px solid var(--border-color) !important;
     padding: 1rem 2rem !important;
     height: auto !important;
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
     align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 99;
 }
 
 .theme-light .top-bar {
-    background: var(--panel-light);
-    border-bottom: 1px solid var(--border-light);
-    box-shadow: 0 0 15px rgba(0,0,0,0.05);
+    background: var(--bg-secondary) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+.top-bar-left {
+    display: flex;
+    align-items: center;
 }
 
 .mobile-menu-btn {
     display: none;
     background: none;
     border: none;
-    color: var(--text-dark);
+    color: var(--text-primary);
     font-size: 1.5rem;
     cursor: pointer;
-    margin-right: auto;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
     transition: var(--transition);
 }
 
-.theme-light .mobile-menu-btn {
-    color: var(--text-light);
+.mobile-menu-btn:hover {
+    background: rgba(79, 70, 229, 0.1);
 }
 
-/* ====== MENU DO PERFIL DO USUÁRIO ====== */
+.theme-light .mobile-menu-btn {
+    color: var(--text-primary);
+}
+
+.top-bar-right {
+    display: flex;
+    align-items: center;
+}
+
+/* ====== MENU DO PERFIL DO USUÁRIO - CORRIGIDO ====== */
 .user-menu {
     position: relative;
     display: flex;
@@ -352,6 +368,7 @@ body {
     font-weight: 600;
     font-size: 0.95rem;
     color: var(--text-dark);
+    line-height: 1.2;
 }
 
 .theme-light .user-name {
@@ -362,6 +379,7 @@ body {
     font-size: 0.8rem;
     color: var(--muted-dark);
     font-weight: 500;
+    line-height: 1.2;
 }
 
 .theme-light .user-role {
@@ -413,15 +431,17 @@ body {
     transform: translateY(0);
 }
 
+/* CORREÇÃO: Espaçamento entre itens do dropdown reduzido */
 .dropdown-item {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.75rem 1rem;
+    padding: 0.6rem 0.8rem;
     color: inherit;
     text-decoration: none;
-    border-bottom: 1px solid var(--border-dark);
+    border-radius: 8px;
     transition: var(--transition);
+    margin-bottom: 0.1rem;
 }
 
 .theme-light .dropdown-item {
@@ -431,13 +451,18 @@ body {
 .dropdown-item:hover {
     background-color: rgba(79, 70, 229, 0.1);
     color: var(--primary);
-    transform: translateX(5px);
+    transform: translateX(3px);
+}
+
+.dropdown-item:last-child {
+    margin-bottom: 0;
 }
 
 .dropdown-item i {
     width: 18px;
     text-align: center;
     color: var(--muted-dark);
+    font-size: 0.9rem;
 }
 
 .theme-light .dropdown-item i {
@@ -451,7 +476,7 @@ body {
 .dropdown-divider {
     height: 1px;
     background-color: var(--border-dark);
-    margin: 0.5rem 0;
+    margin: 0.3rem 0;
 }
 
 .theme-light .dropdown-divider {
@@ -1409,7 +1434,7 @@ body {
     color: var(--success);
 }
 
-/* ===== RESPONSIVIDADE ===== */
+/* ===== RESPONSIVIDADE - CORRIGIDA ===== */
 @media (max-width: 1024px) {
     .sidebar {
         transform: translateX(-100%);
@@ -1441,20 +1466,6 @@ body {
     .sidebar-overlay.open {
         display: block;
     }
-    
-    .results-grid,
-    .cards-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .card-v2-actions {
-        flex-direction: column;
-    }
-    
-    .card-v2-actions .btn {
-        width: 100%;
-        justify-content: center;
-    }
 }
 
 @media (max-width: 768px) {
@@ -1462,58 +1473,17 @@ body {
         padding: 1.5rem;
     }
     
-    .modal {
-        padding: 1rem;
+    .user-info {
+        display: none !important;
     }
     
-    .modal-content {
-        width: 100%;
-    }
-    
-    .form-inline {
-        flex-direction: column;
-    }
-    
-    .form-inline .form-group {
-        min-width: auto;
-        width: 100%;
-    }
-    
-    .market-search-controls {
-        flex-direction: column;
-    }
-    
-    .search-box {
-        min-width: auto;
-    }
-    
-    .supermarket-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .market-stats-grid {
-        grid-template-columns: 1fr 1fr;
-    }
-    
-    .summary-stats {
-        grid-template-columns: 1fr 1fr;
-    }
-    
-    .table {
-        font-size: 0.875rem;
-    }
-    
-    .table th,
-    .table td {
+    .user-menu-btn {
         padding: 0.5rem;
     }
     
-    .user-info {
-        display: none;
-    }
-    
-    .admin-panel, .card {
-        padding: 1.5rem;
+    .user-dropdown {
+        width: 200px;
+        right: 0;
     }
 
     .top-bar {
@@ -1522,44 +1492,13 @@ body {
 }
 
 @media (max-width: 480px) {
-    .panel-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
-    }
-    
-    .market-stats-grid,
-    .summary-stats {
-        grid-template-columns: 1fr;
-    }
-    
-    .market-stats {
-        grid-template-columns: 1fr;
-    }
-    
-    .card-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
-    }
-    
-    .notification {
-        left: 1.3rem;
-        right: 1.3rem;
-        max-width: none;
-    }
-    
-    .page-content {
-        padding: 1.3rem;
-    }
-    
-    .admin-panel, .card {
-        padding: 1.3rem;
-    }
-
     .user-dropdown {
-        width: 200px;
+        width: 180px;
         right: 0;
+    }
+    
+    .dropdown-item {
+        padding: 0.5rem 0.7rem;
     }
 }
 
