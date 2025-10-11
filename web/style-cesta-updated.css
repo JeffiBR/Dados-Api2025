@@ -238,42 +238,61 @@ body.light-mode .theme-switcher span {
     z-index: 99;
 }
 
-/* TOP BAR */
-.content-wrapper {
-    margin-left: 0(--sidebar-width);
-    flex-grow: 1;
-    transition: var(--transition);
-}
-
+/* ===== TOP BAR ===== */
 .top-bar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 15px 21px;
+    padding: 16px 32px;
+    background: var(--panel-dark);
+    border-bottom: 1px solid var(--border-dark);
     position: sticky;
     top: 0;
     z-index: 90;
     transition: var(--transition);
-
 }
+
 body.light-mode .top-bar {
     background: var(--panel-light);
     border-bottom: 1px solid var(--border-light);
-    box-shadow: 0 0 15px rgba(0,0,0,0.05);
 }
 
-.mobile-menu-button {
+.top-bar-left {
+    display: flex;
+    align-items: center;
+}
+
+.mobile-menu-btn {
     display: none;
     background: none;
     border: none;
     color: var(--text-dark);
-    font-size: 1.5rem;
     cursor: pointer;
-    margin-right: auto;
+    padding: 8px;
+    border-radius: 6px;
+    transition: var(--transition);
+    flex-direction: column;
+    gap: 4px;
+}
+
+body.light-mode .mobile-menu-btn {
+    color: var(--text-light);
+}
+
+.mobile-menu-btn span {
+    width: 20px;
+    height: 2px;
+    background: currentColor;
     transition: var(--transition);
 }
-body.light-mode .mobile-menu-button {
-    color: var(--text-light);
+
+.mobile-menu-btn:hover {
+    background: rgba(79, 70, 229, 0.1);
+}
+
+.top-bar-right {
+    display: flex;
+    align-items: center;
 }
 
 /* ====== MENU DO PERFIL DO USUÁRIO ====== */
@@ -2144,5 +2163,3 @@ body.light-mode .text-muted {
     font-family: "Font Awesome 5 Free"; 
     font-weight: 900; 
 }
-
-
