@@ -238,63 +238,6 @@ body.light-mode .theme-switcher span {
     z-index: 99;
 }
 
-/* ===== TOP BAR ===== */
-.top-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 32px;
-    background: var(--panel-dark);
-    border-bottom: 1px solid var(--border-dark);
-    position: sticky;
-    top: 0;
-    z-index: 90;
-    transition: var(--transition);
-}
-
-body.light-mode .top-bar {
-    background: var(--panel-light);
-    border-bottom: 1px solid var(--border-light);
-}
-
-.top-bar-left {
-    display: flex;
-    align-items: center;
-}
-
-.mobile-menu-btn {
-    display: none;
-    background: none;
-    border: none;
-    color: var(--text-dark);
-    cursor: pointer;
-    padding: 8px;
-    border-radius: 6px;
-    transition: var(--transition);
-    flex-direction: column;
-    gap: 4px;
-}
-
-body.light-mode .mobile-menu-btn {
-    color: var(--text-light);
-}
-
-.mobile-menu-btn span {
-    width: 20px;
-    height: 2px;
-    background: currentColor;
-    transition: var(--transition);
-}
-
-.mobile-menu-btn:hover {
-    background: rgba(79, 70, 229, 0.1);
-}
-
-.top-bar-right {
-    display: flex;
-    align-items: center;
-}
-
 /* ====== MENU DO PERFIL DO USUÁRIO ====== */
 .user-menu {
     position: relative;
@@ -2427,5 +2370,31 @@ body.light-mode .progress-details {
     
     .progress-percentage {
         align-self: flex-end;
+    }
+}
+
+/* ADIÇÃO: mover o menu/perfil de usuário para a direita da top bar */
+
+/* Garante que a área direita da top bar empurre-se para a extremidade direita */
+.top-bar-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* Caso o .user-menu esteja dentro de outro container, força-o para a direita */
+.user-menu {
+    margin-left: auto;
+}
+
+/* Pequenas correções responsivas: em telas menores manter o botão visível e alinhado */
+@media (max-width: 1024px) {
+    /* mantêm o ícone de perfil à direita quando a sidebar está recolhida */
+    .top-bar-right {
+        margin-left: 0; /* se você preferir que ocupe toda largura em mobile, deixe 0 */
+    }
+    .user-menu {
+        margin-left: auto; /* garante que o perfil fique no canto direito */
     }
 }
