@@ -708,10 +708,6 @@ function showMarketDetails(marketName, products, marketInfo, allProducts) {
                     <div class="stat-value">R$ ${total.toFixed(2)}</div>
                     <div class="stat-label">Valor Total</div>
                 </div>
-                <div class="market-stat">
-                    <div class="stat-value">${marketInfo.cnpj}</div>
-                    <div class="stat-label">CNPJ</div>
-                </div>
             </div>
         </div>
         
@@ -721,7 +717,6 @@ function showMarketDetails(marketName, products, marketInfo, allProducts) {
                 <thead>
                     <tr>
                         <th>Produto</th>
-                        <th>Código de Barras</th>
                         <th>Preço (R$)</th>
                         <th>Unidade</th>
                         <th>Última Venda</th>
@@ -744,7 +739,6 @@ function showMarketDetails(marketName, products, marketInfo, allProducts) {
                     ${product.nome_produto !== product.original_product_name ? 
                       `<div class="product-alias">(${product.nome_produto})</div>` : ''}
                 </td>
-                <td><code class="barcode">${product.codigo_barras || 'N/A'}</code></td>
                 <td class="price">R$ ${(product.price || 0).toFixed(2)}</td>
                 <td>${product.unidade || 'UN'}</td>
                 <td>${lastSaleDate}</td>
@@ -759,7 +753,7 @@ function showMarketDetails(marketName, products, marketInfo, allProducts) {
     if (missingProducts.length > 0) {
         detailsHtml += `
             <tr class="section-divider">
-                <td colspan="5">
+                <td colspan="4">
                     <strong>Produtos Não Encontrados neste Mercado:</strong>
                 </td>
             </tr>
@@ -769,7 +763,6 @@ function showMarketDetails(marketName, products, marketInfo, allProducts) {
             detailsHtml += `
                 <tr class="text-muted">
                     <td>${product.nome_produto}</td>
-                    <td><code>${product.codigo_barras || 'N/A'}</code></td>
                     <td colspan="3" class="text-center">Produto não encontrado</td>
                 </tr>
             `;
@@ -814,7 +807,6 @@ function showBestBasketDetails(bestBasket, originalProducts) {
                 <thead>
                     <tr>
                         <th>Produto</th>
-                        <th>Código</th>
                         <th>Melhor Preço (R$)</th>
                         <th>Mercado</th>
                         <th>Endereço</th>
@@ -840,7 +832,6 @@ function showBestBasketDetails(bestBasket, originalProducts) {
                     ${product.nome_produto !== product.original_product_name ? 
                       `<div class="product-alias">(${product.nome_produto})</div>` : ''}
                 </td>
-                <td><code class="barcode">${product.codigo_barras || 'N/A'}</code></td>
                 <td class="price price-cheapest">R$ ${(product.price || 0).toFixed(2)}</td>
                 <td><strong>${product.nome_supermercado}</strong></td>
                 <td>${marketAddress}</td>
@@ -856,7 +847,7 @@ function showBestBasketDetails(bestBasket, originalProducts) {
     if (missingProducts.length > 0) {
         detailsHtml += `
             <tr class="section-divider">
-                <td colspan="6">
+                <td colspan="5">
                     <strong>Produtos Não Encontrados em Nenhum Mercado:</strong>
                 </td>
             </tr>
@@ -866,7 +857,6 @@ function showBestBasketDetails(bestBasket, originalProducts) {
             detailsHtml += `
                 <tr class="text-muted">
                     <td>${product.nome_produto}</td>
-                    <td><code>${product.codigo_barras || 'N/A'}</code></td>
                     <td colspan="4" class="text-center">Nenhum preço encontrado</td>
                 </tr>
             `;
