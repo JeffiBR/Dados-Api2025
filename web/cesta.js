@@ -268,6 +268,7 @@ async function handleBasketActions(event) {
         }
     }
 }
+
 /**
  * Renderiza a lista de produtos dentro do modal de gerenciamento.
  */
@@ -699,7 +700,6 @@ function renderRealtimeResults(results) {
                         <th>Mercado</th>
                         <th>Preço (R$)</th>
                         <th>Unidade</th>
-                        <th>Código</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -730,7 +730,6 @@ function renderRealtimeResults(results) {
                     ${isCheapest ? '<i class="fas fa-trophy"></i>' : ''}
                 </td>
                 <td>${item.unidade || 'N/A'}</td>
-                <td><code>${item.codigo_barras || 'N/A'}</code></td>
             </tr>
         `;
     });
