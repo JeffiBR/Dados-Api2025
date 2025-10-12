@@ -2389,7 +2389,7 @@ body.light-mode .progress-details {
     position: relative;
     top: 0;
     margin: 0;
-    margin-top: 25px;         /* desce o menu um pouco */
+    margin-top: 30px;         /* desce o menu um pouco */
     margin-right: 17px;      /* move o menu um pouco pra direita */
     transform: translateX(0); /* pode ajustar se quiser mais pra direita */
 }
