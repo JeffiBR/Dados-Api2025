@@ -243,6 +243,7 @@ body.light-mode .theme-switcher span {
     position: relative;
     display: flex;
     align-items: center;
+    margin-bottom: 25px; /* cria espaço embaixo do menu */
 }
 
 .user-menu-btn {
@@ -2373,28 +2374,37 @@ body.light-mode .progress-details {
     }
 }
 
-/* ADIÇÃO: mover o menu/perfil de usuário para a direita da top bar */
-
-/* Garante que a área direita da top bar empurre-se para a extremidade direita */
+/* ===== ALINHAR MENU DO USUÁRIO AO CENTRO DA TOP BAR ===== */
 .top-bar-right {
-    margin-left: auto;
+    display: flex;
+    align-items: center;     /* centraliza verticalmente */
+    justify-content: flex-end;
+    flex: 1;
+    padding-right: 16px;     /* distância da borda direita */
+    height: 100%;
+}
+
+/* ===== MENU DO USUÁRIO ===== */
+.user-menu {
+    position: relative;
+    top: 0;
+    margin: 0;
+    margin-top: 25px;         /* desce o menu um pouco */
+    margin-right: 17px;      /* move o menu um pouco pra direita */
+    transform: translateX(0); /* pode ajustar se quiser mais pra direita */
+}
+
+.user-menu-btn {
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    padding: 0.5rem 1rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-dark);
+    background: rgba(255, 255, 255, 0.03);
+    transition: var(--transition);
 }
 
-/* Caso o .user-menu esteja dentro de outro container, força-o para a direita */
-.user-menu {
-    margin-left: auto;
-}
-
-/* Pequenas correções responsivas: em telas menores manter o botão visível e alinhado */
-@media (max-width: 1024px) {
-    /* mantêm o ícone de perfil à direita quando a sidebar está recolhida */
-    .top-bar-right {
-        margin-left: 0; /* se você preferir que ocupe toda largura em mobile, deixe 0 */
-    }
-    .user-menu {
-        margin-left: auto; /* garante que o perfil fique no canto direito */
-    }
+body.light-mode .user-menu-btn {
+    background: rgba(0, 0, 0, 0.03);
 }
