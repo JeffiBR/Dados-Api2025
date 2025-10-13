@@ -1803,37 +1803,4 @@ body.light-mode .progress-details {
     }
 }
 
-/* ===== ALINHAR MENU DO USUÁRIO AO CENTRO DA TOP BAR ===== */
-.top-bar-right {
-    display: flex;
-    align-items: center;     /* centraliza verticalmente */
-    justify-content: flex-end;
-    flex: 1;
-    padding-right: 16px;     /* distância da borda direita */
-    height: 100%;
-}
 
-/* ===== MENU DO USUÁRIO ===== */
-.user-menu {
-    position: relative;
-    top: 0;
-    margin: 0;
-    margin-top: 30px;         /* desce o menu um pouco */
-    margin-right: 17px;      /* move o menu um pouco pra direita */
-    transform: translateX(0); /* pode ajustar se quiser mais pra direita */
-}
-
-.user-menu-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.5rem 1rem;
-    border-radius: 12px;
-    border: 1px solid var(--border-dark);
-    background: rgba(255, 255, 255, 0.03);
-    transition: var(--transition);
-}
-
-body.light-mode .user-menu-btn {
-    background: rgba(0, 0, 0, 0.03);
-}
