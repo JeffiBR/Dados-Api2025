@@ -53,6 +53,27 @@
         <p id="errorMessage" class="error-message"></p>
     </div>
 
+    <!-- Modal de Recuperação de Senha -->
+    <div id="passwordResetModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-key"></i> Recuperar Senha</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Digite seu email para receber um link de redefinição de senha:</p>
+                <div class="form-group">
+                    <input type="email" id="resetEmail" placeholder="Seu email cadastrado">
+                </div>
+                <div id="resetMessage" class="reset-message"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelReset" class="btn btn-secondary">Cancelar</button>
+                <button id="sendReset" class="btn">Enviar Link</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Cookie Banner -->
     <div id="cookieBanner" class="cookie-banner">
         <div class="cookie-content">
@@ -121,10 +142,15 @@
         </div>
     </div>
 
+    <!-- Inicialização do Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Configure suas credenciais do Supabase aqui
+        const supabaseUrl = 'https://seu-projeto.supabase.co';
+        const supabaseKey = 'sua-chave-anon-public';
+        window.supabase = supabase.createClient(supabaseUrl, supabaseKey);
+    </script>
+
     <script src="login.js"></script>
-    <script src="user-menu.js"></script>
-    <script src="theme.js"></script>
-    <script src="mobile-menu.js"></script>
-    <script src="user-activity-monitor.js"></script>
 </body>
 </html>
