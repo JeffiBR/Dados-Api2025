@@ -261,6 +261,11 @@ class Cesta(CestaCreate):
     id: Optional[int] = None
     user_id: str
 
+# MODELO PARA COLETA PERSONALIZADA
+class CollectionRequest(BaseModel):
+    selected_markets: Optional[List[str]] = Field(None, description="Lista de CNPJs dos mercados a coletar (vazio = todos)")
+    dias_pesquisa: int = Field(3, ge=1, le=7, description="Número de dias para pesquisa (1 a 7)")
+
 
 # --------------------------------------------------------------------------
 # --- 5. FUNÇÕES DE LOG CORRIGIDAS ---
@@ -592,12 +597,40 @@ async def delete_category(id: int, admin_user: UserProfile = Depends(require_pag
     
 # --- Gerenciamento da Coleta ---
 @app.post("/api/trigger-collection")
-async def trigger_collection(background_tasks: BackgroundTasks, user: UserProfile = Depends(require_page_access('coleta'))):
+async def trigger_collection(
+    request: CollectionRequest, 
+    background_tasks: BackgroundTasks, 
+    user: UserProfile = Depends(require_page_access('coleta'))
+):
     if collection_status["status"] == "RUNNING":
         raise HTTPException(status_code=409, detail="A coleta de dados já está em andamento.")
+    
     collection_status.update(initial_status.copy())
-    background_tasks.add_task(collector_service.run_full_collection, supabase_admin, ECONOMIZA_ALAGOAS_TOKEN, collection_status)
-    return {"message": "Processo de coleta iniciado."}
+    
+    # Validar se os mercados selecionados existem
+    if request.selected_markets:
+        resp = await asyncio.to_thread(
+            supabase.table('supermercados').select('cnpj').in_('cnpj', request.selected_markets).execute
+        )
+        existing_markets = [market['cnpj'] for market in resp.data]
+        invalid_markets = set(request.selected_markets) - set(existing_markets)
+        
+        if invalid_markets:
+            logging.warning(f"Mercados inválidos selecionados: {invalid_markets}")
+    
+    background_tasks.add_task(
+        collector_service.run_full_collection, 
+        supabase_admin, 
+        ECONOMIZA_ALAGOAS_TOKEN, 
+        collection_status,
+        request.selected_markets,  # Lista de CNPJs ou None
+        request.dias_pesquisa      # 1 a 7 dias
+    )
+    
+    market_count = len(request.selected_markets) if request.selected_markets else "todos"
+    return {
+        "message": f"Processo de coleta iniciado para {market_count} mercados ({request.dias_pesquisa} dias)."
+    }
 
 @app.get("/api/collection-status")
 async def get_collection_status(user: UserProfile = Depends(get_current_user)):
@@ -983,8 +1016,9 @@ async def realtime_search(
     )
     mercados_map = {m['cnpj']: m['nome'] for m in resp.data}
     
+    # USAR consultar_produto_realtime (3 DIAS FIXOS) em vez de consultar_produto
     tasks = [
-        collector_service.consultar_produto(
+        collector_service.consultar_produto_realtime(
             request.produto, 
             {"cnpj": cnpj, "nome": mercados_map.get(cnpj, cnpj)}, 
             datetime.now().isoformat(), 
@@ -1375,9 +1409,8 @@ async def get_basket_realtime_prices(
             continue 
             
         product_tasks = [
-            # Assumindo que 'collector_service.consultar_produto' está disponível
-            # e segue o padrão de argumentos esperado
-            collector_service.consultar_produto(
+            # Usar consultar_produto_realtime para manter 3 dias fixos
+            collector_service.consultar_produto_realtime(
                 product['nome_produto'], 
                 {"cnpj": cnpj, "nome": mercados_map.get(cnpj, cnpj)}, 
                 datetime.now().isoformat(), 
