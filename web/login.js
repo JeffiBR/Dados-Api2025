@@ -53,30 +53,47 @@ document.addEventListener('DOMContentLoaded', () => {
         const password = passwordInput.value;
 
         try {
-            // Substitua esta parte pela sua lógica real de autenticação
-            // const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-            // if (error) throw error;
-            
-            // Simulação de login bem-sucedido
-            if (email && password) {
-                // Salvar preferência "Manter conectado" se necessário
-                if (rememberMe.checked) {
-                    localStorage.setItem('rememberMe', 'true');
-                    localStorage.setItem('userEmail', email);
-                } else {
-                    localStorage.removeItem('rememberMe');
-                    localStorage.removeItem('userEmail');
-                }
+            // Login com Supabase
+            const { data, error } = await supabase.auth.signInWithPassword({ 
+                email: email, 
+                password: password 
+            });
 
-                // Sempre redirecionar para search.html após login bem-sucedido
-                window.location.href = 'search.html';
+            if (error) throw error;
+
+            // Salvar preferência "Manter conectado" se necessário
+            if (rememberMe.checked) {
+                localStorage.setItem('rememberMe', 'true');
+                localStorage.setItem('userEmail', email);
             } else {
-                throw new Error('Email e senha são obrigatórios');
+                localStorage.removeItem('rememberMe');
+                localStorage.removeItem('userEmail');
             }
 
+            // Login bem-sucedido
+            errorMessage.textContent = 'Login realizado com sucesso!';
+            errorMessage.style.color = 'var(--success)';
+            
+            console.log('Usuário logado:', data.user);
+            
+            // Aqui você pode adicionar redirecionamento se necessário
+            // window.location.href = '/dashboard.html';
+
         } catch (error) {
-            errorMessage.textContent = 'Email ou senha inválidos.';
-            console.error('Erro de login:', error.message);
+            console.error('Erro de login:', error);
+            
+            // Tratamento de erros específicos do Supabase
+            if (error.message.includes('Invalid login credentials')) {
+                errorMessage.textContent = 'Email ou senha incorretos.';
+            } else if (error.message.includes('Email not confirmed')) {
+                errorMessage.textContent = 'Email não confirmado. Verifique sua caixa de entrada.';
+            } else if (error.message.includes('Too many requests')) {
+                errorMessage.textContent = 'Muitas tentativas. Tente novamente mais tarde.';
+            } else {
+                errorMessage.textContent = 'Erro ao fazer login. Tente novamente.';
+            }
+            
+            errorMessage.style.color = 'var(--error)';
         } finally {
             loginButton.disabled = false;
             loginButton.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar';
@@ -91,6 +108,111 @@ document.addEventListener('DOMContentLoaded', () => {
             rememberMe.checked = true;
         }
     }
+
+    // Modal de Recuperação de Senha
+    const passwordResetModal = document.getElementById('passwordResetModal');
+    const forgotPasswordLink = document.querySelector('.forgot-password');
+    const modalClose = document.querySelector('.modal-close');
+    const cancelReset = document.getElementById('cancelReset');
+    const sendReset = document.getElementById('sendReset');
+    const resetEmail = document.getElementById('resetEmail');
+    const resetMessage = document.getElementById('resetMessage');
+
+    // Abrir modal de recuperação de senha
+    forgotPasswordLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        passwordResetModal.classList.add('show');
+        resetEmail.value = emailInput.value; // Preencher com email atual se existir
+        resetMessage.textContent = '';
+    });
+
+    // Fechar modal
+    function closeModal() {
+        passwordResetModal.classList.remove('show');
+        resetMessage.textContent = '';
+        resetEmail.value = '';
+    }
+
+    modalClose.addEventListener('click', closeModal);
+    cancelReset.addEventListener('click', closeModal);
+
+    // Fechar modal ao clicar fora dele
+    passwordResetModal.addEventListener('click', (e) => {
+        if (e.target === passwordResetModal) {
+            closeModal();
+        }
+    });
+
+    // Fechar modal com ESC
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && passwordResetModal.classList.contains('show')) {
+            closeModal();
+        }
+    });
+
+    // Enviar email de recuperação de senha
+    sendReset.addEventListener('click', async () => {
+        const email = resetEmail.value.trim();
+        
+        if (!email) {
+            resetMessage.textContent = 'Por favor, insira um email válido.';
+            resetMessage.className = 'reset-message error';
+            return;
+        }
+
+        // Validação básica de email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            resetMessage.textContent = 'Por favor, insira um email válido.';
+            resetMessage.className = 'reset-message error';
+            return;
+        }
+
+        sendReset.disabled = true;
+        sendReset.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+        resetMessage.textContent = '';
+        
+        try {
+            // Configuração do Supabase para recuperação de senha
+            const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: `${window.location.origin}/reset-password.html`,
+            });
+
+            if (error) {
+                // Tratamento específico de erros do Supabase
+                if (error.message.includes('Email not confirmed')) {
+                    throw new Error('Email não confirmado. Verifique sua caixa de entrada.');
+                } else if (error.message.includes('User not found')) {
+                    throw new Error('Nenhuma conta encontrada com este email.');
+                } else {
+                    throw error;
+                }
+            }
+
+            resetMessage.textContent = 'Email de recuperação enviado! Verifique sua caixa de entrada e pasta de spam. O link expira em 1 hora.';
+            resetMessage.className = 'reset-message success';
+            
+            // Fechar modal após 5 segundos
+            setTimeout(() => {
+                closeModal();
+            }, 5000);
+            
+        } catch (error) {
+            console.error('Erro de recuperação de senha:', error);
+            resetMessage.textContent = error.message || 'Erro ao enviar email de recuperação. Tente novamente.';
+            resetMessage.className = 'reset-message error';
+        } finally {
+            sendReset.disabled = false;
+            sendReset.innerHTML = 'Enviar Link';
+        }
+    });
+
+    // Permitir enviar com Enter no campo de email de recuperação
+    resetEmail.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            sendReset.click();
+        }
+    });
 
     // Cookie Banner
     const cookieBanner = document.getElementById('cookieBanner');
@@ -168,8 +290,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (preferences.analytics) {
             // Carregar scripts analíticos
             console.log('Cookies analíticos ativados');
+            // Exemplo: gtag('consent', 'update', { 'analytics_storage': 'granted' });
         } else {
             console.log('Cookies analíticos desativados');
+            // Exemplo: gtag('consent', 'update', { 'analytics_storage': 'denied' });
         }
         
         if (preferences.functional) {
@@ -180,21 +304,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Link "Esqueceu a senha"
-    document.querySelector('.forgot-password').addEventListener('click', (e) => {
-        e.preventDefault();
-        alert('Funcionalidade de recuperação de senha: Em uma implementação real, aqui seria enviado um email para redefinir sua senha.');
-        
-        // Em uma implementação real, você poderia:
-        // 1. Mostrar um modal para inserir o email
-        // 2. Enviar uma solicitação para sua API de recuperação de senha
-        // 3. Redirecionar para uma página de redefinição de senha
-    });
-
     // Permitir login com Enter
     passwordInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             loginButton.click();
+        }
+    });
+
+    // Verificar se há sessão ativa
+    supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+            console.log('Sessão ativa encontrada:', session.user.email);
+            // Se quiser redirecionar automaticamente usuários logados:
+            // window.location.href = '/dashboard.html';
+        }
+    });
+
+    // Escutar mudanças de autenticação
+    supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN') {
+            console.log('Usuário fez login:', session.user.email);
+        } else if (event === 'SIGNED_OUT') {
+            console.log('Usuário fez logout');
         }
     });
 });
