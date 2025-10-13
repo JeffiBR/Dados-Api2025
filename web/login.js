@@ -1,5 +1,17 @@
+// login.js - VERSÃO COMPLETA E CORRIGIDA
+
 // Tema claro/escuro
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('🚀 login.js iniciado');
+    
+    // Verificar se auth.js foi carregado corretamente
+    if (typeof supabase === 'undefined') {
+        console.error('❌ supabase não está definido. Verifique se auth.js foi carregado corretamente.');
+        return;
+    }
+    
+    console.log('✅ supabase disponível:', typeof supabase);
+
     const themeToggle = document.getElementById('themeToggle');
     const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
     
@@ -25,11 +37,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // Verificar se já está autenticado
-    const isAuthenticated = await checkAuth();
-    if (isAuthenticated) {
-        // Usuário já está logado, redirecionar para search.html
-        window.location.href = 'search.html';
-        return;
+    try {
+        const isAuthenticated = await checkAuth();
+        if (isAuthenticated) {
+            console.log('✅ Usuário já autenticado, redirecionando...');
+            window.location.href = 'search.html';
+            return;
+        }
+    } catch (error) {
+        console.error('Erro ao verificar autenticação:', error);
     }
 
     // Script de login
@@ -62,6 +78,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             // Usar a função signIn do auth.js
+            console.log('🔐 Tentando login...');
             await signIn(email, password);
 
             // Salvar preferência "Manter conectado" se necessário
@@ -73,11 +90,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 localStorage.removeItem('userEmail');
             }
 
+            console.log('✅ Login bem-sucedido, redirecionando...');
             // Login bem-sucedido - redirecionar para search.html
             window.location.href = 'search.html';
 
         } catch (error) {
-            console.error('Erro de login:', error);
+            console.error('❌ Erro de login:', error);
             
             // Tratamento de erros específicos do Supabase
             if (error.message.includes('Invalid login credentials')) {
@@ -147,7 +165,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // Enviar email de recuperação de senha
+    // Enviar email de recuperação de senha - VERSÃO CORRIGIDA
     sendReset.addEventListener('click', async () => {
         const email = resetEmail.value.trim();
         
@@ -170,12 +188,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         resetMessage.textContent = '';
         
         try {
+            // Verifica se supabase está disponível
+            if (typeof supabase === 'undefined') {
+                throw new Error('Erro de configuração do sistema. Recarregue a página.');
+            }
+
+            console.log('📧 Enviando email de recuperação para:', email);
+            
             // Configuração do Supabase para recuperação de senha
             const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
                 redirectTo: `${window.location.origin}/reset-password.html`,
             });
 
             if (error) {
+                console.error('❌ Erro do Supabase:', error);
                 // Tratamento específico de erros do Supabase
                 if (error.message.includes('Email not confirmed')) {
                     throw new Error('Email não confirmado. Verifique sua caixa de entrada.');
@@ -186,6 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
 
+            console.log('✅ Email de recuperação enviado com sucesso');
             resetMessage.textContent = 'Email de recuperação enviado! Verifique sua caixa de entrada e pasta de spam. O link expira em 1 hora.';
             resetMessage.className = 'reset-message success';
             
@@ -195,7 +222,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }, 5000);
             
         } catch (error) {
-            console.error('Erro de recuperação de senha:', error);
+            console.error('❌ Erro de recuperação de senha:', error);
             resetMessage.textContent = error.message || 'Erro ao enviar email de recuperação. Tente novamente.';
             resetMessage.className = 'reset-message error';
         } finally {
@@ -277,7 +304,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Função para aplicar preferências de cookies
     function applyCookiePreferences(preferences) {
-        console.log('Aplicando preferências de cookies:', preferences);
+        console.log('🍪 Aplicando preferências de cookies:', preferences);
         
         // Em uma implementação real, você:
         // 1. Configuraria o Google Analytics com base na preferência
@@ -286,18 +313,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         if (preferences.analytics) {
             // Carregar scripts analíticos
-            console.log('Cookies analíticos ativados');
+            console.log('📊 Cookies analíticos ativados');
             // Exemplo: gtag('consent', 'update', { 'analytics_storage': 'granted' });
         } else {
-            console.log('Cookies analíticos desativados');
+            console.log('📊 Cookies analíticos desativados');
             // Exemplo: gtag('consent', 'update', { 'analytics_storage': 'denied' });
         }
         
         if (preferences.functional) {
             // Ativar funcionalidades adicionais
-            console.log('Cookies funcionais ativados');
+            console.log('⚙️ Cookies funcionais ativados');
         } else {
-            console.log('Cookies funcionais desativados');
+            console.log('⚙️ Cookies funcionais desativados');
         }
     }
 
@@ -307,4 +334,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             loginButton.click();
         }
     });
+
+    console.log('✅ login.js configurado com sucesso');
 });
