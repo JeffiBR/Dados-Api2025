@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="designer.css">
-    <link rel="stylesheet" href="componentes.css">
+    <link rel="stylesheet" href="admin.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth.js"></script>
     <script src="user-menu.js"></script>
@@ -95,22 +95,115 @@
                     </div>
                     <p class="panel-description">Inicie a coleta de dados de todos os supermercados cadastrados no sistema.</p>
                     
+                    <!-- Painel de Configuração -->
+                    <div class="coleta-config-panel">
+                        <div class="panel-header">
+                            <i class="fas fa-cog"></i>
+                            <h3>Configuração da Coleta</h3>
+                        </div>
+                        
+                        <div class="config-grid">
+                            <div class="config-group">
+                                <label>Mercados para Coletar</label>
+                                <div class="markets-select" id="marketsContainer">
+                                    <!-- Mercados serão carregados via JavaScript -->
+                                </div>
+                                <div class="selected-count" id="selectedMarketsCount">0 mercados selecionados</div>
+                            </div>
+                            
+                            <div class="config-group">
+                                <label>Dias para Pesquisa</label>
+                                <div class="days-select" id="daysContainer">
+                                    <!-- Dias serão carregados via JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <button id="startButton" class="btn"><i class="fas fa-play"></i> Iniciar Coleta Manual</button>
                     
-                    <div id="progress-container" class="status-box" style="display: none;">
-                        <div class="status-header">
-                            <i class="fas fa-sync-alt fa-spin"></i>
-                            <h3>Coleta em Andamento...</h3>
+                    <!-- Painel de Progresso Detalhado -->
+                    <div id="progress-container" class="progress-container" style="display: none;">
+                        <div class="progress-header">
+                            <div class="progress-title">
+                                <i class="fas fa-sync-alt fa-spin"></i>
+                                <h3>Coleta em Andamento</h3>
+                            </div>
+                            <div class="progress-stats">
+                                <div class="stat-item">
+                                    <span class="stat-value" id="progressPercentText">0%</span>
+                                    <span class="stat-label">Completo</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-value" id="etaText">-</span>
+                                    <span class="stat-label">Tempo Restante</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-value" id="totalItems">0</span>
+                                    <span class="stat-label">Itens Encontrados</span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="progress-bar-container">
-                            <div id="progressBar" class="progress-bar"></div>
+
+                        <div class="progress-bar-master">
+                            <div id="progressBar" class="progress-bar-fill" style="width: 0%"></div>
                         </div>
+
                         <div class="progress-details">
-                            <span id="progressPercentText">0%</span>
-                            <span id="etaText">ETA: Calculando...</span>
+                            <div class="detail-card">
+                                <div class="detail-card-header">
+                                    <i class="fas fa-store"></i>
+                                    <h4>Mercado Atual</h4>
+                                </div>
+                                <div class="detail-card-content">
+                                    <span class="current-market" id="currentMarket">Nenhum</span>
+                                </div>
+                            </div>
+                            
+                            <div class="detail-card">
+                                <div class="detail-card-header">
+                                    <i class="fas fa-box"></i>
+                                    <h4>Produto Atual</h4>
+                                </div>
+                                <div class="detail-card-content">
+                                    <span class="current-product" id="currentProduct">Nenhum</span>
+                                </div>
+                            </div>
+                            
+                            <div class="detail-card">
+                                <div class="detail-card-header">
+                                    <i class="fas fa-chart-bar"></i>
+                                    <h4>Progresso</h4>
+                                </div>
+                                <div class="detail-card-content">
+                                    Mercados: <span id="marketsProcessed">0</span>/<span id="totalMarkets">0</span><br>
+                                    Produtos: <span id="productsInMarket">0</span>/<span id="totalProducts">0</span><br>
+                                    Itens: <span id="itemsInMarket">0</span> neste mercado
+                                </div>
+                            </div>
+                            
+                            <div class="detail-card">
+                                <div class="detail-card-header">
+                                    <i class="fas fa-clock"></i>
+                                    <h4>Tempo</h4>
+                                </div>
+                                <div class="detail-card-content">
+                                    Decorrido: <span id="elapsedTime">0s</span><br>
+                                    Total de Itens: <span id="totalItemsFound">0</span>
+                                </div>
+                            </div>
                         </div>
-                        <p id="progressText" class="status-message">Iniciando...</p>
-                        <p class="items-found"><i class="fas fa-box-open"></i> <strong>Itens Encontrados até agora:</strong> <span id="itemsFoundText">0</span></p>
+
+                        <div class="status-indicators">
+                            <div class="status-indicator">
+                                <div class="status-dot active"></div>
+                                <span>Coletando Dados</span>
+                            </div>
+                            <div class="status-indicator">
+                                <div class="status-dot processing"></div>
+                                <span>Processando Mercado</span>
+                            </div>
+                        </div>
                     </div>
 
                     <div id="report-container" class="admin-panel" style="display: none; margin-top: 2rem;">
@@ -155,16 +248,3 @@
     <script src="admin.js"></script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
