@@ -1,9 +1,10 @@
-// auth.js - VERSÃO FINAL
+// auth.js - VERSÃO FINAL CORRIGIDA
 
 const SUPABASE_URL = 'https://zhaetrzpkkgzfrwxfqdw.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpoYWV0cnpwa2tnemZyd3hmcWR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0MjM3MzksImV4cCI6MjA3Mjk5OTczOX0.UHoWWZahvp_lMDH8pK539YIAFTAUnQk9mBX5tdixwN0';
 
-const supabase = self.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Torna o supabase globalmente disponível
+window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentUserProfile = null; // Variável de cache em memória
 
 /**
@@ -238,23 +239,21 @@ document.addEventListener('DOMContentLoaded', function() {
     initAuth().catch(console.error);
 });
 
-// Exporta funções para uso global (se necessário)
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        authenticatedFetch,
-        getAuthUser,
-        fetchUserProfile,
-        getSession,
-        signOut,
-        routeGuard,
-        checkAuth,
-        clearUserProfileCache,
-        requireAuth,
-        getAuthToken,
-        hasPermission,
-        initAuth,
-        signIn,
-        signUp,
-        checkAndUpdateAuthState
-    };
-}
+// Torna as funções disponíveis globalmente
+window.authenticatedFetch = authenticatedFetch;
+window.getAuthUser = getAuthUser;
+window.fetchUserProfile = fetchUserProfile;
+window.getSession = getSession;
+window.signOut = signOut;
+window.routeGuard = routeGuard;
+window.checkAuth = checkAuth;
+window.clearUserProfileCache = clearUserProfileCache;
+window.requireAuth = requireAuth;
+window.getAuthToken = getAuthToken;
+window.hasPermission = hasPermission;
+window.initAuth = initAuth;
+window.signIn = signIn;
+window.signUp = signUp;
+window.checkAndUpdateAuthState = checkAndUpdateAuthState;
+
+console.log('✅ auth.js carregado com sucesso - supabase disponível globalmente');
