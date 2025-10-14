@@ -1859,8 +1859,12 @@ async def get_my_groups(current_user: UserProfile = Depends(get_current_user)):
 async def create_group_user(
     group_id: int,
     user_data: GroupUserCreate,
-    current_user: UserProfile = Depends(lambda group_id=group_id: require_group_admin(group_id))
+    current_user: UserProfile = Depends(get_current_user)
 ):
+    # Verificação manual de permissão
+    if current_user.role != 'admin' and (not current_user.group_admin_of or group_id not in current_user.group_admin_of):
+        raise HTTPException(status_code=403, detail="Acesso negado: você não é administrador deste grupo")
+    
     try:
         # Verificar se o grupo existe e obter informações do admin
         group_resp = await asyncio.to_thread(
@@ -1943,8 +1947,12 @@ async def create_group_user(
 @app.get("/api/group-users/{group_id}")
 async def get_group_users(
     group_id: int,
-    current_user: UserProfile = Depends(lambda group_id=group_id: require_admin_or_group_admin(group_id))
+    current_user: UserProfile = Depends(get_current_user)
 ):
+    # Verificação manual de permissão
+    if current_user.role != 'admin' and (not current_user.group_admin_of or group_id not in current_user.group_admin_of):
+        raise HTTPException(status_code=403, detail="Acesso negado: você não é administrador deste grupo")
+    
     try:
         # Buscar usuários do grupo
         user_groups_response = await asyncio.to_thread(
@@ -2005,8 +2013,12 @@ async def update_group_user(
     group_id: int,
     user_id: str,
     user_data: GroupUserUpdate,
-    current_user: UserProfile = Depends(lambda group_id=group_id: require_group_admin(group_id))
+    current_user: UserProfile = Depends(get_current_user)
 ):
+    # Verificação manual de permissão
+    if current_user.role != 'admin' and (not current_user.group_admin_of or group_id not in current_user.group_admin_of):
+        raise HTTPException(status_code=403, detail="Acesso negado: você não é administrador deste grupo")
+    
     try:
         # Verificar se o usuário pertence ao grupo
         user_group_resp = await asyncio.to_thread(
@@ -2047,8 +2059,12 @@ async def update_group_user(
 async def remove_user_from_group_admin(
     group_id: int,
     user_id: str,
-    current_user: UserProfile = Depends(lambda group_id=group_id: require_group_admin(group_id))
+    current_user: UserProfile = Depends(get_current_user)
 ):
+    # Verificação manual de permissão
+    if current_user.role != 'admin' and (not current_user.group_admin_of or group_id not in current_user.group_admin_of):
+        raise HTTPException(status_code=403, detail="Acesso negado: você não é administrador deste grupo")
+    
     try:
         # Verificar se o usuário pertence ao grupo
         user_group_resp = await asyncio.to_thread(
