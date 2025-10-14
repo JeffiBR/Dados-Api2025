@@ -55,22 +55,87 @@ document.addEventListener('DOMContentLoaded', () => {
         setupDaysSelection();
     }
 
-    // Carregar lista de mercados
-    async function loadMarkets() {
+    // Função authenticatedFetch corrigida
+    async function authenticatedFetch(url, options = {}) {
         try {
-            const response = await authenticatedFetch('/api/markets');
-            if (!response.ok) throw new Error("Falha ao carregar mercados");
+            // Obter token do localStorage
+            const token = localStorage.getItem('supabase.auth.token');
             
-            const markets = await response.json();
-            renderMarkets(markets);
-            updateSelectedMarketsCount();
+            const defaultOptions = {
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            };
+
+            // Se tiver token, adicionar ao header
+            if (token) {
+                try {
+                    const authData = JSON.parse(token);
+                    if (authData.access_token) {
+                        defaultOptions.headers['Authorization'] = `Bearer ${authData.access_token}`;
+                    }
+                } catch (e) {
+                    console.warn('Erro ao parsear token:', e);
+                }
+            }
+
+            const response = await fetch(url, { ...defaultOptions, ...options });
+            
+            if (response.status === 401) {
+                // Token expirado - fazer logout
+                logout();
+                return response;
+            }
+            
+            return response;
         } catch (error) {
-            console.error('Erro ao carregar mercados:', error);
-            showNotification('Erro ao carregar lista de mercados', 'error');
+            console.error('Erro na requisição:', error);
+            throw error;
         }
     }
 
-    // Renderizar lista de mercados
+    // Carregar lista de mercados - CORRIGIDO: usando /api/supermarkets
+    async function loadMarkets() {
+        try {
+            console.log('Carregando mercados...');
+            
+            const response = await authenticatedFetch('/api/supermarkets');
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const markets = await response.json();
+            console.log('Mercados recebidos:', markets);
+            
+            if (!markets || markets.length === 0) {
+                renderNoMarkets();
+                return;
+            }
+            
+            renderMarkets(markets);
+            updateSelectedMarketsCount();
+            
+        } catch (error) {
+            console.error('Erro ao carregar mercados:', error);
+            showNotification(`Erro ao carregar mercados: ${error.message}`, 'error');
+            renderNoMarkets();
+        }
+    }
+
+    // Adicione esta função para mostrar mensagem quando não há mercados
+    function renderNoMarkets() {
+        marketsContainer.innerHTML = `
+            <div class="no-markets-message">
+                <i class="fas fa-store-slash"></i>
+                <p>Nenhum mercado cadastrado</p>
+                <small>Vá para "Gerenciar Mercados" para adicionar supermercados</small>
+            </div>
+        `;
+        selectedMarketsCount.textContent = '0 mercados selecionados';
+    }
+
+    // Atualize a função renderMarkets
     function renderMarkets(markets) {
         marketsContainer.innerHTML = '';
         
@@ -79,7 +144,10 @@ document.addEventListener('DOMContentLoaded', () => {
             marketElement.className = 'market-checkbox';
             marketElement.innerHTML = `
                 <input type="checkbox" id="market-${market.cnpj}" value="${market.cnpj}" checked>
-                <label for="market-${market.cnpj}">${market.nome}</label>
+                <label for="market-${market.cnpj}">
+                    <span class="market-name">${market.nome}</span>
+                    <span class="market-cnpj">${market.cnpj}</span>
+                </label>
             `;
             marketsContainer.appendChild(marketElement);
         });
@@ -88,6 +156,8 @@ document.addEventListener('DOMContentLoaded', () => {
         marketsContainer.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
             checkbox.addEventListener('change', updateSelectedMarketsCount);
         });
+        
+        console.log(`${markets.length} mercados renderizados`);
     }
 
     // Configurar seleção de dias
@@ -398,4 +468,29 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 300);
         }, type === 'success' ? 3000 : 5000);
     };
+
+    // Para debug, também adicione este código temporariamente:
+    console.log('Admin.js carregado');
+    console.log('Markets container:', marketsContainer);
+
+    // Verificar se há dados no Supabase
+    async function debugMarkets() {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            console.log('Usuário logado:', user);
+            
+            const { data: markets, error } = await supabase
+                .from('supermercados')
+                .select('nome, cnpj')
+                .order('nome');
+                
+            console.log('Mercados do Supabase:', markets);
+            console.log('Erro:', error);
+        } catch (error) {
+            console.error('Debug error:', error);
+        }
+    }
+
+    // Executar debug após 2 segundos
+    setTimeout(debugMarkets, 2000);
 });
