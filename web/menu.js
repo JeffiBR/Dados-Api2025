@@ -68,7 +68,7 @@ function hideEmptySections() {
     const sections = document.querySelectorAll('.nav-section');
     
     sections.forEach(section => {
-        const visibleItems = section.querySelectorAll('.nav-item[data-required-permission]');
+        const visibleItems = section.querySelectorAll('li[data-required-permission]');
         let hasVisibleItems = false;
         
         visibleItems.forEach(item => {
@@ -77,6 +77,7 @@ function hideEmptySections() {
             }
         });
         
+        // Se não há itens visíveis, esconde a seção inteira
         if (!hasVisibleItems) {
             section.style.display = 'none';
         }
@@ -120,29 +121,35 @@ function showAccessExpiredMessage() {
     document.body.insertAdjacentHTML('beforeend', messageHTML);
 }
 
-// Adiciona tratamento global de erro 403 (Acesso Expirado)
+// Configura tratamento global de erros
 function setupGlobalErrorHandling() {
-    // Intercepta fetch requests
+    // Intercepta fetch requests para tratar erro 403 (acesso expirado)
     const originalFetch = window.fetch;
     window.fetch = async function(...args) {
-        const response = await originalFetch(...args);
-        
-        if (response.status === 403) {
-            const errorData = await response.json().catch(() => ({}));
-            if (errorData.detail && errorData.detail.includes('acesso expirou')) {
-                showAccessExpiredMessage();
-                throw new Error('ACCESS_EXPIRED');
+        try {
+            const response = await originalFetch(...args);
+            
+            if (response.status === 403) {
+                const errorData = await response.json().catch(() => ({}));
+                if (errorData.detail && errorData.detail.includes('acesso expirou')) {
+                    showAccessExpiredMessage();
+                    throw new Error('ACCESS_EXPIRED');
+                }
             }
+            
+            return response;
+        } catch (error) {
+            if (error.message === 'ACCESS_EXPIRED') {
+                throw error;
+            }
+            throw error;
         }
-        
-        return response;
     };
 
-    // Intercepta erros do authenticatedFetch
+    // Intercepta erros não tratados
     window.addEventListener('unhandledrejection', (event) => {
         if (event.reason && event.reason.message === 'ACCESS_EXPIRED') {
             event.preventDefault();
-            showAccessExpiredMessage();
         }
     });
 }
