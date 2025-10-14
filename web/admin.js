@@ -1,4 +1,6 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    // ========== DECLARAÇÃO DE VARIÁVEIS ==========
+    
     // Elementos principais
     const startButton = document.getElementById('startButton');
     const progressContainer = document.getElementById('progress-container');
@@ -11,7 +13,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const progressText = document.getElementById('progressText');
     const itemsFoundText = document.getElementById('itemsFoundText');
     
-    // Novos elementos de detalhes
+    // Elementos de detalhes
     const currentMarketElement = document.getElementById('currentMarket');
     const currentProductElement = document.getElementById('currentProduct');
     const marketsProcessedElement = document.getElementById('marketsProcessed');
@@ -46,12 +48,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ========== FUNÇÕES UTILITÁRIAS ==========
 
-    // Função para mostrar notificações (DEFINIDA PRIMEIRO)
+    // Função para mostrar notificações
     const showNotification = (message, type = 'info') => {
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
         const icon = type === 'success' ? 'fa-check-circle' : 
-                    type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
+                    type === 'error' ? 'fa-exclamation-circle' : 
+                    type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle';
         notification.innerHTML = `<i class="fas ${icon}"></i> ${message}`;
         document.body.appendChild(notification);
         
@@ -87,7 +90,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    // Adicione esta função para mostrar mensagem quando não há mercados
+    // Mensagem quando não há mercados
     function renderNoMarkets() {
         marketsContainer.innerHTML = `
             <div class="no-markets-message">
@@ -99,7 +102,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         selectedMarketsCount.textContent = '0 mercados selecionados';
     }
 
-    // Atualize a função renderMarkets
+    // Renderizar lista de mercados
     function renderMarkets(markets) {
         marketsContainer.innerHTML = '';
         
@@ -197,99 +200,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function handleLogout(e) {
         e.preventDefault();
-        // Usar a função signOut global do auth.js
         if (typeof window.signOut === 'function') {
             window.signOut();
         } else {
-            // Fallback caso a função não esteja disponível
             localStorage.removeItem('supabase.auth.token');
             window.location.href = '/login.html';
         }
     }
 
     // ========== FUNÇÕES DE PROGRESSO E RELATÓRIO ==========
-
-    // Atualizar interface com dados de status
-    const updateUI = (data) => {
-        if (data.status === 'RUNNING') {
-            showProgressView(data);
-        } else {
-            showIdleView(data);
-        }
-    };
-
-    // Mostrar view de progresso
-    function showProgressView(data) {
-        startButton.disabled = true;
-        startButton.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Coleta em Andamento...';
-        progressContainer.style.display = 'block';
-        reportContainer.style.display = 'none';
-
-        // Atualizar barra de progresso principal
-        const percent = Math.round(data.progressPercent || 0);
-        progressBar.style.width = `${percent}%`;
-        progressPercentText.textContent = `${percent}%`;
-        
-        // Atualizar informações de tempo
-        etaText.textContent = `Tempo Restante: ${formatSeconds(data.etaSeconds)}`;
-        
-        // Atualizar informações detalhadas
-        if (currentMarketElement) {
-            currentMarketElement.textContent = data.currentMarket || 'Nenhum';
-        }
-        if (currentProductElement) {
-            currentProductElement.textContent = data.currentProduct || 'Nenhum';
-        }
-        if (marketsProcessedElement) {
-            marketsProcessedElement.textContent = data.marketsProcessed || 0;
-        }
-        if (totalMarketsElement) {
-            totalMarketsElement.textContent = data.totalMarkets || 0;
-        }
-        if (productsInMarketElement) {
-            productsInMarketElement.textContent = data.productsProcessedInMarket || 0;
-        }
-        if (totalProductsElement) {
-            totalProductsElement.textContent = data.totalProducts || 0;
-        }
-        if (itemsInMarketElement) {
-            itemsInMarketElement.textContent = data.itemsInCurrentMarket || 0;
-        }
-        if (totalItemsElement) {
-            totalItemsElement.textContent = data.totalItemsFound || 0;
-        }
-        if (elapsedTimeElement) {
-            const elapsed = Math.round((Date.now() - collectionStartTime) / 1000);
-            elapsedTimeElement.textContent = formatSeconds(elapsed);
-        }
-
-        progressText.textContent = data.progresso || 'Processando...';
-        itemsFoundText.textContent = data.totalItemsFound || 0;
-        
-        // Iniciar polling se não estiver ativo
-        if (!pollingInterval) {
-            pollingInterval = setInterval(checkStatus, 3000);
-        }
-    }
-
-    // Mostrar view de idle/completo
-    function showIdleView(data) {
-        startButton.disabled = false;
-        startButton.innerHTML = '<i class="fas fa-play"></i> Iniciar Coleta Manual';
-        progressContainer.style.display = 'none';
-        
-        if (pollingInterval) {
-            clearInterval(pollingInterval);
-            pollingInterval = null;
-        }
-
-        // Mostrar relatório se a coleta foi completada
-        if ((data.status === 'COMPLETED' || data.status === 'FAILED') && data.report) {
-            showReport(data.report);
-        } else {
-            reportContainer.style.display = 'none';
-        }
-    }
 
     // Mostrar relatório
     function showReport(report) {
@@ -312,70 +231,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // ========== FUNÇÕES PRINCIPAIS ==========
+    // ========== FUNÇÕES PRINCIPAIS ATUALIZADAS ==========
 
-    // Carregar lista de mercados - usando authenticatedFetch do auth.js
-    async function loadMarkets() {
-        try {
-            console.log('Carregando mercados...');
-            
-            // Verificar se o usuário está autenticado primeiro
-            const isAuthenticated = await window.checkAuth();
-            if (!isAuthenticated) {
-                showNotification('Usuário não autenticado. Redirecionando...', 'error');
-                setTimeout(() => {
-                    window.location.href = '/login.html';
-                }, 2000);
-                return;
-            }
-            
-            // Usar a função authenticatedFetch global do auth.js
-            const response = await window.authenticatedFetch('/api/supermarkets');
-            
-            if (!response.ok) {
-                if (response.status === 401) {
-                    showNotification('Sessão expirada. Faça login novamente.', 'error');
-                    setTimeout(() => {
-                        window.location.href = '/login.html';
-                    }, 2000);
-                    return;
-                }
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
-            const markets = await response.json();
-            console.log('Mercados recebidos:', markets);
-            
-            if (!markets || markets.length === 0) {
-                renderNoMarkets();
-                return;
-            }
-            
-            renderMarkets(markets);
-            updateSelectedMarketsCount();
-            
-        } catch (error) {
-            console.error('Erro ao carregar mercados:', error);
-            showNotification(`Erro ao carregar mercados: ${error.message}`, 'error');
-            renderNoMarkets();
-        }
-    }
-
-    // Verificar status da coleta
-    const checkStatus = async () => {
-        try {
-            const response = await window.authenticatedFetch('/api/collection-status');
-            if (!response.ok) throw new Error("Falha ao verificar status.");
-            const data = await response.json();
-            updateUI(data);
-        } catch (error) {
-            console.error('Erro ao verificar status:', error.message);
-            if (pollingInterval) clearInterval(pollingInterval);
-            showNotification(`Erro ao verificar status: ${error.message}`, 'error');
-        }
-    };
-
-    // Iniciar coleta
+    // Iniciar coleta - FUNÇÃO CORRIGIDA
     const startCollection = async () => {
         const selectedMarkets = getSelectedMarkets();
         const selectedDays = getSelectedDays();
@@ -394,29 +252,189 @@ document.addEventListener('DOMContentLoaded', async () => {
         collectionStartTime = Date.now();
         
         try {
+            // CORREÇÃO: Usar os nomes de campos que a API espera
             const response = await window.authenticatedFetch('/api/trigger-collection', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    markets: selectedMarkets,
-                    days: selectedDays
+                    selected_markets: selectedMarkets, // CORREÇÃO: campo correto
+                    dias_pesquisa: selectedDays // CORREÇÃO: campo correto
                 })
             });
             
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.detail || 'Erro desconhecido');
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || `Erro ${response.status}: ${response.statusText}`);
+            }
             
+            const data = await response.json();
             showNotification(data.message || 'Coleta iniciada com sucesso!', 'success');
-            checkStatus();
+            
+            // Iniciar polling imediatamente
+            setTimeout(checkStatus, 1000);
+            
         } catch (error) {
+            console.error('Erro ao iniciar coleta:', error);
             showNotification(`Falha ao iniciar a coleta: ${error.message}`, 'error');
-            checkStatus();
+            // Verificar status mesmo em caso de erro para ver se há uma coleta em andamento
+            setTimeout(checkStatus, 1000);
         }
     };
 
-    // Configurar event listeners
+    // Verificar status da coleta - FUNÇÃO MELHORADA
+    const checkStatus = async () => {
+        try {
+            const response = await window.authenticatedFetch('/api/collection-status');
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            const data = await response.json();
+            updateUI(data);
+            
+            // Continuar polling se ainda estiver rodando
+            if (data.status === 'RUNNING' && !pollingInterval) {
+                pollingInterval = setInterval(checkStatus, 3000);
+            }
+            
+        } catch (error) {
+            console.error('Erro ao verificar status:', error);
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+            }
+            showNotification(`Erro ao verificar status: ${error.message}`, 'error');
+        }
+    };
+
+    // Carregar lista de mercados - FUNÇÃO MELHORADA
+    async function loadMarkets() {
+        try {
+            console.log('Carregando mercados...');
+            
+            const response = await window.authenticatedFetch('/api/supermarkets');
+            
+            if (!response.ok) {
+                if (response.status === 401) {
+                    showNotification('Sessão expirada. Faça login novamente.', 'error');
+                    setTimeout(() => {
+                        window.location.href = '/login.html';
+                    }, 2000);
+                    return;
+                }
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const markets = await response.json();
+            console.log('Mercados recebidos:', markets);
+            
+            if (!markets || markets.length === 0) {
+                renderNoMarkets();
+                showNotification('Nenhum mercado cadastrado. Adicione mercados primeiro.', 'warning');
+                return;
+            }
+            
+            renderMarkets(markets);
+            updateSelectedMarketsCount();
+            
+        } catch (error) {
+            console.error('Erro ao carregar mercados:', error);
+            showNotification(`Erro ao carregar mercados: ${error.message}`, 'error');
+            renderNoMarkets();
+        }
+    }
+
+    // Atualizar interface com dados de status - FUNÇÃO MELHORADA
+    const updateUI = (data) => {
+        console.log('Status da coleta:', data);
+        
+        if (data.status === 'RUNNING') {
+            showProgressView(data);
+        } else if (data.status === 'COMPLETED' || data.status === 'FAILED') {
+            showIdleView(data);
+            // Mostrar relatório se disponível
+            if (data.report) {
+                showReport(data.report);
+            }
+        } else {
+            // Status IDLE ou outro
+            showIdleView(data);
+        }
+    };
+
+    // Mostrar view de progresso - FUNÇÃO MELHORADA
+    function showProgressView(data) {
+        startButton.disabled = true;
+        startButton.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Coleta em Andamento...';
+        progressContainer.style.display = 'block';
+        reportContainer.style.display = 'none';
+
+        // Atualizar barra de progresso principal
+        const percent = Math.round(data.progressPercent || 0);
+        progressBar.style.width = `${percent}%`;
+        progressPercentText.textContent = `${percent}%`;
+        
+        // Atualizar informações de tempo
+        etaText.textContent = `Tempo Restante: ${formatSeconds(data.etaSeconds)}`;
+        
+        // Atualizar informações detalhadas
+        currentMarketElement.textContent = data.currentMarket || 'Nenhum';
+        currentProductElement.textContent = data.currentProduct || 'Nenhum';
+        marketsProcessedElement.textContent = data.marketsProcessed || 0;
+        totalMarketsElement.textContent = data.totalMarkets || 0;
+        productsInMarketElement.textContent = data.productsProcessedInMarket || 0;
+        totalProductsElement.textContent = data.totalProducts || 0;
+        itemsInMarketElement.textContent = data.itemsInCurrentMarket || 0;
+        totalItemsElement.textContent = data.totalItemsFound || 0;
+        
+        // Calcular tempo decorrido
+        if (collectionStartTime) {
+            const elapsed = Math.round((Date.now() - collectionStartTime) / 1000);
+            elapsedTimeElement.textContent = formatSeconds(elapsed);
+        }
+
+        progressText.textContent = data.progresso || 'Processando...';
+        itemsFoundText.textContent = data.totalItemsFound || 0;
+
+        // Iniciar polling se não estiver ativo
+        if (!pollingInterval) {
+            pollingInterval = setInterval(checkStatus, 3000);
+        }
+    }
+
+    // Mostrar view de idle/completo - FUNÇÃO MELHORADA
+    function showIdleView(data) {
+        startButton.disabled = false;
+        startButton.innerHTML = '<i class="fas fa-play"></i> Iniciar Coleta Manual';
+        progressContainer.style.display = 'none';
+        
+        if (pollingInterval) {
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+        }
+
+        // Se for uma falha, mostrar mensagem
+        if (data.status === 'FAILED') {
+            showNotification('Coleta falhou: ' + (data.progresso || 'Erro desconhecido'), 'error');
+        }
+        
+        // Resetar tempo de início
+        collectionStartTime = null;
+    }
+
+    // Função para debug
+    function debugCollection() {
+        console.log('=== DEBUG COLETA ===');
+        console.log('Selected Markets:', getSelectedMarkets());
+        console.log('Selected Days:', getSelectedDays());
+        console.log('Start Button:', startButton ? startButton.disabled : 'N/A');
+        console.log('Polling Interval:', pollingInterval);
+        console.log('Collection Start Time:', collectionStartTime);
+    }
+
+    // ========== CONFIGURAÇÃO DE EVENT LISTENERS ==========
+
     function setupEventListeners() {
         // Toggle do tema
         themeToggle.addEventListener('click', toggleTheme);
@@ -448,7 +466,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (startButton) {
             startButton.addEventListener('click', startCollection);
         }
+
+        // Debug (Ctrl + D)
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'd') {
+                e.preventDefault();
+                debugCollection();
+            }
+        });
     }
+
+    // ========== INICIALIZAÇÃO ==========
 
     // Configuração inicial
     async function initializeConfiguration() {
@@ -476,18 +504,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         setupDaysSelection();
     }
 
-    // ========== INICIALIZAÇÃO ==========
-
-    // Inicialização
+    // Inicialização principal
     initializeConfiguration();
     setupEventListeners();
     checkStatus();
 
     // Para debug
-    console.log('Admin.js carregado');
+    console.log('Admin.js carregado com funções atualizadas');
     console.log('Markets container:', marketsContainer);
 
-    // Verificar se há dados no Supabase
+    // Verificar se há dados no Supabase (debug)
     async function debugMarkets() {
         try {
             const { data: { user } } = await supabase.auth.getUser();
