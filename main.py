@@ -1,4 +1,4 @@
-# main.py (completo e corrigido com Cestas Básicas e Grupos) - VERSÃO 3.2.1
+# main.py (completo e corrigido com Cestas Básicas e Grupos) - VERSÃO 3.4.0
 import os
 import asyncio
 from datetime import date, timedelta, datetime
@@ -22,7 +22,7 @@ load_dotenv()
 app = FastAPI(
     title="API de Preços Arapiraca",
     description="Sistema completo para coleta e análise de preços de supermercados.",
-    version="3.2.1"
+    version="3.4.0"
 )
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] [%(levelname)s] %(message)s')
 
@@ -60,6 +60,7 @@ class UserProfile(BaseModel):
     role: str = "user"
     allowed_pages: List[str] = []
     email: Optional[str] = None
+    group_admin_of: Optional[List[int]] = None  # IDs dos grupos que o usuário é admin
 
 # --- FUNÇÕES AUXILIARES PARA GRUPOS ---
 def calcular_data_expiracao(dias_acesso: int) -> date:
@@ -116,6 +117,12 @@ async def get_current_user(authorization: str = Header(None)) -> UserProfile:
         else:
             profile_data = profile_response.data
         
+        # Buscar grupos onde o usuário é admin
+        group_admin_response = await asyncio.to_thread(
+            supabase.table('grupos').select('id').eq('admin_id', user_id).execute
+        )
+        group_admin_of = [group['id'] for group in group_admin_response.data] if group_admin_response.data else []
+        
         # GARANTIR que role e allowed_pages sempre tenham valores
         role = profile_data.get('role', 'user')
         allowed_pages = profile_data.get('allowed_pages', [])
@@ -123,8 +130,8 @@ async def get_current_user(authorization: str = Header(None)) -> UserProfile:
         if allowed_pages is None:
             allowed_pages = []
         
-        # VERIFICAR ACESSO (exceto para admins)
-        if role != 'admin':
+        # VERIFICAR ACESSO (exceto para admins e admins de grupo)
+        if role != 'admin' and not group_admin_of:
             has_access = await verificar_acesso_usuario(user_id)
             if not has_access:
                 raise HTTPException(
@@ -136,7 +143,8 @@ async def get_current_user(authorization: str = Header(None)) -> UserProfile:
             id=user_id, 
             role=role,
             allowed_pages=allowed_pages,
-            email=user.email
+            email=user.email,
+            group_admin_of=group_admin_of
         )
     except HTTPException:
         raise
@@ -160,12 +168,19 @@ async def get_current_user_optional(authorization: str = Header(None)) -> Option
             supabase.table('profiles').select('*').eq('id', user_id).single().execute
         )
         
+        # Buscar grupos onde o usuário é admin
+        group_admin_response = await asyncio.to_thread(
+            supabase.table('grupos').select('id').eq('admin_id', user_id).execute
+        )
+        group_admin_of = [group['id'] for group in group_admin_response.data] if group_admin_response.data else []
+        
         if not profile_response.data:
             return UserProfile(
                 id=user_id,
                 role='user',
                 allowed_pages=[],
-                email=user.email
+                email=user.email,
+                group_admin_of=group_admin_of
             )
         
         profile_data = profile_response.data
@@ -178,7 +193,8 @@ async def get_current_user_optional(authorization: str = Header(None)) -> Option
             id=user_id, 
             role=role,
             allowed_pages=allowed_pages,
-            email=user.email
+            email=user.email,
+            group_admin_of=group_admin_of
         )
     except Exception as e:
         return None
@@ -186,9 +202,30 @@ async def get_current_user_optional(authorization: str = Header(None)) -> Option
 def require_page_access(page_key: str):
     async def _verify_access(current_user: UserProfile = Depends(get_current_user)):
         if current_user.role != 'admin' and page_key not in current_user.allowed_pages:
+            # Verificar se é admin de grupo e tem acesso à página de gerenciamento do grupo
+            if page_key == 'group_users' and current_user.group_admin_of:
+                return current_user
             raise HTTPException(status_code=403, detail=f"Acesso negado à funcionalidade: {page_key}")
         return current_user
     return _verify_access
+
+# Nova função para verificar se usuário é admin de um grupo específico
+async def require_group_admin(group_id: int):
+    async def _verify_group_admin(current_user: UserProfile = Depends(get_current_user)):
+        if current_user.role != 'admin' and (not current_user.group_admin_of or group_id not in current_user.group_admin_of):
+            raise HTTPException(status_code=403, detail="Acesso negado: você não é administrador deste grupo")
+        return current_user
+    return _verify_group_admin
+
+# Função para verificar se usuário é admin geral OU admin do grupo específico
+async def require_admin_or_group_admin(group_id: Optional[int] = None):
+    async def _verify_admin_or_group_admin(current_user: UserProfile = Depends(get_current_user)):
+        if current_user.role == 'admin':
+            return current_user
+        if group_id and current_user.group_admin_of and group_id in current_user.group_admin_of:
+            return current_user
+        raise HTTPException(status_code=403, detail="Acesso negado: privilégios administrativos necessários")
+    return _verify_admin_or_group_admin
 
 initial_status = {
     "status": "IDLE", "startTime": None, "progressPercent": 0, "etaSeconds": 0,
@@ -297,6 +334,8 @@ class CollectionRequest(BaseModel):
 class GrupoBase(BaseModel):
     nome: str = Field(..., max_length=100)
     dias_acesso: int = Field(30, ge=1, le=365)
+    max_usuarios: int = Field(10, ge=1, le=1000)
+    admin_id: Optional[str] = None
     descricao: Optional[str] = None
 
 class GrupoCreate(GrupoBase):
@@ -328,8 +367,20 @@ class UserGroup(UserGroupBase):
 class UserGroupWithDetails(UserGroup):
     grupo_nome: str
     grupo_dias_acesso: int
+    grupo_max_usuarios: int
     user_name: Optional[str] = None
     user_email: Optional[str] = None
+
+# Modelo para criação de usuário por admin de grupo
+class GroupUserCreate(BaseModel):
+    email: str
+    password: str
+    full_name: str
+
+# Modelo para atualização de usuário do grupo
+class GroupUserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    allowed_pages: Optional[List[str]] = None
 
 # --------------------------------------------------------------------------
 # --- 5. FUNÇÕES DE LOG ---
@@ -1440,7 +1491,7 @@ async def get_basket_realtime_prices(
     return {"results": sorted(resultados_finais, key=lambda x: (x.get('nome_produto_normalizado', ''), x.get('preco_produto', float('inf'))))}
 
 # --------------------------------------------------------------------------
-# --- ENDPOINTS PARA GERENCIAMENTO DE GRUPOS ---
+# --- GERENCIAMENTO DE GRUPOS (ATUALIZADO) ---
 # --------------------------------------------------------------------------
 
 @app.post("/api/groups", response_model=Grupo)
@@ -1449,6 +1500,19 @@ async def create_group(
     admin_user: UserProfile = Depends(require_page_access('users'))
 ):
     try:
+        # Verificar se o admin_id existe (se fornecido)
+        if group.admin_id:
+            profile_response = await asyncio.to_thread(
+                supabase.table('profiles').select('id, allowed_pages').eq('id', group.admin_id).execute
+            )
+            if not profile_response.data:
+                raise HTTPException(status_code=404, detail="Usuário administrador não encontrado")
+            
+            # Se o admin_id for fornecido, garantir que o usuário tenha as permissões necessárias
+            admin_profile = profile_response.data[0]
+            if not admin_profile.get('allowed_pages'):
+                raise HTTPException(status_code=400, detail="O administrador do grupo deve ter permissões configuradas")
+        
         group_data = group.dict()
         resp = await asyncio.to_thread(
             supabase.table('grupos').insert(group_data).execute
@@ -1462,12 +1526,28 @@ async def create_group(
 async def list_groups(admin_user: UserProfile = Depends(require_page_access('users'))):
     try:
         resp = await asyncio.to_thread(
-            supabase.table('grupos').select('*').order('nome').execute
+            supabase.table('grupos').select('*, profiles(full_name, email)').order('nome').execute
         )
         return resp.data
     except Exception as e:
         logging.error(f"Erro ao listar grupos: {e}")
         raise HTTPException(status_code=500, detail="Erro ao listar grupos")
+
+@app.get("/api/my-admin-groups", response_model=List[Grupo])
+async def get_my_admin_groups(current_user: UserProfile = Depends(get_current_user)):
+    try:
+        if current_user.role == 'admin':
+            resp = await asyncio.to_thread(
+                supabase.table('grupos').select('*, profiles(full_name, email)').order('nome').execute
+            )
+        else:
+            resp = await asyncio.to_thread(
+                supabase.table('grupos').select('*, profiles(full_name, email)').eq('admin_id', current_user.id).order('nome').execute
+            )
+        return resp.data
+    except Exception as e:
+        logging.error(f"Erro ao buscar grupos do admin: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao buscar seus grupos")
 
 @app.put("/api/groups/{group_id}", response_model=Grupo)
 async def update_group(
@@ -1476,6 +1556,25 @@ async def update_group(
     admin_user: UserProfile = Depends(require_page_access('users'))
 ):
     try:
+        # Verificar se o grupo existe
+        group_resp = await asyncio.to_thread(
+            supabase.table('grupos').select('*').eq('id', group_id).execute
+        )
+        if not group_resp.data:
+            raise HTTPException(status_code=404, detail="Grupo não encontrado")
+        
+        # Verificar se o admin_id existe (se fornecido)
+        if group.admin_id:
+            profile_response = await asyncio.to_thread(
+                supabase.table('profiles').select('id, allowed_pages').eq('id', group.admin_id).execute
+            )
+            if not profile_response.data:
+                raise HTTPException(status_code=404, detail="Usuário administrador não encontrado")
+            
+            admin_profile = profile_response.data[0]
+            if not admin_profile.get('allowed_pages'):
+                raise HTTPException(status_code=400, detail="O administrador do grupo deve ter permissões configuradas")
+        
         group_data = group.dict()
         group_data['updated_at'] = datetime.now().isoformat()
         
@@ -1522,17 +1621,32 @@ async def add_user_to_group(
     admin_user: UserProfile = Depends(require_page_access('users'))
 ):
     try:
+        # Verificar se o usuário existe
         user_resp = await asyncio.to_thread(
             supabase.table('profiles').select('id, full_name').eq('id', user_group.user_id).execute
         )
         if not user_resp.data:
             raise HTTPException(status_code=404, detail="Usuário não encontrado")
         
+        # Verificar se o grupo existe e obter informações
         group_resp = await asyncio.to_thread(
-            supabase.table('grupos').select('dias_acesso').eq('id', user_group.group_id).execute
+            supabase.table('grupos').select('dias_acesso, max_usuarios').eq('id', user_group.group_id).execute
         )
         if not group_resp.data:
             raise HTTPException(status_code=404, detail="Grupo não encontrado")
+        
+        # Verificar limite de usuários no grupo
+        user_count_resp = await asyncio.to_thread(
+            supabase.table('user_groups').select('id', count='exact').eq('group_id', user_group.group_id).execute
+        )
+        current_user_count = user_count_resp.count if user_count_resp.count is not None else 0
+        max_users = group_resp.data[0]['max_usuarios']
+        
+        if current_user_count >= max_users:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Limite máximo de {max_users} usuários atingido para este grupo"
+            )
         
         if user_group.data_expiracao:
             data_expiracao = user_group.data_expiracao
@@ -1600,7 +1714,7 @@ async def list_user_groups(
                 logging.error(f"Erro ao buscar email do usuário {user_group['user_id']}: {e}")
             
             user_name = profile_response.data[0]['full_name'] if profile_response.data else 'N/A'
-            grupo_data = group_response.data if group_response.data else {'nome': 'N/A', 'dias_acesso': 0}
+            grupo_data = group_response.data if group_response.data else {'nome': 'N/A', 'dias_acesso': 0, 'max_usuarios': 0}
             
             user_group_detail = UserGroupWithDetails(
                 id=user_group['id'],
@@ -1610,6 +1724,7 @@ async def list_user_groups(
                 created_at=user_group['created_at'],
                 grupo_nome=grupo_data['nome'],
                 grupo_dias_acesso=grupo_data['dias_acesso'],
+                grupo_max_usuarios=grupo_data['max_usuarios'],
                 user_name=user_name,
                 user_email=user_email
             )
@@ -1683,6 +1798,7 @@ async def get_user_groups(
                     created_at=user_group['created_at'],
                     grupo_nome=group_response.data['nome'],
                     grupo_dias_acesso=group_response.data['dias_acesso'],
+                    grupo_max_usuarios=group_response.data['max_usuarios'],
                     user_name=user_name,
                     user_email=user_email
                 )
@@ -1723,6 +1839,7 @@ async def get_my_groups(current_user: UserProfile = Depends(get_current_user)):
                     created_at=user_group['created_at'],
                     grupo_nome=group_response.data['nome'],
                     grupo_dias_acesso=group_response.data['dias_acesso'],
+                    grupo_max_usuarios=group_response.data['max_usuarios'],
                     user_name=current_user.email,
                     user_email=current_user.email
                 )
@@ -1734,6 +1851,234 @@ async def get_my_groups(current_user: UserProfile = Depends(get_current_user)):
         logging.error(f"Erro ao buscar grupos do usuário atual: {e}")
         raise HTTPException(status_code=500, detail="Erro ao buscar seus grupos")
 
+# --------------------------------------------------------------------------
+# --- GERENCIAMENTO DE USUÁRIOS POR ADMIN DE GRUPO ---
+# --------------------------------------------------------------------------
+
+@app.post("/api/group-users/{group_id}")
+async def create_group_user(
+    group_id: int,
+    user_data: GroupUserCreate,
+    current_user: UserProfile = Depends(require_group_admin(group_id))
+):
+    try:
+        # Verificar se o grupo existe e obter informações do admin
+        group_resp = await asyncio.to_thread(
+            supabase.table('grupos').select('*').eq('id', group_id).single().execute
+        )
+        if not group_resp.data:
+            raise HTTPException(status_code=404, detail="Grupo não encontrado")
+        
+        group_info = group_resp.data
+        
+        # Verificar limite de usuários no grupo
+        user_count_resp = await asyncio.to_thread(
+            supabase.table('user_groups').select('id', count='exact').eq('group_id', group_id).execute
+        )
+        current_user_count = user_count_resp.count if user_count_resp.count is not None else 0
+        
+        if current_user_count >= group_info['max_usuarios']:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Limite máximo de {group_info['max_usuarios']} usuários atingido para este grupo"
+            )
+        
+        # Criar usuário no Auth
+        created_user_res = await asyncio.to_thread(
+            lambda: supabase_admin.auth.admin.create_user({
+                "email": user_data.email, 
+                "password": user_data.password,
+                "email_confirm": True, 
+                "user_metadata": {'full_name': user_data.full_name}
+            })
+        )
+        
+        user_id = created_user_res.user.id
+        logging.info(f"Usuário criado no Auth com ID: {user_id} para o grupo {group_id}")
+        
+        # Obter permissões do admin do grupo para replicar no novo usuário
+        admin_profile = await asyncio.to_thread(
+            supabase.table('profiles').select('allowed_pages').eq('id', group_info['admin_id']).single().execute
+        )
+        
+        allowed_pages = admin_profile.data.get('allowed_pages', []) if admin_profile.data else []
+        
+        # Atualizar perfil do usuário com as mesmas permissões do admin do grupo
+        profile_update_response = await asyncio.to_thread(
+            supabase_admin.table('profiles').update({
+                'full_name': user_data.full_name,
+                'role': 'user',
+                'allowed_pages': allowed_pages
+            }).eq('id', user_id).execute
+        )
+        
+        if not profile_update_response.data:
+            logging.warning(f"Usuário {user_id} foi criado no Auth, mas o perfil não foi encontrado para atualizar.")
+            raise HTTPException(status_code=404, detail="Usuário criado, mas o perfil não foi encontrado para definir as permissões.")
+        
+        # Adicionar usuário ao grupo
+        dias_acesso = group_info['dias_acesso']
+        data_expiracao = calcular_data_expiracao(dias_acesso)
+        
+        user_group_data = {
+            'user_id': user_id,
+            'group_id': group_id,
+            'data_expiracao': data_expiracao.isoformat()
+        }
+        
+        await asyncio.to_thread(
+            supabase.table('user_groups').insert(user_group_data).execute
+        )
+        
+        logging.info(f"Usuário {user_id} adicionado ao grupo {group_id} com expiração em {data_expiracao}")
+        
+        return {"message": "Usuário criado e adicionado ao grupo com sucesso"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Erro ao criar usuário no grupo: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao criar usuário no grupo: {str(e)}")
+
+@app.get("/api/group-users/{group_id}")
+async def get_group_users(
+    group_id: int,
+    current_user: UserProfile = Depends(require_admin_or_group_admin(group_id))
+):
+    try:
+        # Buscar usuários do grupo
+        user_groups_response = await asyncio.to_thread(
+            supabase_admin.table('user_groups').select('*')
+            .eq('group_id', group_id)
+            .order('created_at', desc=True)
+            .execute
+        )
+        
+        if not user_groups_response.data:
+            return []
+        
+        group_users = []
+        
+        for user_group in user_groups_response.data:
+            # Buscar informações do usuário
+            profile_response = await asyncio.to_thread(
+                supabase_admin.table('profiles').select('full_name, allowed_pages').eq('id', user_group['user_id']).execute
+            )
+            
+            user_email = "N/A"
+            try:
+                auth_response = await asyncio.to_thread(
+                    lambda: supabase_admin.auth.admin.get_user_by_id(user_group['user_id'])
+                )
+                if auth_response.user:
+                    user_email = auth_response.user.email
+            except Exception as e:
+                logging.error(f"Erro ao buscar email do usuário {user_group['user_id']}: {e}")
+            
+            user_name = profile_response.data[0]['full_name'] if profile_response.data else 'N/A'
+            allowed_pages = profile_response.data[0]['allowed_pages'] if profile_response.data else []
+            
+            # Verificar status do acesso
+            today = date.today()
+            is_active = user_group['data_expiracao'] >= today.isoformat()
+            status = "Ativo" if is_active else "Expirado"
+            
+            group_user_info = {
+                'user_id': user_group['user_id'],
+                'user_name': user_name,
+                'user_email': user_email,
+                'allowed_pages': allowed_pages,
+                'data_expiracao': user_group['data_expiracao'],
+                'status': status,
+                'created_at': user_group['created_at']
+            }
+            group_users.append(group_user_info)
+        
+        return group_users
+        
+    except Exception as e:
+        logging.error(f"Erro ao buscar usuários do grupo: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao buscar usuários do grupo")
+
+@app.put("/api/group-users/{group_id}/{user_id}")
+async def update_group_user(
+    group_id: int,
+    user_id: str,
+    user_data: GroupUserUpdate,
+    current_user: UserProfile = Depends(require_group_admin(group_id))
+):
+    try:
+        # Verificar se o usuário pertence ao grupo
+        user_group_resp = await asyncio.to_thread(
+            supabase.table('user_groups').select('id')
+            .eq('group_id', group_id)
+            .eq('user_id', user_id)
+            .execute
+        )
+        
+        if not user_group_resp.data:
+            raise HTTPException(status_code=404, detail="Usuário não encontrado neste grupo")
+        
+        # Atualizar perfil do usuário
+        update_data = {}
+        if user_data.full_name is not None:
+            update_data['full_name'] = user_data.full_name
+        if user_data.allowed_pages is not None:
+            update_data['allowed_pages'] = user_data.allowed_pages
+        
+        if update_data:
+            await asyncio.to_thread(
+                lambda: supabase.table('profiles').update(update_data)
+                .eq('id', user_id)
+                .execute()
+            )
+        
+        logging.info(f"Usuário {user_id} atualizado no grupo {group_id} pelo admin {current_user.id}")
+        
+        return {"message": "Usuário atualizado com sucesso"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Erro ao atualizar usuário do grupo: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao atualizar usuário do grupo")
+
+@app.delete("/api/group-users/{group_id}/{user_id}")
+async def remove_user_from_group_admin(
+    group_id: int,
+    user_id: str,
+    current_user: UserProfile = Depends(require_group_admin(group_id))
+):
+    try:
+        # Verificar se o usuário pertence ao grupo
+        user_group_resp = await asyncio.to_thread(
+            supabase.table('user_groups').select('id')
+            .eq('group_id', group_id)
+            .eq('user_id', user_id)
+            .execute
+        )
+        
+        if not user_group_resp.data:
+            raise HTTPException(status_code=404, detail="Usuário não encontrado neste grupo")
+        
+        # Remover usuário do grupo
+        await asyncio.to_thread(
+            lambda: supabase.table('user_groups').delete()
+            .eq('group_id', group_id)
+            .eq('user_id', user_id)
+            .execute()
+        )
+        
+        logging.info(f"Usuário {user_id} removido do grupo {group_id} pelo admin {current_user.id}")
+        
+        return {"message": "Usuário removido do grupo com sucesso"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Erro ao remover usuário do grupo: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao remover usuário do grupo")
+
 # --- Servir o Frontend ---
 app.mount("/", StaticFiles(directory="web", html=True), name="static")
 
@@ -1743,4 +2088,4 @@ app.mount("/", StaticFiles(directory="web", html=True), name="static")
 
 @app.get("/")
 def read_root():
-    return {"message": "Bem-vindo à API de Preços AL - Versão 3.2.1"}
+    return {"message": "Bem-vindo à API de Preços AL - Versão 3.4.0"}
