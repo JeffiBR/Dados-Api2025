@@ -210,7 +210,7 @@ def require_page_access(page_key: str):
     return _verify_access
 
 # Nova função para verificar se usuário é admin de um grupo específico
-async def require_group_admin(group_id: int):
+def require_group_admin(group_id: int):
     async def _verify_group_admin(current_user: UserProfile = Depends(get_current_user)):
         if current_user.role != 'admin' and (not current_user.group_admin_of or group_id not in current_user.group_admin_of):
             raise HTTPException(status_code=403, detail="Acesso negado: você não é administrador deste grupo")
@@ -218,7 +218,7 @@ async def require_group_admin(group_id: int):
     return _verify_group_admin
 
 # Função para verificar se usuário é admin geral OU admin do grupo específico
-async def require_admin_or_group_admin(group_id: Optional[int] = None):
+def require_admin_or_group_admin(group_id: Optional[int] = None):
     async def _verify_admin_or_group_admin(current_user: UserProfile = Depends(get_current_user)):
         if current_user.role == 'admin':
             return current_user
@@ -1852,14 +1852,14 @@ async def get_my_groups(current_user: UserProfile = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="Erro ao buscar seus grupos")
 
 # --------------------------------------------------------------------------
-# --- GERENCIAMENTO DE USUÁRIOS POR ADMIN DE GRUPO ---
+# --- GERENCIAMENTO DE USUÁRIOS POR ADMIN DE GRUPO (CORRIGIDO) ---
 # --------------------------------------------------------------------------
 
 @app.post("/api/group-users/{group_id}")
 async def create_group_user(
     group_id: int,
     user_data: GroupUserCreate,
-    current_user: UserProfile = Depends(require_group_admin(group_id))
+    current_user: UserProfile = Depends(lambda group_id=group_id: require_group_admin(group_id))
 ):
     try:
         # Verificar se o grupo existe e obter informações do admin
@@ -1943,7 +1943,7 @@ async def create_group_user(
 @app.get("/api/group-users/{group_id}")
 async def get_group_users(
     group_id: int,
-    current_user: UserProfile = Depends(require_admin_or_group_admin(group_id))
+    current_user: UserProfile = Depends(lambda group_id=group_id: require_admin_or_group_admin(group_id))
 ):
     try:
         # Buscar usuários do grupo
@@ -2005,7 +2005,7 @@ async def update_group_user(
     group_id: int,
     user_id: str,
     user_data: GroupUserUpdate,
-    current_user: UserProfile = Depends(require_group_admin(group_id))
+    current_user: UserProfile = Depends(lambda group_id=group_id: require_group_admin(group_id))
 ):
     try:
         # Verificar se o usuário pertence ao grupo
@@ -2047,7 +2047,7 @@ async def update_group_user(
 async def remove_user_from_group_admin(
     group_id: int,
     user_id: str,
-    current_user: UserProfile = Depends(require_group_admin(group_id))
+    current_user: UserProfile = Depends(lambda group_id=group_id: require_group_admin(group_id))
 ):
     try:
         # Verificar se o usuário pertence ao grupo
