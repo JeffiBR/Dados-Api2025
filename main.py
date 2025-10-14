@@ -1,4 +1,4 @@
-# main.py (completo e corrigido com Cestas Básicas) - VERSÃO ATUALIZADA
+# main.py (completo e corrigido com Cestas Básicas e Grupos) - VERSÃO ATUALIZADA
 import os
 import asyncio
 from datetime import date, timedelta, datetime
@@ -22,7 +22,7 @@ load_dotenv()
 app = FastAPI(
     title="API de Preços Arapiraca",
     description="Sistema completo para coleta e análise de preços de supermercados.",
-    version="3.1.2"
+    version="3.2.0"
 )
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] [%(levelname)s] %(message)s')
 
@@ -64,6 +64,39 @@ class UserProfile(BaseModel):
     role: str = "user"
     allowed_pages: List[str] = []
     email: Optional[str] = None
+
+# --- FUNÇÕES AUXILIARES PARA GRUPOS ---
+
+def calcular_data_expiracao(dias_acesso: int) -> date:
+    """Calcula a data de expiração baseada nos dias de acesso"""
+    return date.today() + timedelta(days=dias_acesso)
+
+async def verificar_acesso_usuario(user_id: str) -> bool:
+    """Verifica se o usuário tem acesso ativo baseado nos grupos"""
+    try:
+        today = date.today()
+        response = await asyncio.to_thread(
+            supabase.table('user_groups')
+            .select('id')
+            .eq('user_id', user_id)
+            .gte('data_expiracao', today)
+            .execute
+        )
+        return len(response.data) > 0
+    except Exception as e:
+        logging.error(f"Erro ao verificar acesso do usuário {user_id}: {e}")
+        return False
+
+async def get_user_groups_with_details(user_id: str):
+    """Obtém os grupos do usuário com detalhes"""
+    try:
+        response = await asyncio.to_thread(
+            lambda: supabase.rpc('get_user_groups_with_details', {'p_user_id': user_id}).execute()
+        )
+        return response.data
+    except Exception as e:
+        logging.error(f"Erro ao buscar grupos do usuário {user_id}: {e}")
+        return []
 
 async def get_current_user(authorization: str = Header(None)) -> UserProfile:
     if not authorization or not authorization.startswith("Bearer "):
@@ -107,12 +140,23 @@ async def get_current_user(authorization: str = Header(None)) -> UserProfile:
         if allowed_pages is None:
             allowed_pages = []
         
+        # VERIFICAR ACESSO (exceto para admins)
+        if role != 'admin':
+            has_access = await verificar_acesso_usuario(user_id)
+            if not has_access:
+                raise HTTPException(
+                    status_code=403, 
+                    detail="Seu acesso ao sistema expirou. Entre em contato com o administrador."
+                )
+        
         return UserProfile(
             id=user_id, 
             role=role,
             allowed_pages=allowed_pages,
             email=user.email
         )
+    except HTTPException:
+        raise
     except Exception as e:
         if isinstance(e, APIError): 
             raise e
@@ -266,6 +310,43 @@ class CollectionRequest(BaseModel):
     selected_markets: Optional[List[str]] = Field(None, description="Lista de CNPJs dos mercados a coletar (vazio = todos)")
     dias_pesquisa: int = Field(3, ge=1, le=7, description="Número de dias para pesquisa (1 a 7)")
 
+# --- MODELOS PARA GRUPOS ---
+class GrupoBase(BaseModel):
+    nome: str = Field(..., max_length=100)
+    dias_acesso: int = Field(30, ge=1, le=365)
+    descricao: Optional[str] = None
+
+class GrupoCreate(GrupoBase):
+    pass
+
+class Grupo(GrupoBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class UserGroupBase(BaseModel):
+    user_id: str
+    group_id: int
+
+class UserGroupCreate(UserGroupBase):
+    data_expiracao: Optional[date] = None
+
+class UserGroup(UserGroupBase):
+    id: int
+    data_expiracao: date
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class UserGroupWithDetails(UserGroup):
+    grupo_nome: str
+    grupo_dias_acesso: int
+    user_name: Optional[str] = None
+    user_email: Optional[str] = None
 
 # --------------------------------------------------------------------------
 # --- 5. FUNÇÕES DE LOG CORRIGIDAS ---
@@ -1439,6 +1520,184 @@ async def get_basket_realtime_prices(
     # Ordenar por nome do produto e depois por preço
     return {"results": sorted(resultados_finais, key=lambda x: (x.get('nome_produto_normalizado', ''), x.get('preco_produto', float('inf'))))}
 
+# --------------------------------------------------------------------------
+# --- ENDPOINTS PARA GERENCIAMENTO DE GRUPOS ---
+# --------------------------------------------------------------------------
+
+@app.post("/api/groups", response_model=Grupo)
+async def create_group(
+    group: GrupoCreate, 
+    admin_user: UserProfile = Depends(require_page_access('users'))
+):
+    try:
+        group_data = group.dict()
+        resp = await asyncio.to_thread(
+            supabase.table('grupos').insert(group_data).execute
+        )
+        return resp.data[0]
+    except Exception as e:
+        logging.error(f"Erro ao criar grupo: {e}")
+        raise HTTPException(status_code=400, detail="Erro ao criar grupo")
+
+@app.get("/api/groups", response_model=List[Grupo])
+async def list_groups(admin_user: UserProfile = Depends(require_page_access('users'))):
+    try:
+        resp = await asyncio.to_thread(
+            supabase.table('grupos').select('*').order('nome').execute
+        )
+        return resp.data
+    except Exception as e:
+        logging.error(f"Erro ao listar grupos: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao listar grupos")
+
+@app.put("/api/groups/{group_id}", response_model=Grupo)
+async def update_group(
+    group_id: int, 
+    group: GrupoCreate, 
+    admin_user: UserProfile = Depends(require_page_access('users'))
+):
+    try:
+        group_data = group.dict()
+        group_data['updated_at'] = datetime.now().isoformat()
+        
+        resp = await asyncio.to_thread(
+            supabase.table('grupos').update(group_data).eq('id', group_id).execute
+        )
+        
+        if not resp.data:
+            raise HTTPException(status_code=404, detail="Grupo não encontrado")
+            
+        return resp.data[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Erro ao atualizar grupo: {e}")
+        raise HTTPException(status_code=400, detail="Erro ao atualizar grupo")
+
+@app.delete("/api/groups/{group_id}", status_code=204)
+async def delete_group(
+    group_id: int, 
+    admin_user: UserProfile = Depends(require_page_access('users'))
+):
+    try:
+        # Verificar se o grupo existe
+        group_resp = await asyncio.to_thread(
+            supabase.table('grupos').select('id').eq('id', group_id).execute
+        )
+        
+        if not group_resp.data:
+            raise HTTPException(status_code=404, detail="Grupo não encontrado")
+        
+        # Deletar o grupo (as associações serão deletadas em cascata)
+        await asyncio.to_thread(
+            lambda: supabase.table('grupos').delete().eq('id', group_id).execute()
+        )
+        return
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Erro ao deletar grupo: {e}")
+        raise HTTPException(status_code=400, detail="Erro ao deletar grupo")
+
+@app.post("/api/user-groups", response_model=UserGroup)
+async def add_user_to_group(
+    user_group: UserGroupCreate,
+    admin_user: UserProfile = Depends(require_page_access('users'))
+):
+    try:
+        # Verificar se usuário e grupo existem
+        user_resp = await asyncio.to_thread(
+            supabase.table('profiles').select('id, full_name').eq('id', user_group.user_id).execute
+        )
+        if not user_resp.data:
+            raise HTTPException(status_code=404, detail="Usuário não encontrado")
+        
+        group_resp = await asyncio.to_thread(
+            supabase.table('grupos').select('dias_acesso').eq('id', user_group.group_id).execute
+        )
+        if not group_resp.data:
+            raise HTTPException(status_code=404, detail="Grupo não encontrado")
+        
+        # Calcular data de expiração
+        if user_group.data_expiracao:
+            data_expiracao = user_group.data_expiracao
+        else:
+            dias_acesso = group_resp.data[0]['dias_acesso']
+            data_expiracao = calcular_data_expiracao(dias_acesso)
+        
+        user_group_data = {
+            'user_id': user_group.user_id,
+            'group_id': user_group.group_id,
+            'data_expiracao': data_expiracao.isoformat()
+        }
+        
+        resp = await asyncio.to_thread(
+            supabase.table('user_groups').insert(user_group_data).execute
+        )
+        return resp.data[0]
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Erro ao adicionar usuário ao grupo: {e}")
+        raise HTTPException(status_code=400, detail="Erro ao adicionar usuário ao grupo")
+
+@app.get("/api/user-groups", response_model=List[UserGroupWithDetails])
+async def list_user_groups(
+    user_id: Optional[str] = Query(None),
+    group_id: Optional[int] = Query(None),
+    admin_user: UserProfile = Depends(require_page_access('users'))
+):
+    try:
+        params = {}
+        if user_id:
+            params['p_user_id'] = user_id
+        if group_id:
+            params['p_group_id'] = group_id
+            
+        response = await asyncio.to_thread(
+            lambda: supabase.rpc('get_user_groups_with_details', params).execute()
+        )
+        return response.data
+    except Exception as e:
+        logging.error(f"Erro ao listar associações usuário-grupo: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao listar associações")
+
+@app.delete("/api/user-groups/{user_group_id}", status_code=204)
+async def remove_user_from_group(
+    user_group_id: int,
+    admin_user: UserProfile = Depends(require_page_access('users'))
+):
+    try:
+        await asyncio.to_thread(
+            lambda: supabase.table('user_groups').delete().eq('id', user_group_id).execute()
+        )
+        return
+    except Exception as e:
+        logging.error(f"Erro ao remover usuário do grupo: {e}")
+        raise HTTPException(status_code=400, detail="Erro ao remover usuário do grupo")
+
+@app.get("/api/users/{user_id}/groups", response_model=List[UserGroupWithDetails])
+async def get_user_groups(
+    user_id: str,
+    admin_user: UserProfile = Depends(require_page_access('users'))
+):
+    try:
+        groups = await get_user_groups_with_details(user_id)
+        return groups
+    except Exception as e:
+        logging.error(f"Erro ao buscar grupos do usuário: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao buscar grupos do usuário")
+
+@app.get("/api/my-groups", response_model=List[UserGroupWithDetails])
+async def get_my_groups(current_user: UserProfile = Depends(get_current_user)):
+    try:
+        groups = await get_user_groups_with_details(current_user.id)
+        return groups
+    except Exception as e:
+        logging.error(f"Erro ao buscar grupos do usuário atual: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao buscar seus grupos")
+
 # --- Servir o Frontend ---
 app.mount("/", StaticFiles(directory="web", html=True), name="static")
 
@@ -1448,4 +1707,4 @@ app.mount("/", StaticFiles(directory="web", html=True), name="static")
 
 @app.get("/")
 def read_root():
-    return {"message": "Bem-vindo à API de Preços AL - Versão 3.1.2"}
+    return {"message": "Bem-vindo à API de Preços AL - Versão 3.2.0"}
