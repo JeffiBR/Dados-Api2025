@@ -392,3 +392,413 @@ body.light-mode .status-indicator {
         width: 100%;
     }
 }
+
+/* ====== SELEÇÃO DE MERCADOS MELHORADA ====== */
+.markets-select {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--border-dark);
+    border-radius: var(--radius);
+    padding: 1rem;
+    background: var(--input-dark);
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+body.light-mode .markets-select {
+    background: var(--input-light);
+    border: 1px solid var(--border-light);
+}
+
+.market-card {
+    background: var(--panel-dark);
+    border: 2px solid var(--border-dark);
+    border-radius: 12px;
+    padding: 1.25rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+body.light-mode .market-card {
+    background: var(--panel-light);
+    border: 2px solid var(--border-light);
+}
+
+.market-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--primary);
+    box-shadow: 0 8px 25px rgba(79, 70, 229, 0.15);
+}
+
+.market-card.selected {
+    border-color: var(--primary);
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(99, 102, 241, 0.04));
+    box-shadow: 0 8px 30px rgba(79, 70, 229, 0.2);
+}
+
+.market-card.selected::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+}
+
+.market-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+}
+
+.market-card-checkbox {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border-dark);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+    margin-left: 0.75rem;
+}
+
+body.light-mode .market-card-checkbox {
+    border: 2px solid var(--border-light);
+}
+
+.market-card.selected .market-card-checkbox {
+    background: var(--primary);
+    border-color: var(--primary);
+}
+
+.market-card.selected .market-card-checkbox::after {
+    content: '✓';
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.market-info {
+    flex: 1;
+}
+
+.market-name {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--text-dark);
+    margin-bottom: 0.25rem;
+    line-height: 1.3;
+}
+
+body.light-mode .market-name {
+    color: var(--text-light);
+}
+
+.market-address {
+    font-size: 0.85rem;
+    color: var(--muted-dark);
+    line-height: 1.4;
+    margin-bottom: 0.5rem;
+}
+
+body.light-mode .market-address {
+    color: var(--muted-light);
+}
+
+.market-cnpj {
+    font-size: 0.75rem;
+    color: var(--muted-dark);
+    font-family: monospace;
+    background: rgba(0, 0, 0, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+body.light-mode .market-cnpj {
+    color: var(--muted-light);
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.selected-count {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--input-dark);
+    border-radius: var(--radius);
+    text-align: center;
+    font-weight: 600;
+    color: var(--primary);
+    border: 1px solid var(--border-dark);
+}
+
+body.light-mode .selected-count {
+    background: var(--input-light);
+    border: 1px solid var(--border-light);
+}
+
+.no-markets-message {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: var(--muted-dark);
+}
+
+.no-markets-message i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: var(--muted-dark);
+}
+
+.no-markets-message p {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+}
+
+.no-markets-message small {
+    font-size: 0.9rem;
+}
+
+/* ====== RELATÓRIO MELHORADO ====== */
+.report-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.report-card {
+    background: var(--panel-dark);
+    border-radius: 16px;
+    padding: 2rem;
+    border: 1px solid var(--border-dark);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+body.light-mode .report-card {
+    background: var(--panel-light);
+    border: 1px solid var(--border-light);
+}
+
+.report-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+}
+
+.report-card.success::before {
+    background: linear-gradient(90deg, var(--success), #22c55e);
+}
+
+.report-card.warning::before {
+    background: linear-gradient(90deg, var(--warn), #f59e0b);
+}
+
+.report-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+}
+
+.report-card-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: white;
+    font-size: 1.5rem;
+}
+
+.report-card.success .report-card-icon {
+    background: linear-gradient(135deg, var(--success), #22c55e);
+}
+
+.report-card.warning .report-card-icon {
+    background: linear-gradient(135deg, var(--warn), #f59e0b);
+}
+
+.report-card-value {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--text-dark);
+    margin-bottom: 0.5rem;
+    line-height: 1;
+}
+
+body.light-mode .report-card-value {
+    color: var(--text-light);
+}
+
+.report-card-label {
+    color: var(--muted-dark);
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+body.light-mode .report-card-label {
+    color: var(--muted-light);
+}
+
+.report-table-container {
+    background: var(--panel-dark);
+    border-radius: 16px;
+    border: 1px solid var(--border-dark);
+    overflow: hidden;
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.1);
+}
+
+body.light-mode .report-table-container {
+    background: var(--panel-light);
+    border: 1px solid var(--border-light);
+}
+
+.report-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.report-table thead {
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+}
+
+.report-table thead th {
+    color: white;
+    font-weight: 600;
+    padding: 1.25rem 1.5rem;
+    text-align: left;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.report-table tbody tr {
+    border-bottom: 1px solid var(--border-dark);
+    transition: all 0.3s ease;
+}
+
+body.light-mode .report-table tbody tr {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.report-table tbody tr:hover {
+    background: rgba(79, 70, 229, 0.05);
+}
+
+.report-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.report-table tbody td {
+    padding: 1.25rem 1.5rem;
+    color: var(--text-dark);
+}
+
+body.light-mode .report-table tbody td {
+    color: var(--text-light);
+}
+
+.report-table .market-name {
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.report-table .items-count {
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.report-table .duration {
+    font-family: monospace;
+    background: rgba(0, 0, 0, 0.1);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+body.light-mode .report-table .duration {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+/* ====== ANIMAÇÕES ADICIONAIS ====== */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulseGlow {
+    0%, 100% {
+        box-shadow: 0 0 5px rgba(79, 70, 229, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(79, 70, 229, 0.8);
+    }
+}
+
+.report-card {
+    animation: fadeInUp 0.6s ease;
+}
+
+.report-table tbody tr {
+    animation: fadeInUp 0.4s ease;
+}
+
+.progress-container.running {
+    animation: pulseGlow 2s infinite;
+}
+
+/* ====== BADGES DE STATUS ====== */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: var(--input-dark);
+    border: 1px solid var(--border-dark);
+}
+
+body.light-mode .status-badge {
+    background: var(--input-light);
+    border: 1px solid var(--border-light);
+}
+
+.status-badge.success {
+    background: rgba(34, 197, 94, 0.1);
+    border-color: rgba(34, 197, 94, 0.3);
+    color: var(--success);
+}
+
+.status-badge.warning {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.3);
+    color: var(--warn);
+}
+
+.status-badge.running {
+    background: rgba(79, 70, 229, 0.1);
+    border-color: rgba(79, 70, 229, 0.3);
+    color: var(--primary);
+    animation: pulse 2s infinite;
+}
