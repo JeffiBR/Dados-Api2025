@@ -1,4 +1,4 @@
-// groups.js - Gerenciamento de grupos e associações - Versão Corrigida
+// groups.js - Gerenciamento de grupos e associações - Versão Completa
 document.addEventListener('DOMContentLoaded', () => {
     // Elementos da UI
     const groupsTableBody = document.getElementById('groupsTableBody');
@@ -11,17 +11,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const groupIdInput = document.getElementById('groupId');
     const groupNameInput = document.getElementById('groupName');
     const accessDaysInput = document.getElementById('accessDays');
+    const maxUsersInput = document.getElementById('maxUsers');
+    const groupAdminSelect = document.getElementById('groupAdmin');
     const groupDescriptionInput = document.getElementById('groupDescription');
     const saveGroupBtn = document.getElementById('saveGroupBtn');
     const cancelGroupButton = document.getElementById('cancelGroupButton');
     const addUserToGroupBtn = document.getElementById('addUserToGroupBtn');
     const expirationDateInput = document.getElementById('expirationDate');
 
+    // Elementos da visão admin
+    const allGroupsTableBody = document.getElementById('allGroupsTableBody');
+    const allGroupUsersTableBody = document.getElementById('allGroupUsersTableBody');
+    const filterGroupSelect = document.getElementById('filterGroupSelect');
+
     // Carregar dados iniciais
     loadGroups();
     loadUserGroups();
     loadUsersForSelect();
     loadGroupsForSelect();
+    loadAdminsForSelect();
+    loadAllGroupsForAdmin();
+    loadAllGroupUsersForAdmin();
 
     // Funções para grupos
     async function loadGroups() {
@@ -48,9 +58,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const row = document.createElement('tr');
             row.dataset.group = JSON.stringify(group);
             
+            const adminName = group.profiles ? (group.profiles.full_name || group.profiles.email) : 'N/A';
+            const userCount = group.user_count || 0;
+            const maxUsers = group.max_usuarios || 10;
+            
             row.innerHTML = `
                 <td>${group.nome}</td>
+                <td>${adminName}</td>
                 <td>${group.dias_acesso} dias</td>
+                <td>
+                    <div class="usage-indicator">
+                        <span>${userCount}/${maxUsers}</span>
+                        <div class="usage-bar">
+                            <div class="usage-fill ${getUsageClass(userCount, maxUsers)}" 
+                                 style="width: ${(userCount / maxUsers) * 100}%"></div>
+                        </div>
+                    </div>
+                </td>
                 <td>${group.descricao || '-'}</td>
                 <td>${new Date(group.created_at).toLocaleDateString('pt-BR')}</td>
                 <td class="actions">
@@ -62,10 +86,39 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function getUsageClass(current, max) {
+        const percentage = (current / max) * 100;
+        if (percentage >= 90) return 'usage-high';
+        if (percentage >= 70) return 'usage-medium';
+        return 'usage-low';
+    }
+
+    async function loadAdminsForSelect() {
+        try {
+            const response = await authenticatedFetch('/api/users');
+            if (!response.ok) throw new Error('Erro ao carregar usuários');
+            
+            const users = await response.json();
+            if (!groupAdminSelect) return;
+            
+            groupAdminSelect.innerHTML = '<option value="">Selecione um administrador</option>';
+            users.forEach(user => {
+                const option = document.createElement('option');
+                option.value = user.id;
+                option.textContent = `${user.full_name} (${user.email})`;
+                groupAdminSelect.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Erro ao carregar administradores para select:', error);
+        }
+    }
+
     async function saveGroup() {
         const id = groupIdInput.value;
         const nome = groupNameInput.value.trim();
         const dias_acesso = parseInt(accessDaysInput.value);
+        const max_usuarios = parseInt(maxUsersInput.value);
+        const admin_id = groupAdminSelect.value;
         const descricao = groupDescriptionInput.value.trim();
 
         if (!nome) {
@@ -78,12 +131,24 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        if (!max_usuarios || max_usuarios < 1) {
+            alert('Máximo de usuários deve ser um número positivo.');
+            return;
+        }
+
+        if (!admin_id) {
+            alert('Administrador do grupo é obrigatório.');
+            return;
+        }
+
         const url = id ? `/api/groups/${id}` : '/api/groups';
         const method = id ? 'PUT' : 'POST';
         
         const body = JSON.stringify({ 
             nome, 
             dias_acesso, 
+            max_usuarios,
+            admin_id,
             descricao: descricao || null 
         });
 
@@ -103,6 +168,8 @@ document.addEventListener('DOMContentLoaded', () => {
             resetGroupForm();
             loadGroups();
             loadGroupsForSelect();
+            loadAdminsForSelect();
+            loadAllGroupsForAdmin();
         } catch (error) {
             console.error('Erro ao salvar grupo:', error);
             alert(`Erro: ${error.message}`);
@@ -117,6 +184,8 @@ document.addEventListener('DOMContentLoaded', () => {
         groupIdInput.value = '';
         groupNameInput.value = '';
         accessDaysInput.value = '30';
+        maxUsersInput.value = '10';
+        groupAdminSelect.value = '';
         groupDescriptionInput.value = '';
         cancelGroupButton.style.display = 'none';
     }
@@ -126,6 +195,8 @@ document.addEventListener('DOMContentLoaded', () => {
         groupIdInput.value = group.id;
         groupNameInput.value = group.nome;
         accessDaysInput.value = group.dias_acesso;
+        maxUsersInput.value = group.max_usuarios;
+        groupAdminSelect.value = group.admin_id;
         groupDescriptionInput.value = group.descricao || '';
         cancelGroupButton.style.display = 'inline-flex';
         window.scrollTo({ top: document.getElementById('groupFormTitle').offsetTop - 100, behavior: 'smooth' });
@@ -144,6 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
             loadGroups();
             loadGroupsForSelect();
             loadUserGroups();
+            loadAllGroupsForAdmin();
         } catch (error) {
             console.error('Erro ao excluir grupo:', error);
             alert(error.message);
@@ -271,6 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
             groupSelect.value = '';
             expirationDateInput.value = '';
             loadUserGroups();
+            loadAllGroupUsersForAdmin();
         } catch (error) {
             console.error('Erro ao adicionar usuário ao grupo:', error);
             alert(`Erro: ${error.message}`);
@@ -291,10 +364,175 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             alert('Usuário removido do grupo com sucesso!');
             loadUserGroups();
+            loadAllGroupUsersForAdmin();
         } catch (error) {
             console.error('Erro ao remover usuário do grupo:', error);
             alert(error.message);
         }
+    }
+
+    // Funções para a visão admin
+    async function loadAllGroupsForAdmin() {
+        try {
+            const response = await authenticatedFetch('/api/groups');
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => null);
+                throw new Error(errorData?.detail || `Erro ${response.status} ao carregar grupos`);
+            }
+            
+            const groups = await response.json();
+            renderAllGroupsTable(groups);
+            populateFilterGroupSelect(groups);
+        } catch (error) {
+            console.error('Erro ao carregar grupos para admin:', error);
+        }
+    }
+
+    function renderAllGroupsTable(groups) {
+        if (!allGroupsTableBody) return;
+        
+        allGroupsTableBody.innerHTML = '';
+        groups.forEach(group => {
+            const row = document.createElement('tr');
+            row.dataset.group = JSON.stringify(group);
+            
+            const adminName = group.profiles ? (group.profiles.full_name || group.profiles.email) : 'N/A';
+            const userCount = group.user_count || 0;
+            const maxUsers = group.max_usuarios || 10;
+            const status = getGroupStatus(userCount, maxUsers);
+            
+            row.innerHTML = `
+                <td>${group.nome}</td>
+                <td>${adminName}</td>
+                <td>${group.dias_acesso} dias</td>
+                <td>${userCount}/${maxUsers}</td>
+                <td><span class="status-badge ${status.class}">${status.text}</span></td>
+                <td class="actions">
+                    <button class="btn-icon edit-group-btn" title="Editar"><i class="fas fa-pencil-alt"></i></button>
+                    <button class="btn-icon delete-group-btn" title="Excluir"><i class="fas fa-trash-alt"></i></button>
+                </td>
+            `;
+            allGroupsTableBody.appendChild(row);
+        });
+    }
+
+    function getGroupStatus(current, max) {
+        const percentage = (current / max) * 100;
+        if (percentage >= 100) {
+            return { class: 'status-expired', text: 'Lotado' };
+        } else if (percentage >= 90) {
+            return { class: 'status-warning', text: 'Quase Lotado' };
+        } else {
+            return { class: 'status-active', text: 'Disponível' };
+        }
+    }
+
+    function populateFilterGroupSelect(groups) {
+        if (!filterGroupSelect) return;
+        
+        filterGroupSelect.innerHTML = '<option value="">Todos os grupos</option>';
+        groups.forEach(group => {
+            const option = document.createElement('option');
+            option.value = group.id;
+            option.textContent = group.nome;
+            filterGroupSelect.appendChild(option);
+        });
+    }
+
+    async function loadAllGroupUsersForAdmin(groupId = '') {
+        try {
+            let url = '/api/user-groups';
+            if (groupId) {
+                url += `?group_id=${groupId}`;
+            }
+            
+            const response = await authenticatedFetch(url);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => null);
+                throw new Error(errorData?.detail || `Erro ${response.status} ao carregar associações`);
+            }
+            
+            const userGroups = await response.json();
+            renderAllGroupUsersTable(userGroups);
+        } catch (error) {
+            console.error('Erro ao carregar associações para admin:', error);
+        }
+    }
+
+    function renderAllGroupUsersTable(userGroups) {
+        if (!allGroupUsersTableBody) return;
+        
+        allGroupUsersTableBody.innerHTML = '';
+        const today = new Date().toISOString().split('T')[0];
+        
+        if (userGroups.length === 0) {
+            const row = document.createElement('tr');
+            row.innerHTML = `<td colspan="6" class="empty-table">Nenhuma associação encontrada</td>`;
+            allGroupUsersTableBody.appendChild(row);
+            return;
+        }
+        
+        userGroups.forEach(userGroup => {
+            const isExpired = userGroup.data_expiracao < today;
+            const status = isExpired ? 'Expirado' : 'Ativo';
+            const statusClass = isExpired ? 'status-expired' : 'status-active';
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${userGroup.grupo_nome}</td>
+                <td>${userGroup.user_name || 'N/A'}</td>
+                <td>${userGroup.user_email || 'N/A'}</td>
+                <td>${new Date(userGroup.data_expiracao).toLocaleDateString('pt-BR')}</td>
+                <td><span class="status-badge ${statusClass}">${status}</span></td>
+                <td>${userGroup.allowed_pages ? userGroup.allowed_pages.length : 0} permissões</td>
+            `;
+            allGroupUsersTableBody.appendChild(row);
+        });
+    }
+
+    // Gerenciamento de abas
+    function initializeTabs() {
+        // Abas principais
+        document.querySelectorAll('.tab-button[data-tab]').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const tabId = e.target.dataset.tab;
+                
+                // Esconder todas as abas
+                document.querySelectorAll('.tab-content').forEach(tab => {
+                    tab.classList.remove('active');
+                });
+                
+                // Mostrar a aba selecionada
+                document.getElementById(tabId).classList.add('active');
+                
+                // Atualizar botões da aba
+                document.querySelectorAll('.tab-button[data-tab]').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                e.target.classList.add('active');
+            });
+        });
+
+        // Sub-abas da visão admin
+        document.querySelectorAll('.tab-button[data-subtab]').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const subtabId = e.target.dataset.subtab;
+                
+                // Esconder todas as sub-abas
+                document.querySelectorAll('.subtab-content').forEach(subtab => {
+                    subtab.classList.remove('active');
+                });
+                
+                // Mostrar a sub-aba selecionada
+                document.getElementById(subtabId).classList.add('active');
+                
+                // Atualizar botões da sub-aba
+                document.querySelectorAll('.tab-button[data-subtab]').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                e.target.classList.add('active');
+            });
+        });
     }
 
     // Event Listeners
@@ -306,6 +544,25 @@ document.addEventListener('DOMContentLoaded', () => {
             if (editButton) {
                 const group = JSON.parse(editButton.closest('tr').dataset.group);
                 populateGroupFormForEdit(group);
+            }
+
+            if (deleteButton) {
+                const group = JSON.parse(deleteButton.closest('tr').dataset.group);
+                deleteGroup(group.id, group.nome);
+            }
+        });
+    }
+
+    if (allGroupsTableBody) {
+        allGroupsTableBody.addEventListener('click', (e) => {
+            const editButton = e.target.closest('.edit-group-btn');
+            const deleteButton = e.target.closest('.delete-group-btn');
+            
+            if (editButton) {
+                const group = JSON.parse(editButton.closest('tr').dataset.group);
+                populateGroupFormForEdit(group);
+                // Mudar para a aba de grupos
+                document.querySelector('.tab-button[data-tab="groups-tab"]').click();
             }
 
             if (deleteButton) {
@@ -337,4 +594,32 @@ document.addEventListener('DOMContentLoaded', () => {
     if (addUserToGroupBtn) {
         addUserToGroupBtn.addEventListener('click', addUserToGroup);
     }
+
+    if (filterGroupSelect) {
+        filterGroupSelect.addEventListener('change', (e) => {
+            const groupId = e.target.value;
+            loadAllGroupUsersForAdmin(groupId);
+        });
+    }
+
+    // Inicializar abas
+    initializeTabs();
+
+    // Configurar data mínima para o campo de expiração
+    if (expirationDateInput) {
+        const today = new Date().toISOString().split('T')[0];
+        expirationDateInput.min = today;
+    }
+
+    // Função para atualizar automaticamente o status dos grupos
+    function startAutoRefresh() {
+        // Atualizar a cada 5 minutos
+        setInterval(() => {
+            loadUserGroups();
+            loadAllGroupUsersForAdmin(filterGroupSelect ? filterGroupSelect.value : '');
+        }, 300000); // 5 minutos
+    }
+
+    // Iniciar atualização automática
+    startAutoRefresh();
 });
