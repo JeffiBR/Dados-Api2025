@@ -209,11 +209,100 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- NOVA SEÇÃO: Gerenciar Grupos de Acesso -->
+                <div class="card table-container" style="margin-top: 2rem;">
+                    <div class="card-header">
+                        <h3>Gerenciar Grupos de Acesso</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="form-container" style="margin-bottom: 2rem;">
+                            <h4 id="groupFormTitle">Criar Novo Grupo</h4>
+                            <input type="hidden" id="groupId">
+                            <div class="form-group">
+                                <label for="groupName">Nome do Grupo</label>
+                                <input type="text" id="groupName" placeholder="Digite o nome do grupo">
+                            </div>
+                            <div class="form-group">
+                                <label for="accessDays">Dias de Acesso</label>
+                                <input type="number" id="accessDays" placeholder="30" min="1" max="365">
+                            </div>
+                            <div class="form-group">
+                                <label for="groupDescription">Descrição</label>
+                                <textarea id="groupDescription" placeholder="Descrição opcional do grupo" rows="3"></textarea>
+                            </div>
+                            <div class="form-actions">
+                                <button id="saveGroupBtn" class="btn btn-primary"><i class="fas fa-save"></i> Salvar Grupo</button>
+                                <button id="cancelGroupButton" class="btn btn-secondary" style="display:none;">Cancelar</button>
+                            </div>
+                        </div>
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Dias de Acesso</th>
+                                    <th>Descrição</th>
+                                    <th>Criado em</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="groupsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- NOVA SEÇÃO: Associações Usuário-Grupo -->
+                <div class="card table-container" style="margin-top: 2rem;">
+                    <div class="card-header">
+                        <h3>Associações Usuário-Grupo</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="form-container" style="margin-bottom: 2rem;">
+                            <h4>Adicionar Usuário ao Grupo</h4>
+                            <div class="form-group">
+                                <label for="userSelect">Usuário</label>
+                                <select id="userSelect">
+                                    <option value="">Selecione um usuário</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="groupSelect">Grupo</label>
+                                <select id="groupSelect">
+                                    <option value="">Selecione um grupo</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="expirationDate">Data de Expiração (opcional)</label>
+                                <input type="date" id="expirationDate">
+                                <small>Se não informado, será calculada automaticamente baseada nos dias de acesso do grupo</small>
+                            </div>
+                            <div class="form-actions">
+                                <button id="addUserToGroupBtn" class="btn btn-primary"><i class="fas fa-user-plus"></i> Adicionar ao Grupo</button>
+                            </div>
+                        </div>
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Usuário</th>
+                                    <th>Email</th>
+                                    <th>Grupo</th>
+                                    <th>Data de Expiração</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="userGroupsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
     
     <script src="users.js"></script>
+    <script src="groups.js"></script>
     <script src="user-menu.js"></script>
      <script src="user-activity-monitor.js"></script>
     <script src="mobile-menu.js"></script>
