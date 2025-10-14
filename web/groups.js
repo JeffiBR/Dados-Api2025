@@ -1,4 +1,4 @@
-// groups.js - Gerenciamento de grupos e associações - Versão Completa
+// groups.js - Gerenciamento de grupos e associações - Versão Corrigida
 document.addEventListener('DOMContentLoaded', () => {
     // Elementos da UI
     const groupsTableBody = document.getElementById('groupsTableBody');
@@ -36,17 +36,31 @@ document.addEventListener('DOMContentLoaded', () => {
     // Funções para grupos
     async function loadGroups() {
         try {
+            console.log("🔍 Iniciando carregamento de grupos...");
+            
             const response = await authenticatedFetch('/api/groups');
+            
             if (!response.ok) {
-                const errorData = await response.json().catch(() => null);
-                throw new Error(errorData?.detail || `Erro ${response.status} ao carregar grupos`);
+                let errorMessage = `Erro ${response.status} ao carregar grupos`;
+                
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.detail || errorMessage;
+                    console.error("Detalhes do erro:", errorData);
+                } catch (e) {
+                    console.error("Não foi possível parsear resposta de erro:", e);
+                }
+                
+                throw new Error(errorMessage);
             }
             
             const groups = await response.json();
+            console.log(`✅ ${groups.length} grupos carregados com sucesso`);
             renderGroupsTable(groups);
+            
         } catch (error) {
-            console.error('Erro ao carregar grupos:', error);
-            alert(`Não foi possível carregar a lista de grupos: ${error.message}`);
+            console.error('❌ Erro ao carregar grupos:', error);
+            showErrorInUI(`Falha ao carregar grupos: ${error.message}`);
         }
     }
 
@@ -54,27 +68,25 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!groupsTableBody) return;
         
         groupsTableBody.innerHTML = '';
+        
+        if (groups.length === 0) {
+            const row = document.createElement('tr');
+            row.innerHTML = `<td colspan="7" class="empty-table">Nenhum grupo encontrado</td>`;
+            groupsTableBody.appendChild(row);
+            return;
+        }
+        
         groups.forEach(group => {
             const row = document.createElement('tr');
             row.dataset.group = JSON.stringify(group);
             
             const adminName = group.profiles ? (group.profiles.full_name || group.profiles.email) : 'N/A';
-            const userCount = group.user_count || 0;
-            const maxUsers = group.max_usuarios || 10;
             
             row.innerHTML = `
                 <td>${group.nome}</td>
                 <td>${adminName}</td>
                 <td>${group.dias_acesso} dias</td>
-                <td>
-                    <div class="usage-indicator">
-                        <span>${userCount}/${maxUsers}</span>
-                        <div class="usage-bar">
-                            <div class="usage-fill ${getUsageClass(userCount, maxUsers)}" 
-                                 style="width: ${(userCount / maxUsers) * 100}%"></div>
-                        </div>
-                    </div>
-                </td>
+                <td>${group.max_usuarios} usuários</td>
                 <td>${group.descricao || '-'}</td>
                 <td>${new Date(group.created_at).toLocaleDateString('pt-BR')}</td>
                 <td class="actions">
@@ -84,13 +96,6 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             groupsTableBody.appendChild(row);
         });
-    }
-
-    function getUsageClass(current, max) {
-        const percentage = (current / max) * 100;
-        if (percentage >= 90) return 'usage-high';
-        if (percentage >= 70) return 'usage-medium';
-        return 'usage-low';
     }
 
     async function loadAdminsForSelect() {
@@ -113,7 +118,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function saveGroup() {
+    async function saveGroup(event) {
+        // Prevenir comportamento padrão do formulário
+        if (event) event.preventDefault();
+        
         const id = groupIdInput.value;
         const nome = groupNameInput.value.trim();
         const dias_acesso = parseInt(accessDaysInput.value);
@@ -121,6 +129,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const admin_id = groupAdminSelect.value;
         const descricao = groupDescriptionInput.value.trim();
 
+        console.log('Dados do grupo:', { id, nome, dias_acesso, max_usuarios, admin_id, descricao });
+
+        // Validações
         if (!nome) {
             alert('Nome do grupo é obrigatório.');
             return;
@@ -152,19 +163,33 @@ document.addEventListener('DOMContentLoaded', () => {
             descricao: descricao || null 
         });
 
+        console.log('Enviando requisição:', { url, method, body });
+
         const originalButtonText = saveGroupBtn.innerHTML;
         saveGroupBtn.disabled = true;
         saveGroupBtn.innerHTML = id ? 'Atualizando...' : 'Criando...';
 
         try {
-            const response = await authenticatedFetch(url, { method, body });
+            const response = await authenticatedFetch(url, { 
+                method, 
+                body,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
             
+            console.log('Resposta recebida:', response);
+
             if (!response.ok) {
                 const errorData = await response.json();
+                console.error('Erro na resposta:', errorData);
                 throw new Error(errorData?.detail || 'Erro ao salvar grupo');
             }
             
-            alert(`Grupo ${id ? 'atualizado' : 'criado'} com sucesso!`);
+            const result = await response.json();
+            console.log('Grupo salvo com sucesso:', result);
+            
+            alert(`✅ Grupo ${id ? 'atualizado' : 'criado'} com sucesso!`);
             resetGroupForm();
             loadGroups();
             loadGroupsForSelect();
@@ -172,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
             loadAllGroupsForAdmin();
         } catch (error) {
             console.error('Erro ao salvar grupo:', error);
-            alert(`Erro: ${error.message}`);
+            alert(`❌ Erro: ${error.message}`);
         } finally {
             saveGroupBtn.disabled = false;
             saveGroupBtn.innerHTML = originalButtonText;
@@ -196,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
         groupNameInput.value = group.nome;
         accessDaysInput.value = group.dias_acesso;
         maxUsersInput.value = group.max_usuarios;
-        groupAdminSelect.value = group.admin_id;
+        groupAdminSelect.value = group.admin_id || '';
         groupDescriptionInput.value = group.descricao || '';
         cancelGroupButton.style.display = 'inline-flex';
         window.scrollTo({ top: document.getElementById('groupFormTitle').offsetTop - 100, behavior: 'smooth' });
@@ -211,14 +236,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const errorData = await response.json();
                 throw new Error(errorData?.detail || 'Falha ao excluir o grupo.');
             }
-            alert('Grupo excluído com sucesso!');
+            alert('✅ Grupo excluído com sucesso!');
             loadGroups();
             loadGroupsForSelect();
             loadUserGroups();
             loadAllGroupsForAdmin();
         } catch (error) {
             console.error('Erro ao excluir grupo:', error);
-            alert(error.message);
+            alert(`❌ ${error.message}`);
         }
     }
 
@@ -235,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderUserGroupsTable(userGroups);
         } catch (error) {
             console.error('Erro ao carregar associações:', error);
-            alert(`Não foi possível carregar as associações usuário-grupo: ${error.message}`);
+            showErrorInUI(`Não foi possível carregar as associações usuário-grupo: ${error.message}`);
         }
     }
 
@@ -244,6 +269,13 @@ document.addEventListener('DOMContentLoaded', () => {
         
         userGroupsTableBody.innerHTML = '';
         const today = new Date().toISOString().split('T')[0];
+        
+        if (userGroups.length === 0) {
+            const row = document.createElement('tr');
+            row.innerHTML = `<td colspan="6" class="empty-table">Nenhuma associação encontrada</td>`;
+            userGroupsTableBody.appendChild(row);
+            return;
+        }
         
         userGroups.forEach(userGroup => {
             const isExpired = userGroup.data_expiracao < today;
@@ -307,7 +339,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function addUserToGroup() {
+    async function addUserToGroup(event) {
+        if (event) event.preventDefault();
+        
         const userId = userSelect.value;
         const groupId = parseInt(groupSelect.value);
         const expirationDate = expirationDateInput.value;
@@ -330,7 +364,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await authenticatedFetch('/api/user-groups', { 
                 method: 'POST', 
-                body 
+                body,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
             });
             
             if (!response.ok) {
@@ -338,7 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(errorData?.detail || 'Erro ao adicionar usuário ao grupo');
             }
             
-            alert('Usuário adicionado ao grupo com sucesso!');
+            alert('✅ Usuário adicionado ao grupo com sucesso!');
             userSelect.value = '';
             groupSelect.value = '';
             expirationDateInput.value = '';
@@ -346,7 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
             loadAllGroupUsersForAdmin();
         } catch (error) {
             console.error('Erro ao adicionar usuário ao grupo:', error);
-            alert(`Erro: ${error.message}`);
+            alert(`❌ Erro: ${error.message}`);
         } finally {
             addUserToGroupBtn.disabled = false;
             addUserToGroupBtn.innerHTML = originalButtonText;
@@ -354,7 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function removeUserFromGroup(userGroupId, userName, groupName) {
-        if (!confirm(`Tem certeza que deseja remover ${userName} do grupo ${groupName}?`)) return;
+        if (!confirm(`Tem certeza que deseja remover "${userName}" do grupo "${groupName}"?`)) return;
 
         try {
             const response = await authenticatedFetch(`/api/user-groups/${userGroupId}`, { method: 'DELETE' });
@@ -362,12 +399,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const errorData = await response.json();
                 throw new Error(errorData?.detail || 'Falha ao remover usuário do grupo.');
             }
-            alert('Usuário removido do grupo com sucesso!');
+            alert('✅ Usuário removido do grupo com sucesso!');
             loadUserGroups();
             loadAllGroupUsersForAdmin();
         } catch (error) {
             console.error('Erro ao remover usuário do grupo:', error);
-            alert(error.message);
+            alert(`❌ ${error.message}`);
         }
     }
 
@@ -397,16 +434,13 @@ document.addEventListener('DOMContentLoaded', () => {
             row.dataset.group = JSON.stringify(group);
             
             const adminName = group.profiles ? (group.profiles.full_name || group.profiles.email) : 'N/A';
-            const userCount = group.user_count || 0;
-            const maxUsers = group.max_usuarios || 10;
-            const status = getGroupStatus(userCount, maxUsers);
             
             row.innerHTML = `
                 <td>${group.nome}</td>
                 <td>${adminName}</td>
                 <td>${group.dias_acesso} dias</td>
-                <td>${userCount}/${maxUsers}</td>
-                <td><span class="status-badge ${status.class}">${status.text}</span></td>
+                <td>${group.max_usuarios} usuários</td>
+                <td>${new Date(group.created_at).toLocaleDateString('pt-BR')}</td>
                 <td class="actions">
                     <button class="btn-icon edit-group-btn" title="Editar"><i class="fas fa-pencil-alt"></i></button>
                     <button class="btn-icon delete-group-btn" title="Excluir"><i class="fas fa-trash-alt"></i></button>
@@ -414,17 +448,6 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             allGroupsTableBody.appendChild(row);
         });
-    }
-
-    function getGroupStatus(current, max) {
-        const percentage = (current / max) * 100;
-        if (percentage >= 100) {
-            return { class: 'status-expired', text: 'Lotado' };
-        } else if (percentage >= 90) {
-            return { class: 'status-warning', text: 'Quase Lotado' };
-        } else {
-            return { class: 'status-active', text: 'Disponível' };
-        }
     }
 
     function populateFilterGroupSelect(groups) {
@@ -488,6 +511,27 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             allGroupUsersTableBody.appendChild(row);
         });
+    }
+
+    function showErrorInUI(message) {
+        const errorHTML = `
+            <div class="alert alert-error">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        
+        showAlert(errorHTML);
+    }
+
+    function showAlert(html) {
+        const existingAlerts = document.querySelectorAll('.alert');
+        existingAlerts.forEach(alert => alert.remove());
+        
+        const tabsContainer = document.querySelector('.tabs-container');
+        if (tabsContainer) {
+            tabsContainer.insertAdjacentHTML('afterbegin', html);
+        }
     }
 
     // Gerenciamento de abas
@@ -583,8 +627,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // CORREÇÃO PRINCIPAL: Adicionar event listeners corretamente
     if (saveGroupBtn) {
         saveGroupBtn.addEventListener('click', saveGroup);
+        console.log('✅ Event listener do saveGroupBtn adicionado');
+    } else {
+        console.error('❌ saveGroupBtn não encontrado');
     }
 
     if (cancelGroupButton) {
@@ -611,15 +659,10 @@ document.addEventListener('DOMContentLoaded', () => {
         expirationDateInput.min = today;
     }
 
-    // Função para atualizar automaticamente o status dos grupos
-    function startAutoRefresh() {
-        // Atualizar a cada 5 minutos
-        setInterval(() => {
-            loadUserGroups();
-            loadAllGroupUsersForAdmin(filterGroupSelect ? filterGroupSelect.value : '');
-        }, 300000); // 5 minutos
-    }
-
-    // Iniciar atualização automática
-    startAutoRefresh();
+    // Debug: verificar se os elementos foram encontrados
+    console.log('Elementos carregados:', {
+        saveGroupBtn: !!saveGroupBtn,
+        groupsTableBody: !!groupsTableBody,
+        userGroupsTableBody: !!userGroupsTableBody
+    });
 });
