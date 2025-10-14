@@ -44,16 +44,30 @@ document.addEventListener('DOMContentLoaded', () => {
     let pollingInterval;
     let collectionStartTime;
 
-    // Inicialização
-    initializeConfiguration();
-    setupEventListeners();
-    checkStatus();
+    // ========== FUNÇÕES UTILITÁRIAS ==========
 
-    // Configuração inicial
-    async function initializeConfiguration() {
-        await loadMarkets();
-        setupDaysSelection();
-    }
+    // Função para mostrar notificações (DEFINIDA PRIMEIRO)
+    const showNotification = (message, type = 'info') => {
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        const icon = type === 'success' ? 'fa-check-circle' : 
+                    type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
+        notification.innerHTML = `<i class="fas ${icon}"></i> ${message}`;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.classList.add('show');
+        }, 10);
+        
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => {
+                if (document.body.contains(notification)) {
+                    document.body.removeChild(notification);
+                }
+            }, 300);
+        }, type === 'success' ? 3000 : 5000);
+    };
 
     // Função authenticatedFetch corrigida
     async function authenticatedFetch(url, options = {}) {
@@ -82,8 +96,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(url, { ...defaultOptions, ...options });
             
             if (response.status === 401) {
-                // Token expirado - fazer logout
-                logout();
+                // Token expirado - redirecionar para login
+                showNotification('Sessão expirada. Faça login novamente.', 'error');
+                setTimeout(() => {
+                    window.location.href = '/login.html';
+                }, 2000);
                 return response;
             }
             
@@ -94,34 +111,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Carregar lista de mercados - CORRIGIDO: usando /api/supermarkets
-    async function loadMarkets() {
-        try {
-            console.log('Carregando mercados...');
-            
-            const response = await authenticatedFetch('/api/supermarkets');
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
-            const markets = await response.json();
-            console.log('Mercados recebidos:', markets);
-            
-            if (!markets || markets.length === 0) {
-                renderNoMarkets();
-                return;
-            }
-            
-            renderMarkets(markets);
-            updateSelectedMarketsCount();
-            
-        } catch (error) {
-            console.error('Erro ao carregar mercados:', error);
-            showNotification(`Erro ao carregar mercados: ${error.message}`, 'error');
-            renderNoMarkets();
+    // Formatar segundos para tempo legível
+    const formatSeconds = (secs) => {
+        if (secs < 0 || secs === null || secs === undefined) return 'Calculando...';
+        if (secs === 0) return '0s';
+        
+        const hours = Math.floor(secs / 3600);
+        const minutes = Math.floor((secs % 3600) / 60);
+        const seconds = secs % 60;
+        
+        if (hours > 0) {
+            return `${hours}h ${minutes}m ${seconds}s`;
+        } else if (minutes > 0) {
+            return `${minutes}m ${seconds}s`;
+        } else {
+            return `${seconds}s`;
         }
-    }
+    };
 
     // Adicione esta função para mostrar mensagem quando não há mercados
     function renderNoMarkets() {
@@ -194,41 +200,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return parseInt(selectedDay.value);
     }
 
-    // Configurar event listeners
-    function setupEventListeners() {
-        // Toggle do tema
-        themeToggle.addEventListener('click', toggleTheme);
+    // ========== FUNÇÕES DE UI ==========
 
-        // Menu mobile
-        if (mobileMenuBtn) {
-            mobileMenuBtn.addEventListener('click', toggleMobileMenu);
-        }
-
-        // Overlay do sidebar
-        if (sidebarOverlay) {
-            sidebarOverlay.addEventListener('click', closeMobileMenu);
-        }
-
-        // Dropdown do usuário
-        if (userMenuBtn && userDropdown) {
-            userMenuBtn.addEventListener('click', toggleUserDropdown);
-        }
-
-        // Fechar dropdown ao clicar fora
-        document.addEventListener('click', closeUserDropdown);
-
-        // Logout
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', handleLogout);
-        }
-
-        // Botão de iniciar coleta
-        if (startButton) {
-            startButton.addEventListener('click', startCollection);
-        }
-    }
-
-    // Funções de UI
     function toggleTheme() {
         document.body.classList.toggle('light-mode');
         const icon = themeToggle.querySelector('i');
@@ -266,26 +239,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleLogout(e) {
         e.preventDefault();
-        logout();
+        // Usar a função logout do auth.js
+        if (typeof logout === 'function') {
+            logout();
+        } else {
+            // Fallback caso a função não esteja disponível
+            localStorage.removeItem('supabase.auth.token');
+            window.location.href = '/login.html';
+        }
     }
 
-    // Formatar segundos para tempo legível
-    const formatSeconds = (secs) => {
-        if (secs < 0 || secs === null || secs === undefined) return 'Calculando...';
-        if (secs === 0) return '0s';
-        
-        const hours = Math.floor(secs / 3600);
-        const minutes = Math.floor((secs % 3600) / 60);
-        const seconds = secs % 60;
-        
-        if (hours > 0) {
-            return `${hours}h ${minutes}m ${seconds}s`;
-        } else if (minutes > 0) {
-            return `${minutes}m ${seconds}s`;
-        } else {
-            return `${seconds}s`;
-        }
-    };
+    // ========== FUNÇÕES DE PROGRESSO E RELATÓRIO ==========
 
     // Atualizar interface com dados de status
     const updateUI = (data) => {
@@ -390,6 +354,37 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // ========== FUNÇÕES PRINCIPAIS ==========
+
+    // Carregar lista de mercados - CORRIGIDO: usando /api/supermarkets
+    async function loadMarkets() {
+        try {
+            console.log('Carregando mercados...');
+            
+            const response = await authenticatedFetch('/api/supermarkets');
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const markets = await response.json();
+            console.log('Mercados recebidos:', markets);
+            
+            if (!markets || markets.length === 0) {
+                renderNoMarkets();
+                return;
+            }
+            
+            renderMarkets(markets);
+            updateSelectedMarketsCount();
+            
+        } catch (error) {
+            console.error('Erro ao carregar mercados:', error);
+            showNotification(`Erro ao carregar mercados: ${error.message}`, 'error');
+            renderNoMarkets();
+        }
+    }
+
     // Verificar status da coleta
     const checkStatus = async () => {
         try {
@@ -445,31 +440,54 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Função para mostrar notificações
-    const showNotification = (message, type = 'info') => {
-        // Implementação existente de notificações
-        const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
-        const icon = type === 'success' ? 'fa-check-circle' : 
-                    type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
-        notification.innerHTML = `<i class="fas ${icon}"></i> ${message}`;
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            notification.classList.add('show');
-        }, 10);
-        
-        setTimeout(() => {
-            notification.classList.remove('show');
-            setTimeout(() => {
-                if (document.body.contains(notification)) {
-                    document.body.removeChild(notification);
-                }
-            }, 300);
-        }, type === 'success' ? 3000 : 5000);
-    };
+    // Configurar event listeners
+    function setupEventListeners() {
+        // Toggle do tema
+        themeToggle.addEventListener('click', toggleTheme);
 
-    // Para debug, também adicione este código temporariamente:
+        // Menu mobile
+        if (mobileMenuBtn) {
+            mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+        }
+
+        // Overlay do sidebar
+        if (sidebarOverlay) {
+            sidebarOverlay.addEventListener('click', closeMobileMenu);
+        }
+
+        // Dropdown do usuário
+        if (userMenuBtn && userDropdown) {
+            userMenuBtn.addEventListener('click', toggleUserDropdown);
+        }
+
+        // Fechar dropdown ao clicar fora
+        document.addEventListener('click', closeUserDropdown);
+
+        // Logout
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', handleLogout);
+        }
+
+        // Botão de iniciar coleta
+        if (startButton) {
+            startButton.addEventListener('click', startCollection);
+        }
+    }
+
+    // Configuração inicial
+    async function initializeConfiguration() {
+        await loadMarkets();
+        setupDaysSelection();
+    }
+
+    // ========== INICIALIZAÇÃO ==========
+
+    // Inicialização
+    initializeConfiguration();
+    setupEventListeners();
+    checkStatus();
+
+    // Para debug
     console.log('Admin.js carregado');
     console.log('Markets container:', marketsContainer);
 
