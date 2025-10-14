@@ -1,4 +1,4 @@
-// groups.js - Gerenciamento de grupos e associações
+// groups.js - Gerenciamento de grupos e associações - Versão Corrigida
 document.addEventListener('DOMContentLoaded', () => {
     // Elementos da UI
     const groupsTableBody = document.getElementById('groupsTableBody');
@@ -27,17 +27,22 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadGroups() {
         try {
             const response = await authenticatedFetch('/api/groups');
-            if (!response.ok) throw new Error('Erro ao carregar grupos');
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => null);
+                throw new Error(errorData?.detail || `Erro ${response.status} ao carregar grupos`);
+            }
             
             const groups = await response.json();
             renderGroupsTable(groups);
         } catch (error) {
             console.error('Erro ao carregar grupos:', error);
-            alert('Não foi possível carregar a lista de grupos.');
+            alert(`Não foi possível carregar a lista de grupos: ${error.message}`);
         }
     }
 
     function renderGroupsTable(groups) {
+        if (!groupsTableBody) return;
+        
         groupsTableBody.innerHTML = '';
         groups.forEach(group => {
             const row = document.createElement('tr');
@@ -90,8 +95,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await authenticatedFetch(url, { method, body });
             
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || 'Erro ao salvar grupo');
+                const errorData = await response.json();
+                throw new Error(errorData?.detail || 'Erro ao salvar grupo');
             }
             
             alert(`Grupo ${id ? 'atualizado' : 'criado'} com sucesso!`);
@@ -132,8 +137,8 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await authenticatedFetch(`/api/groups/${id}`, { method: 'DELETE' });
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || 'Falha ao excluir o grupo.');
+                const errorData = await response.json();
+                throw new Error(errorData?.detail || 'Falha ao excluir o grupo.');
             }
             alert('Grupo excluído com sucesso!');
             loadGroups();
@@ -149,17 +154,22 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadUserGroups() {
         try {
             const response = await authenticatedFetch('/api/user-groups');
-            if (!response.ok) throw new Error('Erro ao carregar associações');
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => null);
+                throw new Error(errorData?.detail || `Erro ${response.status} ao carregar associações`);
+            }
             
             const userGroups = await response.json();
             renderUserGroupsTable(userGroups);
         } catch (error) {
             console.error('Erro ao carregar associações:', error);
-            alert('Não foi possível carregar as associações usuário-grupo.');
+            alert(`Não foi possível carregar as associações usuário-grupo: ${error.message}`);
         }
     }
 
     function renderUserGroupsTable(userGroups) {
+        if (!userGroupsTableBody) return;
+        
         userGroupsTableBody.innerHTML = '';
         const today = new Date().toISOString().split('T')[0];
         
@@ -191,6 +201,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error('Erro ao carregar usuários');
             
             const users = await response.json();
+            if (!userSelect) return;
+            
             userSelect.innerHTML = '<option value="">Selecione um usuário</option>';
             users.forEach(user => {
                 const option = document.createElement('option');
@@ -209,6 +221,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error('Erro ao carregar grupos');
             
             const groups = await response.json();
+            if (!groupSelect) return;
+            
             groupSelect.innerHTML = '<option value="">Selecione um grupo</option>';
             groups.forEach(group => {
                 const option = document.createElement('option');
@@ -248,8 +262,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || 'Erro ao adicionar usuário ao grupo');
+                const errorData = await response.json();
+                throw new Error(errorData?.detail || 'Erro ao adicionar usuário ao grupo');
             }
             
             alert('Usuário adicionado ao grupo com sucesso!');
@@ -272,8 +286,8 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await authenticatedFetch(`/api/user-groups/${userGroupId}`, { method: 'DELETE' });
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || 'Falha ao remover usuário do grupo.');
+                const errorData = await response.json();
+                throw new Error(errorData?.detail || 'Falha ao remover usuário do grupo.');
             }
             alert('Usuário removido do grupo com sucesso!');
             loadUserGroups();
@@ -284,31 +298,43 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Event Listeners
-    groupsTableBody.addEventListener('click', (e) => {
-        const editButton = e.target.closest('.edit-group-btn');
-        const deleteButton = e.target.closest('.delete-group-btn');
-        
-        if (editButton) {
-            const group = JSON.parse(editButton.closest('tr').dataset.group);
-            populateGroupFormForEdit(group);
-        }
+    if (groupsTableBody) {
+        groupsTableBody.addEventListener('click', (e) => {
+            const editButton = e.target.closest('.edit-group-btn');
+            const deleteButton = e.target.closest('.delete-group-btn');
+            
+            if (editButton) {
+                const group = JSON.parse(editButton.closest('tr').dataset.group);
+                populateGroupFormForEdit(group);
+            }
 
-        if (deleteButton) {
-            const group = JSON.parse(deleteButton.closest('tr').dataset.group);
-            deleteGroup(group.id, group.nome);
-        }
-    });
+            if (deleteButton) {
+                const group = JSON.parse(deleteButton.closest('tr').dataset.group);
+                deleteGroup(group.id, group.nome);
+            }
+        });
+    }
 
-    userGroupsTableBody.addEventListener('click', (e) => {
-        const removeButton = e.target.closest('.remove-user-group-btn');
-        
-        if (removeButton) {
-            const userGroup = JSON.parse(removeButton.closest('tr').dataset.userGroup);
-            removeUserFromGroup(userGroup.id, userGroup.user_name, userGroup.grupo_nome);
-        }
-    });
+    if (userGroupsTableBody) {
+        userGroupsTableBody.addEventListener('click', (e) => {
+            const removeButton = e.target.closest('.remove-user-group-btn');
+            
+            if (removeButton) {
+                const userGroup = JSON.parse(removeButton.closest('tr').dataset.userGroup);
+                removeUserFromGroup(userGroup.id, userGroup.user_name, userGroup.grupo_nome);
+            }
+        });
+    }
 
-    saveGroupBtn.addEventListener('click', saveGroup);
-    cancelGroupButton.addEventListener('click', resetGroupForm);
-    addUserToGroupBtn.addEventListener('click', addUserToGroup);
+    if (saveGroupBtn) {
+        saveGroupBtn.addEventListener('click', saveGroup);
+    }
+
+    if (cancelGroupButton) {
+        cancelGroupButton.addEventListener('click', resetGroupForm);
+    }
+
+    if (addUserToGroupBtn) {
+        addUserToGroupBtn.addEventListener('click', addUserToGroup);
+    }
 });
