@@ -1,4 +1,4 @@
-# main.py (completo e corrigido com Cestas Básicas e Grupos) - VERSÃO ATUALIZADA
+# main.py (completo e corrigido com Cestas Básicas e Grupos) - VERSÃO 3.2.1
 import os
 import asyncio
 from datetime import date, timedelta, datetime
@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional
 import pandas as pd
-import collector_service # Presume-se que este módulo exista e tenha 'consultar_produto'
+import collector_service
 
 # --------------------------------------------------------------------------
 # --- 1. CONFIGURAÇÕES INICIAIS E VARIÁVEIS DE AMBIENTE ---
@@ -22,7 +22,7 @@ load_dotenv()
 app = FastAPI(
     title="API de Preços Arapiraca",
     description="Sistema completo para coleta e análise de preços de supermercados.",
-    version="3.2.0"
+    version="3.2.1"
 )
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] [%(levelname)s] %(message)s')
 
@@ -38,12 +38,8 @@ if not all([SUPABASE_URL, SUPABASE_KEY, SERVICE_ROLE_KEY, ECONOMIZA_ALAGOAS_TOKE
     exit(1)
 
 # --- Clientes Supabase ---
-# Cliente síncrono para operações que não precisam de async
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 supabase_admin: Client = create_client(SUPABASE_URL, SERVICE_ROLE_KEY)
-
-# Cliente assíncrono (usaremos uma abordagem diferente)
-# Para operações assíncronas, vamos usar o cliente síncrono com asyncio.to_thread
 
 # --------------------------------------------------------------------------
 # --- 2. TRATAMENTO DE ERROS CENTRALIZADO ---
@@ -66,7 +62,6 @@ class UserProfile(BaseModel):
     email: Optional[str] = None
 
 # --- FUNÇÕES AUXILIARES PARA GRUPOS ---
-
 def calcular_data_expiracao(dias_acesso: int) -> date:
     """Calcula a data de expiração baseada nos dias de acesso"""
     return date.today() + timedelta(days=dias_acesso)
@@ -87,27 +82,17 @@ async def verificar_acesso_usuario(user_id: str) -> bool:
         logging.error(f"Erro ao verificar acesso do usuário {user_id}: {e}")
         return False
 
-async def get_user_groups_with_details(user_id: str):
-    """Obtém os grupos do usuário com detalhes"""
-    try:
-        response = await asyncio.to_thread(
-            lambda: supabase.rpc('get_user_groups_with_details', {'p_user_id': user_id}).execute()
-        )
-        return response.data
-    except Exception as e:
-        logging.error(f"Erro ao buscar grupos do usuário {user_id}: {e}")
-        return []
-
 async def get_current_user(authorization: str = Header(None)) -> UserProfile:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Token de autorização ausente ou mal formatado")
+    
     jwt = authorization.split(" ")[1]
     try:
         user_response = supabase.auth.get_user(jwt)
         user = user_response.user
         user_id = user.id
         
-        # Buscar o perfil completo - executar em thread separada
+        # Buscar o perfil completo
         profile_response = await asyncio.to_thread(
             supabase.table('profiles').select('*').eq('id', user_id).single().execute
         )
@@ -119,7 +104,7 @@ async def get_current_user(authorization: str = Header(None)) -> UserProfile:
                     'id': user_id,
                     'full_name': user.email or 'Usuário',
                     'role': 'user',
-                    'allowed_pages': []  # Array vazio, não JSON
+                    'allowed_pages': []
                 }
                 await asyncio.to_thread(
                     supabase.table('profiles').insert(new_profile).execute
@@ -127,7 +112,6 @@ async def get_current_user(authorization: str = Header(None)) -> UserProfile:
                 profile_data = new_profile
             except Exception as e:
                 logging.error(f"Erro ao criar perfil padrão: {e}")
-                # Se não conseguir criar, usar valores padrão
                 profile_data = {'role': 'user', 'allowed_pages': []}
         else:
             profile_data = profile_response.data
@@ -136,7 +120,6 @@ async def get_current_user(authorization: str = Header(None)) -> UserProfile:
         role = profile_data.get('role', 'user')
         allowed_pages = profile_data.get('allowed_pages', [])
         
-        # Se allowed_pages for None, converter para array vazio
         if allowed_pages is None:
             allowed_pages = []
         
@@ -146,7 +129,7 @@ async def get_current_user(authorization: str = Header(None)) -> UserProfile:
             if not has_access:
                 raise HTTPException(
                     status_code=403, 
-                    detail="Seu acesso ao sistema expirou. Entre em contato com o administrador."
+                    detail="Seu acesso à plataforma expirou. Entre em contato com o suporte para renovação."
                 )
         
         return UserProfile(
@@ -166,6 +149,7 @@ async def get_current_user(authorization: str = Header(None)) -> UserProfile:
 async def get_current_user_optional(authorization: str = Header(None)) -> Optional[UserProfile]:
     if not authorization or not authorization.startswith("Bearer "):
         return None
+    
     jwt = authorization.split(" ")[1]
     try:
         user_response = supabase.auth.get_user(jwt)
@@ -287,11 +271,10 @@ class CustomActionRequest(BaseModel):
 # NOVOS MODELOS PARA CESTA BÁSICA
 class CestaItem(BaseModel):
     nome_produto: str = Field(..., max_length=150)
-    codigo_barras: Optional[str] = Field(None, max_length=50) # Código de barras é opcional
+    codigo_barras: Optional[str] = Field(None, max_length=50)
 
 class CestaCreate(BaseModel):
     nome: str = Field(..., max_length=100)
-    # Produtos inicializados como vazios ou com até 25 itens
     produtos: List[CestaItem] = Field(default_factory=list, max_items=25)
 
 class CestaUpdate(BaseModel):
@@ -349,9 +332,8 @@ class UserGroupWithDetails(UserGroup):
     user_email: Optional[str] = None
 
 # --------------------------------------------------------------------------
-# --- 5. FUNÇÕES DE LOG CORRIGIDAS ---
+# --- 5. FUNÇÕES DE LOG ---
 # --------------------------------------------------------------------------
-
 def log_search(term: str, type: str, cnpjs: Optional[List[str]], count: int, user: Optional[UserProfile] = None):
     """Função para registrar logs de busca, rodando em background."""
     try:
@@ -372,13 +354,6 @@ def log_search(term: str, type: str, cnpjs: Optional[List[str]], count: int, use
                         user_name = user_email
             except Exception as e:
                 logging.error(f"Erro ao buscar informações do usuário {user_id}: {e}")
-                try:
-                    auth_response = supabase_admin.auth.admin.get_user_by_id(user_id)
-                    if auth_response.user:
-                        user_name = auth_response.user.email
-                        user_email = auth_response.user.email
-                except Exception as auth_error:
-                    logging.error(f"Erro ao buscar email do usuário {user_id}: {auth_error}")
         
         log_data = {
             "user_id": user_id,
@@ -473,19 +448,15 @@ def log_custom_action_internal(request: CustomActionRequest, user: Optional[User
 @app.get("/api/users/me")
 async def get_my_profile(current_user: UserProfile = Depends(get_current_user)):
     try:
-        # 1. Busca os dados do perfil (full_name, avatar_url, etc.)
         response = await asyncio.to_thread(
             supabase.table('profiles').select('*').eq('id', current_user.id).single().execute
         )
         
         profile_data = response.data
         
-        # 2. Se o perfil existir, adiciona o e-mail a partir do objeto 'current_user'
-        # que já recebemos da autenticação. É a forma correta e segura.
         if profile_data:
             profile_data['email'] = current_user.email
         else:
-            # Se por algum motivo o perfil não for encontrado, retorna um erro.
             raise HTTPException(status_code=404, detail="Perfil do usuário não encontrado.")
 
         return profile_data
@@ -494,26 +465,18 @@ async def get_my_profile(current_user: UserProfile = Depends(get_current_user)):
         logging.error(f"Erro ao buscar o perfil do usuário: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Erro interno ao carregar o perfil do usuário.")
 
-# VERSÃO CORRIGIDA - usando asyncio.to_thread para operações síncronas
 @app.put("/api/users/me")
 async def update_my_profile(profile_data: ProfileUpdateWithCredentials, current_user: UserProfile = Depends(get_current_user)):
     try:
-        # 1. Começamos com um dicionário vazio para os dados do perfil
         profile_update_data = {}
 
-        # 2. Adicionamos os campos um a um, se eles foram enviados
         if profile_data.full_name is not None:
             profile_update_data['full_name'] = profile_data.full_name
         if profile_data.job_title is not None:
             profile_update_data['job_title'] = profile_data.job_title
-        
-        # --- LÓGICA CRÍTICA PARA O AVATAR ---
-        # Se avatar_url foi enviado no corpo da requisição, nós o usamos.
-        # Isso cobre tanto a adição de uma nova foto (URL) quanto a remoção (null).
-        if profile_data.avatar_url is not None or (hasattr(profile_data, 'avatar_url') and profile_data.avatar_url is None):
-             profile_update_data['avatar_url'] = profile_data.avatar_url
+        if profile_data.avatar_url is not None:
+            profile_update_data['avatar_url'] = profile_data.avatar_url
 
-        # 3. Lidar com alteração de e-mail e senha (lógica existente)
         if profile_data.email or profile_data.new_password:
             if not profile_data.current_password:
                 raise HTTPException(status_code=400, detail="Senha atual é necessária para alterar e-mail ou senha.")
@@ -532,7 +495,6 @@ async def update_my_profile(profile_data: ProfileUpdateWithCredentials, current_
             if profile_data.new_password:
                 await asyncio.to_thread(lambda: supabase.auth.update_user({"password": profile_data.new_password}))
 
-        # 4. Atualizar dados na tabela 'profiles' se houver algo para atualizar
         if profile_update_data:
             logging.info(f"Atualizando perfil {current_user.id} com os dados: {profile_update_data}")
             response = await asyncio.to_thread(
@@ -541,7 +503,6 @@ async def update_my_profile(profile_data: ProfileUpdateWithCredentials, current_
             if response.data:
                 return response.data[0]
 
-        # 5. Se nada foi alterado, buscar e retornar o perfil atual
         response = await asyncio.to_thread(
             lambda: supabase.table('profiles').select('*').eq('id', current_user.id).single().execute()
         )
@@ -559,7 +520,6 @@ async def create_user(user_data: UserCreate, admin_user: UserProfile = Depends(r
     try:
         logging.info(f"Admin {admin_user.id} tentando criar usuário: {user_data.email}")
         
-        # Executar em thread separada
         created_user_res = await asyncio.to_thread(
             lambda: supabase_admin.auth.admin.create_user({
                 "email": user_data.email, "password": user_data.password,
@@ -688,7 +648,6 @@ async def trigger_collection(
     
     collection_status.update(initial_status.copy())
     
-    # Validar se os mercados selecionados existem
     if request.selected_markets:
         resp = await asyncio.to_thread(
             supabase.table('supermercados').select('cnpj').in_('cnpj', request.selected_markets).execute
@@ -704,8 +663,8 @@ async def trigger_collection(
         supabase_admin, 
         ECONOMIZA_ALAGOAS_TOKEN, 
         collection_status,
-        request.selected_markets,  # Lista de CNPJs ou None
-        request.dias_pesquisa      # 1 a 7 dias
+        request.selected_markets,
+        request.dias_pesquisa
     )
     
     market_count = len(request.selected_markets) if request.selected_markets else "todos"
@@ -802,7 +761,7 @@ async def get_collections_by_market(cnpj: str, user: UserProfile = Depends(requi
     )
     return response.data
 
-# --- LOGS DE USUÁRIOS CORRIGIDOS ---
+# --- LOGS DE USUÁRIOS ---
 @app.get("/api/user-logs")
 async def get_user_logs(
     page: int = Query(1, ge=1),
@@ -965,7 +924,6 @@ async def delete_logs_by_date(
         raise HTTPException(status_code=500, detail="Erro ao deletar logs.")
 
 # --- NOVOS ENDPOINTS PARA MONITORAMENTO COMPLETO ---
-
 @app.post("/api/log-page-access")
 async def log_page_access_endpoint(
     request: dict,
@@ -1097,7 +1055,6 @@ async def realtime_search(
     )
     mercados_map = {m['cnpj']: m['nome'] for m in resp.data}
     
-    # USAR consultar_produto_realtime (3 DIAS FIXOS) em vez de consultar_produto
     tasks = [
         collector_service.consultar_produto_realtime(
             request.produto, 
@@ -1228,20 +1185,18 @@ async def get_dashboard_bargains(start_date: date, end_date: date, cnpjs: Option
     return filtered_df.to_dict(orient='records')
 
 # --------------------------------------------------------------------------
-# --- GERENCIAMENTO DE CESTAS BÁSICAS (NOVOS ENDPOINTS) ---
+# --- GERENCIAMENTO DE CESTAS BÁSICAS ---
 # --------------------------------------------------------------------------
 
 BASKET_LIMIT_PER_USER = 3
 PRODUCT_LIMIT_PER_BASKET = 25
 
-# --- CRIAÇÃO DE CESTA ---
 @app.post("/api/baskets", response_model=Cesta, status_code=201)
 async def create_basket(
     basket_data: CestaCreate,
-    current_user: UserProfile = Depends(require_page_access('baskets')) # Requer acesso à página 'baskets'
+    current_user: UserProfile = Depends(require_page_access('baskets'))
 ):
     try:
-        # 1. Verificar limite de cestas do usuário - USAR supabase_admin
         count_response = await asyncio.to_thread(
             supabase_admin.table('cestas_basicas').select('id', count='exact').eq('user_id', current_user.id).execute
         )
@@ -1250,14 +1205,12 @@ async def create_basket(
         if current_baskets_count >= BASKET_LIMIT_PER_USER:
             raise HTTPException(status_code=403, detail=f"Limite de {BASKET_LIMIT_PER_USER} cestas básicas atingido.")
 
-        # 2. Preparar dados
         new_basket = {
             'user_id': current_user.id,
             'nome': basket_data.nome,
             'produtos': [item.dict() for item in basket_data.produtos]
         }
 
-        # 3. Inserir - USAR supabase_admin
         resp = await asyncio.to_thread(
             supabase_admin.table('cestas_basicas').insert(new_basket).execute
         )
@@ -1273,37 +1226,29 @@ async def create_basket(
         logging.error(f"Erro ao criar cesta: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Erro interno ao criar a cesta básica: {str(e)}")
 
-# --- LISTAGEM DE CESTAS (ADMIN e USUÁRIO) ---
 @app.get("/api/baskets", response_model=List[Cesta])
 async def list_baskets(
     current_user: UserProfile = Depends(require_page_access('baskets')),
-    user_id: Optional[str] = Query(None) # Opcional para admin filtrar
+    user_id: Optional[str] = Query(None)
 ):
     query = supabase_admin.table('cestas_basicas').select('*').order('id', desc=False)
 
-    # Lógica de Permissão
     if current_user.role == 'admin':
-        # Admin pode filtrar por user_id ou ver todas
         if user_id:
             query = query.eq('user_id', user_id)
     else:
-        # Usuário normal só pode ver as suas
         query = query.eq('user_id', current_user.id)
 
     resp = await asyncio.to_thread(query.execute)
 
-    # Mapeia para o modelo Pydantic
     return [Cesta(**data) for data in resp.data]
 
-# --- ATUALIZAÇÃO DO NOME DA CESTA ---
 @app.put("/api/baskets/{basket_id}", response_model=Cesta)
 async def update_basket_name(
     basket_id: int,
     basket_data: CestaUpdate,
     current_user: UserProfile = Depends(require_page_access('baskets'))
 ):
-    # 1. Restrição: Usuário só pode editar a sua própria cesta.
-    # Usamos o user_id na query de update para garantir isso.
     resp = await asyncio.to_thread(
         supabase_admin.table('cestas_basicas').update(basket_data.dict(exclude_none=True))
                  .eq('id', basket_id)
@@ -1316,14 +1261,12 @@ async def update_basket_name(
     
     return resp.data[0]
 
-# --- ADICIONAR PRODUTO À CESTA ---
 @app.post("/api/baskets/{basket_id}/products", response_model=Cesta)
 async def add_product_to_basket(
     basket_id: int,
     product: CestaItem,
     current_user: UserProfile = Depends(require_page_access('baskets'))
 ):
-    # 1. Buscar a cesta para checar a permissão e o limite de produtos
     basket_resp = await asyncio.to_thread(
         supabase_admin.table('cestas_basicas').select('user_id, produtos').eq('id', basket_id).single().execute
     )
@@ -1337,16 +1280,13 @@ async def add_product_to_basket(
     if len(current_products) >= PRODUCT_LIMIT_PER_BASKET:
         raise HTTPException(status_code=403, detail=f"Limite de {PRODUCT_LIMIT_PER_BASKET} produtos por cesta atingido.")
         
-    # 2. Adicionar o novo produto
     new_product_list = current_products + [product.dict()]
     
-    # 3. Atualizar no banco de dados
     update_resp = await asyncio.to_thread(
         supabase_admin.table('cestas_basicas').update({'produtos': new_product_list}).eq('id', basket_id).execute
     )
     return update_resp.data[0]
 
-# --- EDITAR PRODUTO POR ÍNDICE ---
 @app.put("/api/baskets/{basket_id}/products/{product_index}", response_model=Cesta)
 async def edit_product_in_basket(
     basket_id: int,
@@ -1354,7 +1294,6 @@ async def edit_product_in_basket(
     product_update: CestaUpdateItem,
     current_user: UserProfile = Depends(require_page_access('baskets'))
 ):
-    # 1. Buscar a cesta para checar a permissão
     basket_resp = await asyncio.to_thread(
         supabase_admin.table('cestas_basicas').select('user_id, produtos').eq('id', basket_id).single().execute
     )
@@ -1365,11 +1304,9 @@ async def edit_product_in_basket(
     
     current_products = basket_data['produtos'] or []
     
-    # 2. Validar índice
     if not (0 <= product_index < len(current_products)):
         raise HTTPException(status_code=400, detail="Índice de produto inválido.")
         
-    # 3. Atualizar produto
     product_to_update = current_products[product_index]
     
     if product_update.nome_produto is not None:
@@ -1379,13 +1316,11 @@ async def edit_product_in_basket(
         
     current_products[product_index] = product_to_update
     
-    # 4. Atualizar no banco
     update_resp = await asyncio.to_thread(
         supabase_admin.table('cestas_basicas').update({'produtos': current_products}).eq('id', basket_id).execute
     )
     return update_resp.data[0]
 
-# --- REMOVER PRODUTO DA CESTA (por índice) ---
 @app.delete("/api/baskets/{basket_id}/products/{product_index}", response_model=Cesta)
 async def remove_product_from_basket(
     basket_id: int,
@@ -1402,28 +1337,23 @@ async def remove_product_from_basket(
     
     current_products = basket_data['produtos'] or []
     
-    # 1. Validar índice
     if not (0 <= product_index < len(current_products)):
         raise HTTPException(status_code=400, detail="Índice de produto inválido.")
         
-    # 2. Remover produto
     new_product_list = [
         item for i, item in enumerate(current_products) if i != product_index
     ]
     
-    # 3. Atualizar no banco
     update_resp = await asyncio.to_thread(
         supabase_admin.table('cestas_basicas').update({'produtos': new_product_list}).eq('id', basket_id).execute
     )
     return update_resp.data[0]
 
-# --- LIMPAR TODOS OS PRODUTOS DA CESTA ---
 @app.delete("/api/baskets/{basket_id}/products", response_model=Cesta)
 async def clear_basket_products(
     basket_id: int,
     current_user: UserProfile = Depends(require_page_access('baskets'))
 ):
-    # 1. Verificar permissão
     basket_resp = await asyncio.to_thread(
         supabase_admin.table('cestas_basicas').select('user_id').eq('id', basket_id).single().execute
     )
@@ -1431,19 +1361,16 @@ async def clear_basket_products(
     if not basket_resp.data or basket_resp.data['user_id'] != current_user.id:
         raise HTTPException(status_code=404, detail="Cesta não encontrada ou você não tem permissão.")
     
-    # 2. Limpar a lista de produtos (setar como array vazio)
     update_resp = await asyncio.to_thread(
         supabase_admin.table('cestas_basicas').update({'produtos': []}).eq('id', basket_id).execute
     )
     return update_resp.data[0]
 
-# --- EXCLUSÃO DE CESTA ---
 @app.delete("/api/baskets/{basket_id}", status_code=204)
 async def delete_basket(
     basket_id: int,
     current_user: UserProfile = Depends(require_page_access('baskets'))
 ):
-    # Usuário só pode excluir a sua própria cesta
     resp = await asyncio.to_thread(
         lambda: supabase_admin.table('cestas_basicas').delete()
                         .eq('id', basket_id)
@@ -1454,7 +1381,6 @@ async def delete_basket(
         raise HTTPException(status_code=404, detail="Cesta não encontrada ou você não tem permissão para excluir.")
     return
 
-# --- Endpoint para obter preços em tempo real dos produtos da cesta ---
 @app.post("/api/baskets/{basket_id}/realtime-prices")
 async def get_basket_realtime_prices(
     basket_id: int,
@@ -1462,13 +1388,11 @@ async def get_basket_realtime_prices(
     background_tasks: BackgroundTasks = BackgroundTasks(),
     current_user: UserProfile = Depends(require_page_access('baskets'))
 ):
-    # 1. Obter a cesta e verificar permissão
     basket_resp = await asyncio.to_thread(
         supabase_admin.table('cestas_basicas').select('user_id, nome, produtos').eq('id', basket_id).single().execute
     )
     
     basket_data = basket_resp.data
-    # Admin pode ver, então a checagem é: não encontrado OU user_id diferente E não é admin.
     if not basket_data or (basket_data['user_id'] != current_user.id and current_user.role != 'admin'):
         raise HTTPException(status_code=404, detail="Cesta não encontrada ou você não tem permissão.")
 
@@ -1476,13 +1400,11 @@ async def get_basket_realtime_prices(
     if not products_to_search:
         return {"results": [], "message": "Nenhum produto na cesta para buscar."}
 
-    # 2. Obter mapa de nome/cnpj dos mercados (reutiliza lógica)
     resp_markets = await asyncio.to_thread(
         supabase.table('supermercados').select('cnpj, nome').in_('cnpj', cnpjs).execute
     )
     mercados_map = {m['cnpj']: m['nome'] for m in resp_markets.data}
     
-    # 3. Criar e executar as tarefas de busca em tempo real
     all_tasks = []
     
     for product in products_to_search:
@@ -1490,7 +1412,6 @@ async def get_basket_realtime_prices(
             continue 
             
         product_tasks = [
-            # Usar consultar_produto_realtime para manter 3 dias fixos
             collector_service.consultar_produto_realtime(
                 product['nome_produto'], 
                 {"cnpj": cnpj, "nome": mercados_map.get(cnpj, cnpj)}, 
@@ -1513,11 +1434,9 @@ async def get_basket_realtime_prices(
         elif resultado:
             resultados_finais.extend(resultado)
             
-    # Registrar log de busca
     basket_name = basket_data.get('nome', f"Cesta #{basket_id}")
     background_tasks.add_task(log_search, f"[Cesta: {basket_name}]", 'realtime', cnpjs, len(resultados_finais), current_user)
     
-    # Ordenar por nome do produto e depois por preço
     return {"results": sorted(resultados_finais, key=lambda x: (x.get('nome_produto_normalizado', ''), x.get('preco_produto', float('inf'))))}
 
 # --------------------------------------------------------------------------
@@ -1580,7 +1499,6 @@ async def delete_group(
     admin_user: UserProfile = Depends(require_page_access('users'))
 ):
     try:
-        # Verificar se o grupo existe
         group_resp = await asyncio.to_thread(
             supabase.table('grupos').select('id').eq('id', group_id).execute
         )
@@ -1588,7 +1506,6 @@ async def delete_group(
         if not group_resp.data:
             raise HTTPException(status_code=404, detail="Grupo não encontrado")
         
-        # Deletar o grupo (as associações serão deletadas em cascata)
         await asyncio.to_thread(
             lambda: supabase.table('grupos').delete().eq('id', group_id).execute()
         )
@@ -1605,7 +1522,6 @@ async def add_user_to_group(
     admin_user: UserProfile = Depends(require_page_access('users'))
 ):
     try:
-        # Verificar se usuário e grupo existem
         user_resp = await asyncio.to_thread(
             supabase.table('profiles').select('id, full_name').eq('id', user_group.user_id).execute
         )
@@ -1618,7 +1534,6 @@ async def add_user_to_group(
         if not group_resp.data:
             raise HTTPException(status_code=404, detail="Grupo não encontrado")
         
-        # Calcular data de expiração
         if user_group.data_expiracao:
             data_expiracao = user_group.data_expiracao
         else:
@@ -1649,19 +1564,62 @@ async def list_user_groups(
     admin_user: UserProfile = Depends(require_page_access('users'))
 ):
     try:
-        params = {}
+        query = supabase_admin.table('user_groups').select('*')
+        
         if user_id:
-            params['p_user_id'] = user_id
+            query = query.eq('user_id', user_id)
         if group_id:
-            params['p_group_id'] = group_id
+            query = query.eq('group_id', group_id)
             
-        response = await asyncio.to_thread(
-            lambda: supabase.rpc('get_user_groups_with_details', params).execute()
+        user_groups_response = await asyncio.to_thread(
+            query.order('created_at', desc=True).execute
         )
-        return response.data
+        
+        if not user_groups_response.data:
+            return []
+        
+        user_groups_with_details = []
+        
+        for user_group in user_groups_response.data:
+            group_response = await asyncio.to_thread(
+                supabase_admin.table('grupos').select('*').eq('id', user_group['group_id']).single().execute
+            )
+            
+            profile_response = await asyncio.to_thread(
+                supabase_admin.table('profiles').select('full_name').eq('id', user_group['user_id']).execute
+            )
+            
+            user_email = "N/A"
+            try:
+                auth_response = await asyncio.to_thread(
+                    lambda: supabase_admin.auth.admin.get_user_by_id(user_group['user_id'])
+                )
+                if auth_response.user:
+                    user_email = auth_response.user.email
+            except Exception as e:
+                logging.error(f"Erro ao buscar email do usuário {user_group['user_id']}: {e}")
+            
+            user_name = profile_response.data[0]['full_name'] if profile_response.data else 'N/A'
+            grupo_data = group_response.data if group_response.data else {'nome': 'N/A', 'dias_acesso': 0}
+            
+            user_group_detail = UserGroupWithDetails(
+                id=user_group['id'],
+                user_id=user_group['user_id'],
+                group_id=user_group['group_id'],
+                data_expiracao=user_group['data_expiracao'],
+                created_at=user_group['created_at'],
+                grupo_nome=grupo_data['nome'],
+                grupo_dias_acesso=grupo_data['dias_acesso'],
+                user_name=user_name,
+                user_email=user_email
+            )
+            user_groups_with_details.append(user_group_detail)
+        
+        return user_groups_with_details
+        
     except Exception as e:
-        logging.error(f"Erro ao listar associações usuário-grupo: {e}")
-        raise HTTPException(status_code=500, detail="Erro ao listar associações")
+        logging.error(f"Erro ao listar associações usuário-grupo: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro interno ao listar associações: {str(e)}")
 
 @app.delete("/api/user-groups/{user_group_id}", status_code=204)
 async def remove_user_from_group(
@@ -1683,8 +1641,55 @@ async def get_user_groups(
     admin_user: UserProfile = Depends(require_page_access('users'))
 ):
     try:
-        groups = await get_user_groups_with_details(user_id)
-        return groups
+        user_groups_response = await asyncio.to_thread(
+            supabase_admin.table('user_groups').select('*')
+            .eq('user_id', user_id)
+            .order('created_at', desc=True)
+            .execute
+        )
+        
+        if not user_groups_response.data:
+            return []
+        
+        user_groups = []
+        
+        for user_group in user_groups_response.data:
+            group_response = await asyncio.to_thread(
+                supabase_admin.table('grupos').select('*').eq('id', user_group['group_id']).single().execute
+            )
+            
+            if group_response.data:
+                profile_response = await asyncio.to_thread(
+                    supabase_admin.table('profiles').select('full_name').eq('id', user_id).execute
+                )
+                
+                user_email = "N/A"
+                try:
+                    auth_response = await asyncio.to_thread(
+                        lambda: supabase_admin.auth.admin.get_user_by_id(user_id)
+                    )
+                    if auth_response.user:
+                        user_email = auth_response.user.email
+                except Exception as e:
+                    logging.error(f"Erro ao buscar email do usuário {user_id}: {e}")
+                
+                user_name = profile_response.data[0]['full_name'] if profile_response.data else 'N/A'
+                
+                group_detail = UserGroupWithDetails(
+                    id=user_group['id'],
+                    user_id=user_group['user_id'],
+                    group_id=user_group['group_id'],
+                    data_expiracao=user_group['data_expiracao'],
+                    created_at=user_group['created_at'],
+                    grupo_nome=group_response.data['nome'],
+                    grupo_dias_acesso=group_response.data['dias_acesso'],
+                    user_name=user_name,
+                    user_email=user_email
+                )
+                user_groups.append(group_detail)
+        
+        return user_groups
+        
     except Exception as e:
         logging.error(f"Erro ao buscar grupos do usuário: {e}")
         raise HTTPException(status_code=500, detail="Erro ao buscar grupos do usuário")
@@ -1692,8 +1697,39 @@ async def get_user_groups(
 @app.get("/api/my-groups", response_model=List[UserGroupWithDetails])
 async def get_my_groups(current_user: UserProfile = Depends(get_current_user)):
     try:
-        groups = await get_user_groups_with_details(current_user.id)
-        return groups
+        user_groups_response = await asyncio.to_thread(
+            supabase_admin.table('user_groups').select('*')
+            .eq('user_id', current_user.id)
+            .order('created_at', desc=True)
+            .execute
+        )
+        
+        if not user_groups_response.data:
+            return []
+        
+        my_groups = []
+        
+        for user_group in user_groups_response.data:
+            group_response = await asyncio.to_thread(
+                supabase_admin.table('grupos').select('*').eq('id', user_group['group_id']).single().execute
+            )
+            
+            if group_response.data:
+                group_detail = UserGroupWithDetails(
+                    id=user_group['id'],
+                    user_id=user_group['user_id'],
+                    group_id=user_group['group_id'],
+                    data_expiracao=user_group['data_expiracao'],
+                    created_at=user_group['created_at'],
+                    grupo_nome=group_response.data['nome'],
+                    grupo_dias_acesso=group_response.data['dias_acesso'],
+                    user_name=current_user.email,
+                    user_email=current_user.email
+                )
+                my_groups.append(group_detail)
+        
+        return my_groups
+        
     except Exception as e:
         logging.error(f"Erro ao buscar grupos do usuário atual: {e}")
         raise HTTPException(status_code=500, detail="Erro ao buscar seus grupos")
@@ -1702,9 +1738,9 @@ async def get_my_groups(current_user: UserProfile = Depends(get_current_user)):
 app.mount("/", StaticFiles(directory="web", html=True), name="static")
 
 # --------------------------------------------------------------------------
-# --- 7. ENDPOINT RAIZ (Sanity Check) ---
+# --- 7. ENDPOINT RAIZ ---
 # --------------------------------------------------------------------------
 
 @app.get("/")
 def read_root():
-    return {"message": "Bem-vindo à API de Preços AL - Versão 3.2.0"}
+    return {"message": "Bem-vindo à API de Preços AL - Versão 3.2.1"}
