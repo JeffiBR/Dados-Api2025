@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // Elementos principais
     const startButton = document.getElementById('startButton');
     const progressContainer = document.getElementById('progress-container');
@@ -68,48 +68,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 300);
         }, type === 'success' ? 3000 : 5000);
     };
-
-    // Função authenticatedFetch corrigida
-    async function authenticatedFetch(url, options = {}) {
-        try {
-            // Obter token do localStorage
-            const token = localStorage.getItem('supabase.auth.token');
-            
-            const defaultOptions = {
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            };
-
-            // Se tiver token, adicionar ao header
-            if (token) {
-                try {
-                    const authData = JSON.parse(token);
-                    if (authData.access_token) {
-                        defaultOptions.headers['Authorization'] = `Bearer ${authData.access_token}`;
-                    }
-                } catch (e) {
-                    console.warn('Erro ao parsear token:', e);
-                }
-            }
-
-            const response = await fetch(url, { ...defaultOptions, ...options });
-            
-            if (response.status === 401) {
-                // Token expirado - redirecionar para login
-                showNotification('Sessão expirada. Faça login novamente.', 'error');
-                setTimeout(() => {
-                    window.location.href = '/login.html';
-                }, 2000);
-                return response;
-            }
-            
-            return response;
-        } catch (error) {
-            console.error('Erro na requisição:', error);
-            throw error;
-        }
-    }
 
     // Formatar segundos para tempo legível
     const formatSeconds = (secs) => {
@@ -239,9 +197,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleLogout(e) {
         e.preventDefault();
-        // Usar a função logout do auth.js
-        if (typeof logout === 'function') {
-            logout();
+        // Usar a função signOut global do auth.js
+        if (typeof window.signOut === 'function') {
+            window.signOut();
         } else {
             // Fallback caso a função não esteja disponível
             localStorage.removeItem('supabase.auth.token');
@@ -356,14 +314,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ========== FUNÇÕES PRINCIPAIS ==========
 
-    // Carregar lista de mercados - CORRIGIDO: usando /api/supermarkets
+    // Carregar lista de mercados - usando authenticatedFetch do auth.js
     async function loadMarkets() {
         try {
             console.log('Carregando mercados...');
             
-            const response = await authenticatedFetch('/api/supermarkets');
+            // Verificar se o usuário está autenticado primeiro
+            const isAuthenticated = await window.checkAuth();
+            if (!isAuthenticated) {
+                showNotification('Usuário não autenticado. Redirecionando...', 'error');
+                setTimeout(() => {
+                    window.location.href = '/login.html';
+                }, 2000);
+                return;
+            }
+            
+            // Usar a função authenticatedFetch global do auth.js
+            const response = await window.authenticatedFetch('/api/supermarkets');
             
             if (!response.ok) {
+                if (response.status === 401) {
+                    showNotification('Sessão expirada. Faça login novamente.', 'error');
+                    setTimeout(() => {
+                        window.location.href = '/login.html';
+                    }, 2000);
+                    return;
+                }
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             
@@ -388,7 +364,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Verificar status da coleta
     const checkStatus = async () => {
         try {
-            const response = await authenticatedFetch('/api/collection-status');
+            const response = await window.authenticatedFetch('/api/collection-status');
             if (!response.ok) throw new Error("Falha ao verificar status.");
             const data = await response.json();
             updateUI(data);
@@ -418,7 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {
         collectionStartTime = Date.now();
         
         try {
-            const response = await authenticatedFetch('/api/trigger-collection', {
+            const response = await window.authenticatedFetch('/api/trigger-collection', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -476,6 +452,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Configuração inicial
     async function initializeConfiguration() {
+        // Verificar autenticação antes de carregar qualquer coisa
+        const isAuthenticated = await window.checkAuth();
+        if (!isAuthenticated) {
+            showNotification('Usuário não autenticado. Redirecionando...', 'error');
+            setTimeout(() => {
+                window.location.href = '/login.html';
+            }, 2000);
+            return;
+        }
+
+        // Verificar permissões
+        const hasColetaPermission = await window.hasPermission('coleta');
+        if (!hasColetaPermission) {
+            showNotification('Você não tem permissão para acessar esta página.', 'error');
+            setTimeout(() => {
+                window.location.href = '/search.html';
+            }, 2000);
+            return;
+        }
+
         await loadMarkets();
         setupDaysSelection();
     }
