@@ -1,4 +1,4 @@
-# main.py (completo e corrigido) - VERSÃO 3.4.1
+# main.py (completo e corrigido) - VERSÃO 3.5.1
 import os
 import asyncio
 from datetime import date, timedelta, datetime
@@ -22,7 +22,7 @@ load_dotenv()
 app = FastAPI(
     title="API de Preços Arapiraca",
     description="Sistema completo para coleta e análise de preços de supermercados.",
-    version="3.4.1"
+    version="3.5.1"
 )
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] [%(levelname)s] %(message)s')
 
@@ -529,6 +529,43 @@ async def debug_database():
         }
 
 # --------------------------------------------------------------------------
+# --- NOVO ENDPOINT PARA BUSCAR USUÁRIOS PARA ADMIN DE GRUPO ---
+# --------------------------------------------------------------------------
+@app.get("/api/users/for-group-admin")
+async def get_users_for_group_admin(admin_user: UserProfile = Depends(require_page_access('users'))):
+    try:
+        # Buscar todos os usuários
+        response = await asyncio.to_thread(
+            supabase.table('profiles').select('id, full_name, role').execute
+        )
+        users = response.data or []
+        
+        # Formatar resposta
+        formatted_users = []
+        for user in users:
+            try:
+                # Buscar email do auth
+                auth_response = await asyncio.to_thread(
+                    lambda: supabase_admin.auth.admin.get_user_by_id(user['id'])
+                )
+                email = auth_response.user.email if auth_response.user else 'N/A'
+            except:
+                email = 'N/A'
+            
+            formatted_users.append({
+                "id": user["id"],
+                "full_name": user.get("full_name"),
+                "email": email,
+                "role": user.get("role", "user")
+            })
+        
+        return formatted_users
+        
+    except Exception as e:
+        logging.error(f"Erro ao buscar usuários para admin de grupo: {e}")
+        raise HTTPException(status_code=500, detail="Erro interno ao carregar usuários")
+
+# --------------------------------------------------------------------------
 # --- ENDPOINTS DE GRUPOS (CORRIGIDOS) ---
 # --------------------------------------------------------------------------
 @app.get("/api/groups", response_model=List[Grupo])
@@ -571,7 +608,7 @@ async def create_group(group: GrupoCreate, admin_user: UserProfile = Depends(req
         # Verificar se o admin_id existe (se fornecido)
         if group.admin_id:
             profile_response = await asyncio.to_thread(
-                supabase.table('profiles').select('id, allowed_pages').eq('id', group.admin_id).execute
+                supabase.table('profiles').select('id, full_name').eq('id', group.admin_id).execute
             )
             if not profile_response.data:
                 raise HTTPException(status_code=404, detail="Usuário administrador não encontrado")
@@ -1042,13 +1079,13 @@ async def get_my_profile(current_user: UserProfile = Depends(get_current_user)):
             profile_data['email'] = current_user.email
         else:
             raise HTTPException(status_code=404, detail="Perfil do usuário não encontrado.")
-
+        
         return profile_data
         
     except Exception as e:
         logging.error(f"Erro ao buscar o perfil do usuário: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Erro interno ao carregar o perfil do usuário.")
-
+        
 @app.put("/api/users/me")
 async def update_my_profile(profile_data: ProfileUpdateWithCredentials, current_user: UserProfile = Depends(get_current_user)):
     try:
@@ -1106,8 +1143,10 @@ async def create_user(user_data: UserCreate, admin_user: UserProfile = Depends(r
         
         created_user_res = await asyncio.to_thread(
             lambda: supabase_admin.auth.admin.create_user({
-                "email": user_data.email, "password": user_data.password,
-                "email_confirm": True, "user_metadata": {'full_name': user_data.full_name}
+                "email": user_data.email, 
+                "password": user_data.password,
+                "email_confirm": True, 
+                "user_metadata": {'full_name': user_data.full_name}
             })
         )
         
@@ -1116,7 +1155,9 @@ async def create_user(user_data: UserCreate, admin_user: UserProfile = Depends(r
         
         profile_update_response = await asyncio.to_thread(
             supabase_admin.table('profiles').update({
-                'role': user_data.role, 'allowed_pages': user_data.allowed_pages
+                'full_name': user_data.full_name,
+                'role': user_data.role, 
+                'allowed_pages': user_data.allowed_pages
             }).eq('id', user_id).execute
         )
         
@@ -1135,10 +1176,14 @@ async def create_user(user_data: UserCreate, admin_user: UserProfile = Depends(r
 
 @app.put("/api/users/{user_id}")
 async def update_user(user_id: str, user_data: UserUpdate, admin_user: UserProfile = Depends(require_page_access('users'))):
-    await asyncio.to_thread(
-        lambda: supabase_admin.table('profiles').update(user_data.dict()).eq('id', user_id).execute()
-    )
-    return {"message": "Usuário atualizado com sucesso"}
+    try:
+        await asyncio.to_thread(
+            lambda: supabase_admin.table('profiles').update(user_data.dict()).eq('id', user_id).execute()
+        )
+        return {"message": "Usuário atualizado com sucesso"}
+    except Exception as e:
+        logging.error(f"Erro ao atualizar usuário: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao atualizar usuário")
         
 @app.get("/api/users")
 async def list_users(admin_user: UserProfile = Depends(require_page_access('users'))):
@@ -2029,7 +2074,7 @@ async def get_basket_realtime_prices(
 
 @app.get("/")
 def read_root():
-    return {"message": "Bem-vindo à API de Preços AL - Versão 3.4.1"}
+    return {"message": "Bem-vindo à API de Preços AL - Versão 3.5.1"}
 
 # Servir o Frontend
 app.mount("/", StaticFiles(directory="web", html=True), name="static")
