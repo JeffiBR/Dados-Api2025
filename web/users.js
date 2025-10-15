@@ -1,4 +1,4 @@
-// users.js - Gerenciamento de usuários - Versão Corrigida
+// users.js - Gerenciamento de usuários - Versão Corrigida e Melhorada
 document.addEventListener('DOMContentLoaded', () => {
     // --- ELEMENTOS DA UI ---
     const tableBody = document.getElementById('usersTableBody');
@@ -116,12 +116,27 @@ document.addEventListener('DOMContentLoaded', () => {
             renderUsersTable(users);
         } catch (error) {
             console.error('Erro ao carregar usuários:', error);
-            alert('Não foi possível carregar a lista de usuários.');
+            showAlert('Não foi possível carregar a lista de usuários.', 'error');
         }
     };
 
     function renderUsersTable(users) {
         tableBody.innerHTML = '';
+        
+        if (users.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="empty-state">
+                        <div class="empty-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <h3>Nenhum usuário cadastrado</h3>
+                        <p>Comece adicionando um novo usuário ao sistema.</p>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
         
         users.forEach(user => {
             const row = document.createElement('tr');
@@ -131,26 +146,49 @@ document.addEventListener('DOMContentLoaded', () => {
             const permissionsText = formatPermissionsForDisplay(user.allowed_pages);
 
             row.innerHTML = `
-                <td>${user.full_name || 'N/A'}</td>
-                <td>${user.email || 'N/A'}</td>
-                <td class="password-cell">
-                    ${user.plain_password ? `
-                        <span class="pwd-hidden">••••••••</span>
-                        <span class="pwd-real" style="display:none;">${user.plain_password}</span>
-                        <button class="btn-icon reveal-pwd" title="Revelar senha">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                    ` : '<span class="pwd-hidden">Oculto</span>'}
+                <td>
+                    <div class="user-info-cell">
+                        <div class="user-avatar-small">
+                            ${user.avatar_url ? 
+                                `<img src="${user.avatar_url}" alt="${user.full_name}">` : 
+                                `<div class="avatar-placeholder">${getInitials(user.full_name)}</div>`
+                            }
+                        </div>
+                        <div class="user-details">
+                            <strong>${user.full_name || 'N/A'}</strong>
+                            <span>${user.email || 'N/A'}</span>
+                        </div>
+                    </div>
                 </td>
-                <td>${getRoleDisplayName(user.role)}</td>
-                <td>${permissionsText}</td>
+                <td>
+                    <div class="password-display">
+                        <span class="pwd-hidden">••••••••</span>
+                    </div>
+                </td>
+                <td>
+                    <span class="role-badge ${user.role}">${getRoleDisplayName(user.role)}</span>
+                </td>
+                <td>
+                    <div class="permissions-preview">
+                        ${permissionsText}
+                    </div>
+                </td>
                 <td class="actions">
-                    <button class="btn-icon edit-btn" title="Editar"><i class="fas fa-pencil-alt"></i></button>
-                    <button class="btn-icon delete-btn" title="Excluir"><i class="fas fa-trash-alt"></i></button>
+                    <button class="btn-icon edit-btn" title="Editar usuário">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-icon delete-btn" title="Excluir usuário">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </td>
             `;
             tableBody.appendChild(row);
         });
+    }
+
+    function getInitials(name) {
+        if (!name) return 'U';
+        return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
     }
 
     function getRoleDisplayName(role) {
@@ -164,22 +202,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function formatPermissionsForDisplay(permissions) {
         if (!permissions || permissions.length === 0) {
-            return 'Nenhuma';
+            return '<span class="no-permissions">Nenhuma permissão</span>';
         }
         
         if (permissions.length <= 2) {
             return permissions.map(perm => {
                 const permissionInfo = availablePermissions.find(p => p.key === perm);
-                return permissionInfo ? permissionInfo.name : perm;
-            }).join(', ');
+                return permissionInfo ? 
+                    `<span class="permission-tag">${permissionInfo.name}</span>` : 
+                    `<span class="permission-tag">${perm}</span>`;
+            }).join('');
         }
         
         const firstTwo = permissions.slice(0, 2).map(perm => {
             const permissionInfo = availablePermissions.find(p => p.key === perm);
-            return permissionInfo ? permissionInfo.name : perm;
-        }).join(', ');
+            return permissionInfo ? 
+                `<span class="permission-tag">${permissionInfo.name}</span>` : 
+                `<span class="permission-tag">${perm}</span>`;
+        }).join('');
         
-        return `${firstTwo} +${permissions.length - 2} mais`;
+        return `${firstTwo}<span class="more-permissions">+${permissions.length - 2}</span>`;
     }
 
     const resetForm = () => {
@@ -194,7 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
         roleSelect.value = 'user';
         setSelectedPermissions([]);
         updatePermissionsVisibility();
-        saveButton.innerHTML = '<i class="fas fa-save"></i> Salvar';
+        saveButton.innerHTML = '<i class="fas fa-plus"></i> Adicionar Usuário';
         cancelButton.style.display = 'none';
     };
 
@@ -212,7 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setSelectedPermissions(user.allowed_pages || []);
         updatePermissionsVisibility();
         
-        saveButton.innerHTML = '<i class="fas fa-save"></i> Atualizar';
+        saveButton.innerHTML = '<i class="fas fa-save"></i> Atualizar Usuário';
         cancelButton.style.display = 'inline-flex';
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -228,19 +270,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const allowed_pages = (role === 'admin' || role === 'group_admin') ? [] : getSelectedPermissions();
 
         if (!full_name) {
-            alert('Nome completo é obrigatório.');
+            showAlert('Nome completo é obrigatório.', 'error');
             return;
         }
 
         const isUpdating = !!id;
         
         if (!isUpdating && (!email || !password)) {
-            alert('Email e Senha são obrigatórios para novos usuários.');
+            showAlert('Email e Senha são obrigatórios para novos usuários.', 'error');
             return;
         }
 
         if (!isUpdating && password.length < 6) {
-            alert('A senha deve ter pelo menos 6 caracteres.');
+            showAlert('A senha deve ter pelo menos 6 caracteres.', 'error');
             return;
         }
 
@@ -256,7 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const originalButtonText = saveButton.innerHTML;
         saveButton.disabled = true;
-        saveButton.innerHTML = isUpdating ? 'Atualizando...' : 'Criando...';
+        saveButton.innerHTML = isUpdating ? '<i class="fas fa-spinner fa-spin"></i> Atualizando...' : '<i class="fas fa-spinner fa-spin"></i> Criando...';
 
         try {
             const response = await authenticatedFetch(url, { 
@@ -272,12 +314,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(error.detail || 'Erro ao salvar usuário');
             }
             
-            alert(`✅ Usuário ${isUpdating ? 'atualizado' : 'criado'} com sucesso!`);
+            showAlert(`Usuário ${isUpdating ? 'atualizado' : 'criado'} com sucesso!`, 'success');
             resetForm();
             loadUsers();
         } catch (error) {
             console.error('Erro ao salvar usuário:', error);
-            alert(`❌ Erro: ${error.message}`);
+            showAlert(`Erro: ${error.message}`, 'error');
         } finally {
             saveButton.disabled = false;
             saveButton.innerHTML = originalButtonText;
@@ -293,20 +335,52 @@ document.addEventListener('DOMContentLoaded', () => {
                 const error = await response.json();
                 throw new Error(error.detail || 'Falha ao excluir o usuário.');
             }
-            alert('✅ Usuário excluído com sucesso!');
+            showAlert('Usuário excluído com sucesso!', 'success');
             loadUsers();
         } catch (error) {
             console.error('Erro ao excluir usuário:', error);
-            alert(`❌ ${error.message}`);
+            showAlert(`Erro: ${error.message}`, 'error');
         }
     };
+
+    // Função para exibir alertas
+    function showAlert(message, type = 'info') {
+        // Remove alertas existentes
+        const existingAlerts = document.querySelectorAll('.custom-alert');
+        existingAlerts.forEach(alert => alert.remove());
+        
+        const alert = document.createElement('div');
+        alert.className = `custom-alert alert-${type}`;
+        alert.innerHTML = `
+            <div class="alert-content">
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                <span>${message}</span>
+                <button class="alert-close"><i class="fas fa-times"></i></button>
+            </div>
+        `;
+        
+        document.querySelector('.page-content').insertBefore(alert, document.querySelector('.tabs-container'));
+        
+        // Auto-remover após 5 segundos
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.style.animation = 'slideOutRight 0.3s ease forwards';
+                setTimeout(() => alert.remove(), 300);
+            }
+        }, 5000);
+        
+        // Fechar ao clicar no botão
+        alert.querySelector('.alert-close').addEventListener('click', () => {
+            alert.style.animation = 'slideOutRight 0.3s ease forwards';
+            setTimeout(() => alert.remove(), 300);
+        });
+    }
 
     // --- EVENT LISTENERS ---
     
     tableBody.addEventListener('click', (e) => {
         const editButton = e.target.closest('.edit-btn');
         const deleteButton = e.target.closest('.delete-btn');
-        const revealBtn = e.target.closest('.reveal-pwd');
         
         if (editButton) {
             const user = JSON.parse(editButton.closest('tr').dataset.user);
@@ -316,27 +390,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (deleteButton) {
             const user = JSON.parse(deleteButton.closest('tr').dataset.user);
             deleteUser(user.id, user.full_name);
-        }
-
-        if (revealBtn) {
-            const cell = revealBtn.closest('.password-cell');
-            const hiddenSpan = cell.querySelector('.pwd-hidden');
-            const realSpan = cell.querySelector('.pwd-real');
-
-            if (!realSpan) return;
-
-            const isShown = realSpan.style.display === 'inline' || realSpan.style.display === 'block';
-            if (isShown) {
-                realSpan.style.display = 'none';
-                hiddenSpan.style.display = 'inline';
-                revealBtn.innerHTML = '<i class="fas fa-eye"></i>';
-                revealBtn.title = 'Revelar senha';
-            } else {
-                realSpan.style.display = 'inline';
-                hiddenSpan.style.display = 'none';
-                revealBtn.innerHTML = '<i class="fas fa-eye-slash"></i>';
-                revealBtn.title = 'Ocultar senha';
-            }
         }
     });
     
