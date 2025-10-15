@@ -686,3 +686,183 @@ body.theme-dark .table-container {
 body.theme-dark .form-container {
     background: color-mix(in srgb, var(--card-bg) 95%, black);
 }
+
+/* users.css - Estilos finais corrigidos */
+.permissions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.permission-card {
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    background: var(--card-bg);
+    overflow: hidden;
+}
+
+.permission-card:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.permission-card.selected {
+    border-color: var(--primary-color);
+    background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+}
+
+.permission-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.permission-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--primary-color), var(--accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.permission-info {
+    flex: 1;
+}
+
+.permission-name {
+    font-weight: 600;
+    color: var(--text-color);
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+}
+
+.permission-description {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.category-indicator {
+    display: inline-block;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.category-indicator.analise {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+}
+
+.category-indicator.administracao {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+}
+
+.category-indicator.configuracao {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    color: white;
+}
+
+.permission-checkbox {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--card-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    opacity: 0;
+    transform: scale(0);
+}
+
+.permission-card.selected .permission-checkbox {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    opacity: 1;
+    transform: scale(1);
+}
+
+.permission-checkbox i {
+    color: white;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+/* Botões coloridos */
+.actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+.btn-icon {
+    background: none;
+    border: none;
+    padding: 0.75rem;
+    border-radius: 10px;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+}
+
+/* Botão Editar - Verde */
+.edit-btn:hover {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+/* Botão Excluir - Vermelho */
+.delete-btn:hover {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+/* Botão Criar - Azul claro */
+.btn-create {
+    background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+}
+
+.btn-create:hover {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+}
+
+/* Botão Atualizar - Azul escuro */
+.btn-update {
+    background: linear-gradient(135deg, #1e40af, #1e3a8a) !important;
+}
+
+.btn-update:hover {
+    background: linear-gradient(135deg, #1e3a8a, #172554) !important;
+}
+
+/* Restante do CSS permanece igual ao anterior... */
