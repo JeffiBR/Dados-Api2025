@@ -1,11 +1,12 @@
 # group_admin_routes.py - Funções específicas para gerenciamento de subadministradores
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from pydantic import BaseModel, Field
 import logging
-from main import get_current_user, UserProfile, require_page_access, supabase, supabase_admin
+import asyncio
+from main import get_current_user, UserProfile, require_page_access, supabase, supabase_admin, APIError
 
 # Criar router específico para group admins
 group_admin_router = APIRouter(prefix="/api/group-admin", tags=["group-admin"])
@@ -34,6 +35,23 @@ class GroupAdminWithDetails(GroupAdmin):
     user_name: Optional[str] = None
     user_email: Optional[str] = None
     group_names: List[str] = []
+
+# Modelos para gerenciamento de usuários por subadministradores
+class GroupUserCreate(BaseModel):
+    email: str
+    password: str
+    full_name: str
+    allowed_pages: List[str] = []
+    group_id: int
+
+class GroupUserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    allowed_pages: Optional[List[str]] = None
+    data_expiracao: Optional[str] = None
+
+class UserRenewRequest(BaseModel):
+    dias_adicionais: int = Field(..., ge=1, le=365)
 
 # --------------------------------------------------------------------------
 # --- FUNÇÕES AUXILIARES PARA SUBADMINISTRADORES ---
@@ -81,8 +99,12 @@ async def get_group_admin_user(current_user: UserProfile = Depends(get_current_u
     current_user.managed_groups = managed_groups
     return current_user
 
+def calcular_data_expiracao(dias_acesso: int) -> date:
+    """Calcula a data de expiração baseada nos dias de acesso"""
+    return date.today() + timedelta(days=dias_acesso)
+
 # --------------------------------------------------------------------------
-# --- ENDPOINTS PARA GERENCIAMENTO DE SUBADMINISTRADORES ---
+# --- ENDPOINTS PARA GERENCIAMENTO DE SUBADMINISTRADORES (APENAS ADMIN GERAL) ---
 # --------------------------------------------------------------------------
 
 @group_admin_router.post("", response_model=GroupAdmin)
@@ -253,24 +275,89 @@ async def delete_group_admin(
         raise HTTPException(status_code=400, detail="Erro ao deletar subadministrador")
 
 # --------------------------------------------------------------------------
-# --- ENDPOINTS ESPECÍFICOS PARA SUBADMINISTRADORES ---
+# --- ENDPOINTS ESPECÍFICOS PARA SUBADMINISTRADORES GERENCIAREM SEUS USUÁRIOS ---
 # --------------------------------------------------------------------------
 
-@group_admin_router.post("/users", response_model=dict)
-async def create_group_user(
-    user_data: UserCreate,
-    group_id: int,
+@group_admin_router.get("/users", response_model=List[dict])
+async def get_group_users(
+    group_id: int = Query(..., description="ID do grupo para listar usuários"),
     current_user: UserProfile = Depends(get_group_admin_user)
 ):
-    """Cria um novo usuário em um grupo específico (subadmin)"""
+    """Lista usuários de um grupo específico (subadmin)"""
     try:
         # Verifica se o subadmin tem acesso ao grupo
         if current_user.role != 'admin' and not await verify_group_admin_access(current_user.id, group_id):
             raise HTTPException(status_code=403, detail="Acesso negado a este grupo")
         
+        # Busca usuários do grupo
+        user_groups_response = await asyncio.to_thread(
+            supabase_admin.table('user_groups')
+            .select('user_id, data_expiracao, created_at')
+            .eq('group_id', group_id)
+            .execute
+        )
+        
+        if not user_groups_response.data:
+            return []
+        
+        users_with_details = []
+        
+        for user_group in user_groups_response.data:
+            user_id = user_group['user_id']
+            
+            # Busca informações do perfil
+            profile_response = await asyncio.to_thread(
+                supabase_admin.table('profiles')
+                .select('full_name, role, allowed_pages, avatar_url')
+                .eq('id', user_id)
+                .single()
+                .execute
+            )
+            
+            # Busca email do usuário
+            user_email = "N/A"
+            try:
+                auth_response = await asyncio.to_thread(
+                    lambda: supabase_admin.auth.admin.get_user_by_id(user_id)
+                )
+                if auth_response.user:
+                    user_email = auth_response.user.email
+            except Exception as e:
+                logging.error(f"Erro ao buscar email do usuário {user_id}: {e}")
+            
+            if profile_response.data:
+                user_data = {
+                    "id": user_id,
+                    "full_name": profile_response.data.get('full_name'),
+                    "email": user_email,
+                    "role": profile_response.data.get('role'),
+                    "allowed_pages": profile_response.data.get('allowed_pages', []),
+                    "avatar_url": profile_response.data.get('avatar_url'),
+                    "data_expiracao": user_group['data_expiracao'],
+                    "created_at": user_group['created_at']
+                }
+                users_with_details.append(user_data)
+        
+        return users_with_details
+        
+    except Exception as e:
+        logging.error(f"Erro ao listar usuários do grupo: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao listar usuários do grupo")
+
+@group_admin_router.post("/users", response_model=dict)
+async def create_group_user(
+    user_data: GroupUserCreate,
+    current_user: UserProfile = Depends(get_group_admin_user)
+):
+    """Cria um novo usuário em um grupo específico (subadmin)"""
+    try:
+        # Verifica se o subadmin tem acesso ao grupo
+        if current_user.role != 'admin' and not await verify_group_admin_access(current_user.id, user_data.group_id):
+            raise HTTPException(status_code=403, detail="Acesso negado a este grupo")
+        
         # Verifica se o grupo existe
         group_response = await asyncio.to_thread(
-            supabase.table('grupos').select('dias_acesso').eq('id', group_id).single().execute
+            supabase.table('grupos').select('dias_acesso').eq('id', user_data.group_id).single().execute
         )
         if not group_response.data:
             raise HTTPException(status_code=404, detail="Grupo não encontrado")
@@ -307,7 +394,7 @@ async def create_group_user(
         
         user_group_data = {
             'user_id': user_id,
-            'group_id': group_id,
+            'group_id': user_data.group_id,
             'data_expiracao': data_expiracao.isoformat()
         }
         
@@ -315,7 +402,7 @@ async def create_group_user(
             supabase_admin.table('user_groups').insert(user_group_data).execute
         )
         
-        logging.info(f"Usuário {user_id} criado e associado ao grupo {group_id} pelo subadmin {current_user.id}")
+        logging.info(f"Usuário {user_id} criado e associado ao grupo {user_data.group_id} pelo subadmin {current_user.id}")
         return {"message": "Usuário criado com sucesso no grupo"}
         
     except APIError as e:
@@ -325,7 +412,234 @@ async def create_group_user(
         logging.error(f"Falha CRÍTICA ao criar usuário: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Ocorreu um erro interno inesperado no servidor.")
 
-# Função auxiliar para calcular data de expiração
-def calcular_data_expiracao(dias_acesso: int):
-    from datetime import date, timedelta
-    return date.today() + timedelta(days=dias_acesso)
+@group_admin_router.put("/users/{user_id}", response_model=dict)
+async def update_group_user(
+    user_id: str,
+    user_data: GroupUserUpdate,
+    current_user: UserProfile = Depends(get_group_admin_user)
+):
+    """Atualiza um usuário em um grupo específico (subadmin)"""
+    try:
+        # Verifica se o usuário pertence a algum grupo gerenciado pelo subadmin
+        user_groups_response = await asyncio.to_thread(
+            supabase_admin.table('user_groups')
+            .select('group_id')
+            .eq('user_id', user_id)
+            .execute
+        )
+        
+        if not user_groups_response.data:
+            raise HTTPException(status_code=404, detail="Usuário não encontrado em nenhum grupo")
+        
+        user_group_ids = [ug['group_id'] for ug in user_groups_response.data]
+        has_access = any(await verify_group_admin_access(current_user.id, group_id) for group_id in user_group_ids)
+        
+        if current_user.role != 'admin' and not has_access:
+            raise HTTPException(status_code=403, detail="Acesso negado a este usuário")
+        
+        # Atualiza o perfil
+        update_data = {}
+        if user_data.full_name is not None:
+            update_data['full_name'] = user_data.full_name
+        if user_data.allowed_pages is not None:
+            update_data['allowed_pages'] = user_data.allowed_pages
+        
+        if update_data:
+            await asyncio.to_thread(
+                lambda: supabase_admin.table('profiles')
+                .update(update_data)
+                .eq('id', user_id)
+                .execute()
+            )
+        
+        # Atualiza email se fornecido
+        if user_data.email:
+            try:
+                await asyncio.to_thread(
+                    lambda: supabase_admin.auth.admin.update_user_by_id(
+                        user_id,
+                        {"email": user_data.email}
+                    )
+                )
+            except Exception as e:
+                logging.error(f"Erro ao atualizar email do usuário: {e}")
+        
+        # Atualiza data de expiração se fornecida
+        if user_data.data_expiracao:
+            # Atualiza em todos os grupos do usuário que o subadmin gerencia
+            for group_id in user_group_ids:
+                if current_user.role == 'admin' or await verify_group_admin_access(current_user.id, group_id):
+                    await asyncio.to_thread(
+                        lambda: supabase_admin.table('user_groups')
+                        .update({'data_expiracao': user_data.data_expiracao})
+                        .eq('user_id', user_id)
+                        .eq('group_id', group_id)
+                        .execute()
+                    )
+        
+        return {"message": "Usuário atualizado com sucesso"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Erro ao atualizar usuário do grupo: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao atualizar usuário")
+
+@group_admin_router.delete("/users/{user_id}", status_code=204)
+async def delete_group_user(
+    user_id: str,
+    current_user: UserProfile = Depends(get_group_admin_user)
+):
+    """Remove um usuário de um grupo específico (subadmin)"""
+    try:
+        # Verifica se o usuário pertence a algum grupo gerenciado pelo subadmin
+        user_groups_response = await asyncio.to_thread(
+            supabase_admin.table('user_groups')
+            .select('group_id')
+            .eq('user_id', user_id)
+            .execute
+        )
+        
+        if not user_groups_response.data:
+            raise HTTPException(status_code=404, detail="Usuário não encontrado em nenhum grupo")
+        
+        user_group_ids = [ug['group_id'] for ug in user_groups_response.data]
+        has_access = any(await verify_group_admin_access(current_user.id, group_id) for group_id in user_group_ids)
+        
+        if current_user.role != 'admin' and not has_access:
+            raise HTTPException(status_code=403, detail="Acesso negado a este usuário")
+        
+        # Remove o usuário de todos os grupos gerenciados pelo subadmin
+        for group_id in user_group_ids:
+            if current_user.role == 'admin' or await verify_group_admin_access(current_user.id, group_id):
+                await asyncio.to_thread(
+                    lambda: supabase_admin.table('user_groups')
+                    .delete()
+                    .eq('user_id', user_id)
+                    .eq('group_id', group_id)
+                    .execute()
+                )
+        
+        # Não deleta o usuário do Auth, apenas remove dos grupos
+        logging.info(f"Usuário {user_id} removido dos grupos pelo subadmin {current_user.id}")
+        return
+        
+    except Exception as e:
+        logging.error(f"Erro ao remover usuário do grupo: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao remover usuário do grupo")
+
+@group_admin_router.post("/users/{user_id}/renew", response_model=dict)
+async def renew_group_user_access(
+    user_id: str,
+    renew_data: UserRenewRequest,
+    current_user: UserProfile = Depends(get_group_admin_user)
+):
+    """Renova o acesso de um usuário em um grupo específico (subadmin)"""
+    try:
+        # Verifica se o usuário pertence a algum grupo gerenciado pelo subadmin
+        user_groups_response = await asyncio.to_thread(
+            supabase_admin.table('user_groups')
+            .select('group_id, data_expiracao')
+            .eq('user_id', user_id)
+            .execute
+        )
+        
+        if not user_groups_response.data:
+            raise HTTPException(status_code=404, detail="Usuário não encontrado em nenhum grupo")
+        
+        user_group_ids = [ug['group_id'] for ug in user_groups_response.data]
+        has_access = any(await verify_group_admin_access(current_user.id, group_id) for group_id in user_group_ids)
+        
+        if current_user.role != 'admin' and not has_access:
+            raise HTTPException(status_code=403, detail="Acesso negado a este usuário")
+        
+        # Calcula nova data de expiração
+        data_atual = date.today()
+        dias_adicionais = renew_data.dias_adicionais
+        
+        # Atualiza em todos os grupos do usuário que o subadmin gerencia
+        for user_group in user_groups_response.data:
+            group_id = user_group['group_id']
+            
+            if current_user.role == 'admin' or await verify_group_admin_access(current_user.id, group_id):
+                data_expiracao = user_group['data_expiracao']
+                
+                if isinstance(data_expiracao, str):
+                    data_expiracao = datetime.fromisoformat(data_expiracao).date()
+                
+                # Se já expirou, recomeça da data atual
+                if data_expiracao < data_atual:
+                    nova_data = data_atual + timedelta(days=dias_adicionais)
+                else:
+                    # Se ainda está ativo, adiciona dias à data atual de expiração
+                    nova_data = data_expiracao + timedelta(days=dias_adicionais)
+                
+                # Atualiza a data de expiração
+                await asyncio.to_thread(
+                    lambda: supabase_admin.table('user_groups')
+                    .update({'data_expiracao': nova_data.isoformat()})
+                    .eq('user_id', user_id)
+                    .eq('group_id', group_id)
+                    .execute()
+                )
+        
+        return {"message": f"Acesso renovado por {dias_adicionais} dias"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Erro ao renovar acesso do usuário: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao renovar acesso do usuário")
+
+# --------------------------------------------------------------------------
+# --- ENDPOINTS PARA SUBADMINISTRADORES VERIFICAREM SEUS GRUPOS ---
+# --------------------------------------------------------------------------
+
+@group_admin_router.get("/my-groups", response_model=List[dict])
+async def get_my_groups(
+    current_user: UserProfile = Depends(get_group_admin_user)
+):
+    """Lista os grupos que o subadministrador atual pode gerenciar"""
+    try:
+        if current_user.role == 'admin':
+            # Admin geral vê todos os grupos
+            groups_response = await asyncio.to_thread(
+                supabase.table('grupos').select('*').order('nome').execute
+            )
+            return groups_response.data or []
+        else:
+            # Subadmin vê apenas seus grupos designados
+            managed_groups = await get_user_managed_groups(current_user.id)
+            if not managed_groups:
+                return []
+            
+            groups_response = await asyncio.to_thread(
+                supabase.table('grupos')
+                .select('*')
+                .in_('id', managed_groups)
+                .order('nome')
+                .execute
+            )
+            
+            groups_with_details = []
+            for group in groups_response.data:
+                # Contar usuários ativos no grupo
+                user_groups_response = await asyncio.to_thread(
+                    supabase_admin.table('user_groups')
+                    .select('user_id', count='exact')
+                    .eq('group_id', group['id'])
+                    .gte('data_expiracao', date.today().isoformat())
+                    .execute
+                )
+                
+                group_with_details = {
+                    **group,
+                    'usuarios_ativos': user_groups_response.count or 0
+                }
+                groups_with_details.append(group_with_details)
+            
+            return groups_with_details
+        
+    except Exception as e:
+        logging.error(f"Erro ao listar grupos do subadministrador: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao listar grupos")
