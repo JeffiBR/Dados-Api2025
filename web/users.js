@@ -27,13 +27,15 @@ document.addEventListener('DOMContentLoaded', () => {
         { key: 'users', name: 'Gerenciar Usuários', description: 'Criar, editar e gerenciar usuários e suas permissões no sistema.', category: 'configuracao', icon: 'fa-users-cog' }
     ];
 
-    // --- INICIALIZAÇÃO ---
-    initializePermissionsGrid();
-    loadUsers();
+    // --- DECLARAÇÃO DE FUNÇÕES ---
 
-    // --- LÓGICA DE NEGÓCIO ---
-
+    // Função para inicializar o grid de permissões
     function initializePermissionsGrid() {
+        if (!permissionsContainer) {
+            console.error('Permissions container não encontrado');
+            return;
+        }
+
         permissionsContainer.innerHTML = '';
         
         availablePermissions.forEach(permission => {
@@ -93,37 +95,36 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Função para obter as permissões selecionadas
-    const getSelectedPermissions = () => {
+    function getSelectedPermissions() {
         return Array.from(permissionsContainer.querySelectorAll('.permission-card'))
             .filter(card => card.classList.contains('selected'))
             .map(card => card.dataset.permission);
-    };
+    }
 
     // Função para definir as permissões selecionadas
-    const setSelectedPermissions = (permissions) => {
+    function setSelectedPermissions(permissions) {
         permissionsContainer.querySelectorAll('.permission-card').forEach(card => {
             const hasPermission = permissions.includes(card.dataset.permission);
             card.classList.toggle('selected', hasPermission);
         });
         updateCheckboxVisibility();
-    };
+    }
 
     // Atualizar visibilidade das permissões baseado no nível de acesso
-    roleSelect.addEventListener('change', () => {
-        updatePermissionsVisibility();
-    });
-
     function updatePermissionsVisibility() {
         const isUser = roleSelect.value === 'user';
-        permissionsContainer.style.opacity = isUser ? '1' : '0.6';
-        permissionsContainer.style.pointerEvents = isUser ? 'all' : 'none';
+        if (permissionsContainer) {
+            permissionsContainer.style.opacity = isUser ? '1' : '0.6';
+            permissionsContainer.style.pointerEvents = isUser ? 'all' : 'none';
+        }
         
         if (!isUser) {
             setSelectedPermissions([]);
         }
     }
 
-    const loadUsers = async () => {
+    // Função para carregar usuários
+    async function loadUsers() {
         try {
             console.log('Carregando usuários...');
             const response = await authenticatedFetch('/api/users');
@@ -141,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Mostrar dados de exemplo para debug
             renderUsersTable([]);
         }
-    };
+    }
 
     function renderUsersTable(users) {
         if (!tableBody) {
@@ -193,7 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>
                     <div class="password-display">
                         <span class="pwd-hidden">••••••••</span>
-                        <button class="btn-icon view-pwd" title="Visualizar senha" onclick="togglePassword(this)">
+                        <button class="btn-icon view-pwd" title="Visualizar senha">
                             <i class="fas fa-eye"></i>
                         </button>
                     </div>
@@ -218,11 +219,12 @@ document.addEventListener('DOMContentLoaded', () => {
             tableBody.appendChild(row);
         });
 
-        // Adicionar event listeners para os botões de edição e exclusão
+        // Adicionar event listeners para os botões
         addTableEventListeners();
     }
 
     function addTableEventListeners() {
+        // Event listeners para editar
         tableBody.querySelectorAll('.edit-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const row = this.closest('tr');
@@ -231,6 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
+        // Event listeners para excluir
         tableBody.querySelectorAll('.delete-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const row = this.closest('tr');
@@ -238,24 +241,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 deleteUser(user.id, user.full_name);
             });
         });
-    }
 
-    // Função global para alternar visibilidade da senha
-    window.togglePassword = function(button) {
-        const passwordDisplay = button.closest('.password-display');
-        const hiddenSpan = passwordDisplay.querySelector('.pwd-hidden');
-        const icon = button.querySelector('i');
-        
-        if (hiddenSpan.textContent === '••••••••') {
-            hiddenSpan.textContent = 'senha123'; // Senha padrão ou você pode buscar do usuário
-            icon.className = 'fas fa-eye-slash';
-            button.title = 'Ocultar senha';
-        } else {
-            hiddenSpan.textContent = '••••••••';
-            icon.className = 'fas fa-eye';
-            button.title = 'Visualizar senha';
-        }
-    };
+        // Event listeners para visualizar senha
+        tableBody.querySelectorAll('.view-pwd').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const passwordDisplay = this.closest('.password-display');
+                const hiddenSpan = passwordDisplay.querySelector('.pwd-hidden');
+                const icon = this.querySelector('i');
+                
+                if (hiddenSpan.textContent === '••••••••') {
+                    hiddenSpan.textContent = 'senha123'; // Senha padrão
+                    icon.className = 'fas fa-eye-slash';
+                    this.title = 'Ocultar senha';
+                } else {
+                    hiddenSpan.textContent = '••••••••';
+                    icon.className = 'fas fa-eye';
+                    this.title = 'Visualizar senha';
+                }
+            });
+        });
+    }
 
     function getInitials(name) {
         if (!name) return 'U';
@@ -299,7 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${firstThree}<span class="more-permissions">+${permissions.length - 3}</span>`;
     }
 
-    const resetForm = () => {
+    function resetForm() {
         formTitle.textContent = 'Adicionar Novo Usuário';
         userIdInput.value = '';
         fullNameInput.value = '';
@@ -314,9 +319,9 @@ document.addEventListener('DOMContentLoaded', () => {
         saveButton.innerHTML = '<i class="fas fa-user-plus"></i> Criar Usuário';
         saveButton.className = 'btn btn-primary btn-create';
         cancelButton.style.display = 'none';
-    };
+    }
 
-    const populateFormForEdit = (user) => {
+    function populateFormForEdit(user) {
         formTitle.textContent = `Editando: ${user.full_name}`;
         userIdInput.value = user.id;
         fullNameInput.value = user.full_name || '';
@@ -339,9 +344,9 @@ document.addEventListener('DOMContentLoaded', () => {
             behavior: 'smooth', 
             block: 'start' 
         });
-    };
+    }
 
-    const saveUser = async () => {
+    async function saveUser() {
         const id = userIdInput.value;
         const full_name = fullNameInput.value.trim();
         const email = emailInput.value.trim();
@@ -422,9 +427,9 @@ document.addEventListener('DOMContentLoaded', () => {
             saveButton.disabled = false;
             saveButton.innerHTML = originalButtonText;
         }
-    };
+    }
 
-    const deleteUser = async (id, userName) => {
+    async function deleteUser(id, userName) {
         if (!confirm(`Tem certeza que deseja excluir o usuário "${userName}"?\n\nEsta ação não pode ser desfeita.`)) {
             return;
         }
@@ -445,7 +450,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Erro ao excluir usuário:', error);
             showAlert(`❌ ${error.message}`, 'error');
         }
-    };
+    }
 
     // Sistema de alertas
     function showAlert(message, type = 'info') {
@@ -459,13 +464,19 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="alert-content">
                 <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-triangle' : 'info-circle'}"></i>
                 <span>${message}</span>
-                <button class="alert-close" onclick="this.parentElement.parentElement.remove()">
+                <button class="alert-close">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
         `;
         
         document.body.appendChild(alert);
+        
+        // Event listener para fechar
+        alert.querySelector('.alert-close').addEventListener('click', () => {
+            alert.style.animation = 'slideOutRight 0.3s ease forwards';
+            setTimeout(() => alert.remove(), 300);
+        });
         
         // Auto-remover após 5 segundos
         setTimeout(() => {
@@ -476,10 +487,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 5000);
     }
 
-    // --- EVENT LISTENERS ---
-    saveButton.addEventListener('click', saveUser);
-    cancelButton.addEventListener('click', resetForm);
+    // --- INICIALIZAÇÃO ---
+    
+    function initializeUsersModule() {
+        // Verificar se os elementos necessários existem
+        if (!permissionsContainer || !tableBody || !saveButton) {
+            console.error('Elementos necessários não encontrados para inicializar o módulo de usuários');
+            return;
+        }
 
-    // Inicializar
-    resetForm();
+        // Inicializar componentes
+        initializePermissionsGrid();
+        
+        // Configurar event listeners
+        roleSelect.addEventListener('change', updatePermissionsVisibility);
+        saveButton.addEventListener('click', saveUser);
+        cancelButton.addEventListener('click', resetForm);
+
+        // Carregar dados iniciais
+        loadUsers();
+        
+        // Resetar formulário para estado inicial
+        resetForm();
+        
+        console.log('Módulo de usuários inicializado com sucesso');
+    }
+
+    // --- INICIAR APLICAÇÃO ---
+    initializeUsersModule();
 });
