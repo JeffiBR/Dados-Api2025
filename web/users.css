@@ -1,65 +1,5 @@
-/* users.css - Estilos específicos para a página de gerenciamento de usuários */
+/* users.css - Estilos para gerenciamento de usuários */
 
-/* Container de abas principal */
-.tabs-container {
-    margin-bottom: 2rem;
-}
-
-.tabs {
-    display: flex;
-    border-bottom: 1px solid var(--border-color);
-    margin-bottom: 1.5rem;
-    background: var(--card-bg);
-    border-radius: 8px 8px 0 0;
-    padding: 0 1rem;
-    flex-wrap: wrap;
-}
-
-.tab-button {
-    padding: 1rem 1.5rem;
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    border-bottom: 3px solid transparent;
-    transition: all 0.3s ease;
-    font-weight: 600;
-    font-size: 0.9rem;
-    position: relative;
-    white-space: nowrap;
-}
-
-.tab-button:hover {
-    color: var(--text-color);
-    background-color: rgba(59, 130, 246, 0.05);
-}
-
-.tab-button.active {
-    color: var(--primary-color);
-    border-bottom-color: var(--primary-color);
-    background-color: rgba(59, 130, 246, 0.1);
-}
-
-.tab-content {
-    display: none;
-    animation: fadeIn 0.3s ease;
-}
-
-.tab-content.active {
-    display: block;
-}
-
-/* Subtabs para a visão admin */
-.subtab-content {
-    display: none;
-    animation: fadeIn 0.3s ease;
-}
-
-.subtab-content.active {
-    display: block;
-}
-
-/* Grid de permissões */
 .permissions-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -68,14 +8,13 @@
 }
 
 .permission-card {
-    background: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 1.25rem;
     cursor: pointer;
     transition: all 0.3s ease;
     position: relative;
-    overflow: hidden;
+    background: var(--card-bg);
 }
 
 .permission-card:hover {
@@ -86,7 +25,7 @@
 
 .permission-card.selected {
     border-color: var(--primary-color);
-    background: rgba(59, 130, 246, 0.05);
+    background: color-mix(in srgb, var(--primary-color) 8%, transparent);
 }
 
 .permission-header {
@@ -97,10 +36,10 @@
 }
 
 .permission-icon {
-    width: 2.5rem;
-    height: 2.5rem;
-    background: var(--primary-color);
+    width: 40px;
+    height: 40px;
     border-radius: 8px;
+    background: linear-gradient(135deg, var(--primary-color), color-mix(in srgb, var(--primary-color) 70%, transparent));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -111,49 +50,46 @@
 .permission-name {
     font-weight: 600;
     color: var(--text-color);
-    font-size: 1rem;
+    font-size: 0.95rem;
 }
 
 .permission-description {
     color: var(--text-muted);
-    font-size: 0.875rem;
-    line-height: 1.5;
-    margin-bottom: 1rem;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    margin-bottom: 0.75rem;
 }
 
 .category-indicator {
-    position: absolute;
-    top: 0.75rem;
-    right: 0.75rem;
+    display: inline-block;
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
     font-size: 0.75rem;
-    font-weight: 600;
+    font-weight: 500;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
 }
 
 .category-indicator.analise {
-    background: rgba(16, 185, 129, 0.1);
+    background: color-mix(in srgb, #10b981 20%, transparent);
     color: #10b981;
-    border: 1px solid rgba(16, 185, 129, 0.2);
+    border: 1px solid color-mix(in srgb, #10b981 30%, transparent);
 }
 
 .category-indicator.administracao {
-    background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
-    border: 1px solid rgba(239, 68, 68, 0.2);
+    background: color-mix(in srgb, #f59e0b 20%, transparent);
+    color: #f59e0b;
+    border: 1px solid color-mix(in srgb, #f59e0b 30%, transparent);
 }
 
 .category-indicator.configuracao {
-    background: rgba(139, 92, 246, 0.1);
+    background: color-mix(in srgb, #8b5cf6 20%, transparent);
     color: #8b5cf6;
-    border: 1px solid rgba(139, 92, 246, 0.2);
+    border: 1px solid color-mix(in srgb, #8b5cf6 30%, transparent);
 }
 
 .permission-checkbox {
     position: absolute;
-    bottom: 1rem;
+    top: 1rem;
     right: 1rem;
     width: 20px;
     height: 20px;
@@ -163,24 +99,87 @@
 }
 
 .permission-card.selected .permission-checkbox {
-    background-color: var(--primary-color);
+    background: var(--primary-color);
     border-color: var(--primary-color);
 }
 
 .permission-card.selected .permission-checkbox::after {
     content: '✓';
+    color: white;
+    font-size: 0.75rem;
+    font-weight: bold;
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    color: white;
-    font-size: 12px;
-    font-weight: bold;
 }
 
-/* Estados dos usuários na tabela */
+/* Estados desabilitados */
+.permissions-grid:disabled .permission-card,
+.permission-card:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .permissions-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Badges para status */
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.status-active {
+    background: color-mix(in srgb, #10b981 20%, transparent);
+    color: #10b981;
+    border: 1px solid color-mix(in srgb, #10b981 30%, transparent);
+}
+
+.status-expired {
+    background: color-mix(in srgb, #ef4444 20%, transparent);
+    color: #ef4444;
+    border: 1px solid color-mix(in srgb, #ef4444 30%, transparent);
+}
+
+.status-warning {
+    background: color-mix(in srgb, #f59e0b 20%, transparent);
+    color: #f59e0b;
+    border: 1px solid color-mix(in srgb, #f59e0b 30%, transparent);
+}
+
+/* Ações na tabela */
+.actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.btn-icon {
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+}
+
+.btn-icon:hover {
+    background: var(--hover-bg);
+    color: var(--primary-color);
+}
+
+/* Célula de senha */
 .password-cell {
-    position: relative;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -188,122 +187,86 @@
 
 .pwd-hidden, .pwd-real {
     font-family: 'Courier New', monospace;
-    letter-spacing: 1px;
 }
 
 .pwd-real {
     color: var(--success-color);
-    font-weight: 600;
+    font-weight: 500;
 }
 
-.reveal-pwd {
+/* Tabs */
+.tabs-container {
+    margin-top: 1rem;
+}
+
+.tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 1.5rem;
+}
+
+.tab-button {
     background: none;
     border: none;
-    color: var(--text-muted);
+    padding: 0.75rem 1.5rem;
     cursor: pointer;
-    padding: 0.25rem;
-    border-radius: 4px;
+    color: var(--text-muted);
+    border-bottom: 2px solid transparent;
     transition: all 0.2s ease;
+    font-weight: 500;
 }
 
-.reveal-pwd:hover {
-    background: var(--card-hover);
+.tab-button:hover {
     color: var(--text-color);
+    background: var(--hover-bg);
 }
 
-/* Badges de status */
-.status-badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+.tab-button.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
 }
 
-.status-active {
-    background: rgba(16, 185, 129, 0.1);
-    color: #10b981;
-    border: 1px solid rgba(16, 185, 129, 0.2);
+.tab-content {
+    display: none;
 }
 
-.status-expired {
-    background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
-    border: 1px solid rgba(239, 68, 68, 0.2);
+.tab-content.active {
+    display: block;
 }
 
-.status-warning {
-    background: rgba(245, 158, 11, 0.1);
-    color: #f59e0b;
-    border: 1px solid rgba(245, 158, 11, 0.2);
-}
-
-/* Indicadores de uso de grupos */
-.usage-indicator {
+/* Alertas */
+.alert {
+    padding: 1rem;
+    border-radius: 6px;
+    margin-bottom: 1rem;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    font-size: 0.875rem;
+    gap: 0.75rem;
 }
 
-.usage-bar {
-    flex: 1;
-    height: 6px;
-    background: var(--border-color);
-    border-radius: 3px;
-    overflow: hidden;
+.alert-error {
+    background: color-mix(in srgb, #ef4444 10%, transparent);
+    border: 1px solid color-mix(in srgb, #ef4444 20%, transparent);
+    color: #ef4444;
 }
 
-.usage-fill {
-    height: 100%;
-    border-radius: 3px;
-    transition: width 0.3s ease;
+.alert-success {
+    background: color-mix(in srgb, #10b981 10%, transparent);
+    border: 1px solid color-mix(in srgb, #10b981 20%, transparent);
+    color: #10b981;
 }
 
-.usage-low {
-    background: var(--success-color);
-}
-
-.usage-medium {
-    background: var(--warning-color);
-}
-
-.usage-high {
-    background: var(--danger-color);
-}
-
-/* Animações */
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateX(-20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-
-/* Estados de formulário */
-.form-container {
-    background: var(--card-bg);
-    border-radius: 12px;
+/* Tabelas */
+.empty-table {
+    text-align: center;
+    color: var(--text-muted);
     padding: 2rem;
-    border: 1px solid var(--border-color);
+    font-style: italic;
+}
+
+/* Formulários */
+.form-container {
     margin-bottom: 2rem;
-    animation: slideIn 0.3s ease;
 }
 
 .form-group {
@@ -313,22 +276,20 @@
 .form-group label {
     display: block;
     margin-bottom: 0.5rem;
+    font-weight: 500;
     color: var(--text-color);
-    font-weight: 600;
-    font-size: 0.875rem;
 }
 
 .form-group input,
 .form-group select,
 .form-group textarea {
     width: 100%;
-    padding: 0.75rem 1rem;
+    padding: 0.75rem;
     border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background: var(--background-color);
+    border-radius: 6px;
+    background: var(--input-bg);
     color: var(--text-color);
-    font-size: 0.875rem;
-    transition: all 0.2s ease;
+    transition: border-color 0.2s ease;
 }
 
 .form-group input:focus,
@@ -336,7 +297,6 @@
 .form-group textarea:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .form-group.full-width {
@@ -346,246 +306,82 @@
 .form-actions {
     display: flex;
     gap: 1rem;
-    justify-content: flex-start;
-    align-items: center;
-    flex-wrap: wrap;
+    margin-top: 2rem;
 }
 
-/* Tabelas */
-.table-container {
-    background: var(--card-bg);
-    border-radius: 12px;
+.btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: color-mix(in srgb, var(--primary-color) 80%, black);
+}
+
+.btn-secondary {
+    background: var(--secondary-bg);
+    color: var(--text-color);
     border: 1px solid var(--border-color);
-    overflow: hidden;
-    animation: fadeIn 0.3s ease;
+}
+
+.btn-secondary:hover {
+    background: var(--hover-bg);
+}
+
+/* Cards */
+.card {
+    background: var(--card-bg);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 1.5rem;
 }
 
 .card-header {
     padding: 1.5rem;
     border-bottom: 1px solid var(--border-color);
-    background: rgba(0, 0, 0, 0.02);
 }
 
 .card-header h3 {
     margin: 0;
     color: var(--text-color);
-    font-weight: 600;
     font-size: 1.25rem;
 }
 
 .card-content {
-    padding: 0;
+    padding: 1.5rem;
 }
 
+/* Tabelas responsivas */
 table {
     width: 100%;
     border-collapse: collapse;
 }
 
-thead {
-    background: rgba(0, 0, 0, 0.02);
-    border-bottom: 1px solid var(--border-color);
-}
-
-th {
-    padding: 1rem 1.5rem;
+table th,
+table td {
+    padding: 0.75rem;
     text-align: left;
-    font-weight: 600;
-    color: var(--text-color);
-    font-size: 0.875rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    white-space: nowrap;
-}
-
-td {
-    padding: 1rem 1.5rem;
     border-bottom: 1px solid var(--border-color);
-    color: var(--text-color);
-    font-size: 0.875rem;
 }
 
-tbody tr {
-    transition: all 0.2s ease;
-}
-
-tbody tr:hover {
-    background: var(--card-hover);
-}
-
-.actions {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-}
-
-.btn-icon {
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    padding: 0.5rem;
-    border-radius: 6px;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.btn-icon:hover {
-    background: var(--card-hover);
-    color: var(--text-color);
-}
-
-.btn-icon.edit-btn:hover {
-    color: var(--primary-color);
-    background: rgba(59, 130, 246, 0.1);
-}
-
-.btn-icon.delete-btn:hover {
-    color: var(--danger-color);
-    background: rgba(239, 68, 68, 0.1);
-}
-
-/* Estados vazios */
-.empty-state {
-    text-align: center;
-    padding: 3rem 2rem;
-    color: var(--text-muted);
-}
-
-.empty-state i {
-    font-size: 3rem;
-    margin-bottom: 1rem;
-    color: var(--primary-color);
-    opacity: 0.5;
-}
-
-.empty-state h3 {
-    margin-bottom: 0.5rem;
-    color: var(--text-color);
+table th {
     font-weight: 600;
+    color: var(--text-color);
+    background: var(--table-header-bg);
 }
 
-.empty-state p {
-    max-width: 400px;
-    margin: 0 auto;
-    line-height: 1.6;
-}
-
-.empty-table {
-    text-align: center;
-    padding: 3rem;
-    color: var(--text-muted);
-    font-style: italic;
-}
-
-/* Responsividade */
-@media (max-width: 1024px) {
-    .permissions-grid {
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    }
-}
-
-@media (max-width: 768px) {
-    .tabs {
-        flex-direction: column;
-        padding: 0;
-    }
-    
-    .tab-button {
-        padding: 1rem;
-        border-bottom: 1px solid var(--border-color);
-        border-radius: 0;
-        justify-content: flex-start;
-    }
-    
-    .tab-button.active {
-        border-bottom: 3px solid var(--primary-color);
-    }
-    
-    .permissions-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .form-actions {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .form-actions .btn {
-        width: 100%;
-    }
-    
-    .actions {
-        flex-direction: column;
-    }
-    
-    table {
-        display: block;
-        overflow-x: auto;
-    }
-    
-    th, td {
-        white-space: nowrap;
-        min-width: 120px;
-    }
-}
-
-@media (max-width: 480px) {
-    .form-container {
-        padding: 1.5rem;
-    }
-    
-    .card-header {
-        padding: 1rem 1.5rem;
-    }
-    
-    th, td {
-        padding: 0.75rem 1rem;
-    }
-    
-    .permission-card {
-        padding: 1rem;
-    }
-    
-    .permission-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
-    }
-}
-
-/* Utilitários */
-.text-success {
-    color: var(--success-color);
-}
-
-.text-warning {
-    color: var(--warning-color);
-}
-
-.text-danger {
-    color: var(--danger-color);
-}
-
-.text-muted {
-    color: var(--text-muted);
-}
-
-.mb-2 {
-    margin-bottom: 0.5rem;
-}
-
-.mb-4 {
-    margin-bottom: 1rem;
-}
-
-.mt-2 {
-    margin-top: 0.5rem;
-}
-
-.mt-4 {
-    margin-top: 1rem;
+table tr:hover {
+    background: var(--hover-bg);
 }
