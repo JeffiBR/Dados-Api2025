@@ -1,4 +1,4 @@
-# main.py (completo e corrigido com Cestas Básicas e Grupos) - VERSÃO 3.2.1
+# main.py (completo e corrigido com Cestas Básicas, Grupos e Subadministradores) - VERSÃO 3.3.0
 import os
 import asyncio
 from datetime import date, timedelta, datetime
@@ -15,6 +15,9 @@ from typing import Dict, Any, List, Optional
 import pandas as pd
 import collector_service
 
+# Importar as rotas de subadministradores
+from group_admin_routes import group_admin_router
+
 # --------------------------------------------------------------------------
 # --- 1. CONFIGURAÇÕES INICIAIS E VARIÁVEIS DE AMBIENTE ---
 # --------------------------------------------------------------------------
@@ -22,7 +25,7 @@ load_dotenv()
 app = FastAPI(
     title="API de Preços Arapiraca",
     description="Sistema completo para coleta e análise de preços de supermercados.",
-    version="3.2.1"
+    version="3.3.0"
 )
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] [%(levelname)s] %(message)s')
 
@@ -40,6 +43,9 @@ if not all([SUPABASE_URL, SUPABASE_KEY, SERVICE_ROLE_KEY, ECONOMIZA_ALAGOAS_TOKE
 # --- Clientes Supabase ---
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 supabase_admin: Client = create_client(SUPABASE_URL, SERVICE_ROLE_KEY)
+
+# Incluir as rotas de subadministradores
+app.include_router(group_admin_router)
 
 # --------------------------------------------------------------------------
 # --- 2. TRATAMENTO DE ERROS CENTRALIZADO ---
@@ -60,6 +66,7 @@ class UserProfile(BaseModel):
     role: str = "user"
     allowed_pages: List[str] = []
     email: Optional[str] = None
+    managed_groups: List[int] = []  # Novo campo para subadmins
 
 # --- FUNÇÕES AUXILIARES PARA GRUPOS ---
 def calcular_data_expiracao(dias_acesso: int) -> date:
@@ -123,8 +130,21 @@ async def get_current_user(authorization: str = Header(None)) -> UserProfile:
         if allowed_pages is None:
             allowed_pages = []
         
-        # VERIFICAR ACESSO (exceto para admins)
+        # Buscar grupos gerenciados se for subadmin
+        managed_groups = []
         if role != 'admin':
+            try:
+                # Verificar se é subadmin
+                admin_response = await asyncio.to_thread(
+                    supabase.table('group_admins').select('group_ids').eq('user_id', user_id).execute
+                )
+                if admin_response.data:
+                    managed_groups = admin_response.data[0].get('group_ids', [])
+            except Exception as e:
+                logging.error(f"Erro ao buscar grupos gerenciados: {e}")
+        
+        # VERIFICAR ACESSO (exceto para admins e subadmins com grupos ativos)
+        if role != 'admin' and not managed_groups:
             has_access = await verificar_acesso_usuario(user_id)
             if not has_access:
                 raise HTTPException(
@@ -136,7 +156,8 @@ async def get_current_user(authorization: str = Header(None)) -> UserProfile:
             id=user_id, 
             role=role,
             allowed_pages=allowed_pages,
-            email=user.email
+            email=user.email,
+            managed_groups=managed_groups  # Novo campo
         )
     except HTTPException:
         raise
@@ -165,7 +186,8 @@ async def get_current_user_optional(authorization: str = Header(None)) -> Option
                 id=user_id,
                 role='user',
                 allowed_pages=[],
-                email=user.email
+                email=user.email,
+                managed_groups=[]
             )
         
         profile_data = profile_response.data
@@ -174,11 +196,24 @@ async def get_current_user_optional(authorization: str = Header(None)) -> Option
         role = profile_data.get('role', 'user')
         allowed_pages = profile_data.get('allowed_pages', [])
         
+        # Buscar grupos gerenciados se for subadmin
+        managed_groups = []
+        if role != 'admin':
+            try:
+                admin_response = await asyncio.to_thread(
+                    supabase.table('group_admins').select('group_ids').eq('user_id', user_id).execute
+                )
+                if admin_response.data:
+                    managed_groups = admin_response.data[0].get('group_ids', [])
+            except Exception as e:
+                logging.error(f"Erro ao buscar grupos gerenciados: {e}")
+        
         return UserProfile(
             id=user_id, 
             role=role,
             allowed_pages=allowed_pages,
-            email=user.email
+            email=user.email,
+            managed_groups=managed_groups
         )
     except Exception as e:
         return None
@@ -456,6 +491,7 @@ async def get_my_profile(current_user: UserProfile = Depends(get_current_user)):
         
         if profile_data:
             profile_data['email'] = current_user.email
+            profile_data['managed_groups'] = current_user.managed_groups  # Incluir grupos gerenciados
         else:
             raise HTTPException(status_code=404, detail="Perfil do usuário não encontrado.")
 
@@ -1743,4 +1779,4 @@ app.mount("/", StaticFiles(directory="web", html=True), name="static")
 
 @app.get("/")
 def read_root():
-    return {"message": "Bem-vindo à API de Preços AL - Versão 3.2.1"}
+    return {"message": "Bem-vindo à API de Preços AL - Versão 3.3.0"}
