@@ -37,7 +37,7 @@ class GroupAdminManager {
             
             // Verificar se é admin
             if (userData.role !== 'admin') {
-                alert('Acesso negado. Apenas administradores podem gerenciar subadministradores.');
+                this.showError('Acesso negado. Apenas administradores podem gerenciar subadministradores.');
                 window.location.href = 'dashboard.html';
                 return;
             }
@@ -55,6 +55,9 @@ class GroupAdminManager {
         
         if (userData.avatar_url) {
             document.getElementById('userAvatar').src = userData.avatar_url;
+        } else {
+            const userName = userData.full_name || 'U';
+            document.getElementById('userAvatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=4f46e5&color=fff`;
         }
     }
 
@@ -153,6 +156,10 @@ class GroupAdminManager {
             option.textContent = `${user.full_name} (${user.email})`;
             userSelect.appendChild(option);
         });
+
+        if (availableUsers.length === 0) {
+            userSelect.innerHTML = '<option value="">Nenhum usuário disponível</option>';
+        }
     }
 
     populateGroupsSelect(selectElement = null) {
@@ -168,8 +175,8 @@ class GroupAdminManager {
     }
 
     setupEventListeners() {
-        // Formulário de adicionar subadmin
-        document.getElementById('addGroupAdminForm').addEventListener('submit', (e) => {
+        // Botão de adicionar subadmin
+        document.getElementById('addGroupAdminBtn').addEventListener('click', (e) => {
             e.preventDefault();
             this.addGroupAdmin();
         });
@@ -234,7 +241,8 @@ class GroupAdminManager {
 
             if (response.ok) {
                 this.showSuccess('Subadministrador designado com sucesso!');
-                document.getElementById('addGroupAdminForm').reset();
+                document.getElementById('userSelect').value = '';
+                groupsSelect.selectedIndex = -1;
                 await this.loadData();
             } else {
                 const error = await response.json();
@@ -354,7 +362,7 @@ class GroupAdminManager {
             <tr>
                 <td>
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(90deg, var(--primary), var(--accent)); display: grid; place-items: center; color: white; font-weight: bold;">
+                        <div class="user-avatar-small">
                             ${admin.user_name ? admin.user_name.charAt(0).toUpperCase() : 'U'}
                         </div>
                         <div>
@@ -414,27 +422,12 @@ class GroupAdminManager {
     showNotification(message, type = 'info') {
         // Criar elemento de notificação
         const notification = document.createElement('div');
-        notification.className = `notification notification-${type}`;
+        notification.className = `notification ${type}`;
         notification.innerHTML = `
             <div class="notification-content">
                 <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
                 <span>${message}</span>
             </div>
-        `;
-
-        // Estilos da notificação
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 1rem 1.5rem;
-            background: ${type === 'success' ? 'var(--success)' : type === 'error' ? 'var(--error)' : 'var(--primary)'};
-            color: white;
-            border-radius: var(--radius);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            z-index: 10000;
-            animation: slideInRight 0.3s ease;
-            max-width: 400px;
         `;
 
         document.body.appendChild(notification);
@@ -460,40 +453,3 @@ class GroupAdminManager {
 document.addEventListener('DOMContentLoaded', () => {
     new GroupAdminManager();
 });
-
-// Adicionar estilos CSS para animações das notificações
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideInRight {
-        from {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
-    }
-    
-    @keyframes slideOutRight {
-        from {
-            transform: translateX(0);
-            opacity: 1;
-        }
-        to {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-    }
-    
-    .notification-content {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
-    
-    .notification-content i {
-        font-size: 1.2rem;
-    }
-`;
-document.head.appendChild(style);
