@@ -1,0 +1,499 @@
+// group-admin.js - Gerenciamento de Subadministradores
+
+class GroupAdminManager {
+    constructor() {
+        this.groupAdmins = [];
+        this.allUsers = [];
+        this.allGroups = [];
+        this.init();
+    }
+
+    async init() {
+        await this.checkAuth();
+        await this.loadData();
+        this.setupEventListeners();
+        this.renderGroupAdmins();
+    }
+
+    async checkAuth() {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = 'login.html';
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/users/me', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Não autenticado');
+            }
+
+            const userData = await response.json();
+            
+            // Verificar se é admin
+            if (userData.role !== 'admin') {
+                alert('Acesso negado. Apenas administradores podem gerenciar subadministradores.');
+                window.location.href = 'dashboard.html';
+                return;
+            }
+
+            this.updateUserInfo(userData);
+        } catch (error) {
+            console.error('Erro de autenticação:', error);
+            window.location.href = 'login.html';
+        }
+    }
+
+    updateUserInfo(userData) {
+        document.getElementById('userName').textContent = userData.full_name || 'Usuário';
+        document.getElementById('userRole').textContent = this.formatRole(userData.role);
+        
+        if (userData.avatar_url) {
+            document.getElementById('userAvatar').src = userData.avatar_url;
+        }
+    }
+
+    formatRole(role) {
+        const roles = {
+            'admin': 'Administrador',
+            'user': 'Usuário'
+        };
+        return roles[role] || role;
+    }
+
+    async loadData() {
+        await Promise.all([
+            this.loadUsers(),
+            this.loadGroups(),
+            this.loadGroupAdmins()
+        ]);
+    }
+
+    async loadUsers() {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch('/api/users', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                this.allUsers = await response.json();
+                this.populateUserSelect();
+            } else {
+                throw new Error('Falha ao carregar usuários');
+            }
+        } catch (error) {
+            console.error('Erro ao carregar usuários:', error);
+            this.showError('Erro ao carregar lista de usuários');
+        }
+    }
+
+    async loadGroups() {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch('/api/groups', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                this.allGroups = await response.json();
+                this.populateGroupsSelect();
+            } else {
+                throw new Error('Falha ao carregar grupos');
+            }
+        } catch (error) {
+            console.error('Erro ao carregar grupos:', error);
+            this.showError('Erro ao carregar lista de grupos');
+        }
+    }
+
+    async loadGroupAdmins() {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch('/api/group-admins', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                this.groupAdmins = await response.json();
+                this.renderGroupAdmins();
+            } else {
+                throw new Error('Falha ao carregar subadministradores');
+            }
+        } catch (error) {
+            console.error('Erro ao carregar subadministradores:', error);
+            this.showError('Erro ao carregar lista de subadministradores');
+        }
+    }
+
+    populateUserSelect() {
+        const userSelect = document.getElementById('userSelect');
+        userSelect.innerHTML = '<option value="">Selecione um usuário</option>';
+        
+        // Filtrar apenas usuários que não são admin e não são já subadmins
+        const availableUsers = this.allUsers.filter(user => 
+            user.role !== 'admin' && 
+            !this.groupAdmins.some(admin => admin.user_id === user.id)
+        );
+
+        availableUsers.forEach(user => {
+            const option = document.createElement('option');
+            option.value = user.id;
+            option.textContent = `${user.full_name} (${user.email})`;
+            userSelect.appendChild(option);
+        });
+    }
+
+    populateGroupsSelect(selectElement = null) {
+        const targetSelect = selectElement || document.getElementById('groupsSelect');
+        targetSelect.innerHTML = '';
+        
+        this.allGroups.forEach(group => {
+            const option = document.createElement('option');
+            option.value = group.id;
+            option.textContent = `${group.nome} (${group.dias_acesso} dias)`;
+            targetSelect.appendChild(option);
+        });
+    }
+
+    setupEventListeners() {
+        // Formulário de adicionar subadmin
+        document.getElementById('addGroupAdminForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.addGroupAdmin();
+        });
+
+        // Formulário de editar subadmin
+        document.getElementById('editGroupAdminForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.updateGroupAdmin();
+        });
+
+        // Fechar modal
+        document.querySelectorAll('.close-modal').forEach(button => {
+            button.addEventListener('click', () => {
+                this.closeEditModal();
+            });
+        });
+
+        // Fechar modal ao clicar fora
+        document.getElementById('editGroupAdminModal').addEventListener('click', (e) => {
+            if (e.target.id === 'editGroupAdminModal') {
+                this.closeEditModal();
+            }
+        });
+
+        // Logout
+        document.getElementById('logoutBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.logout();
+        });
+    }
+
+    async addGroupAdmin() {
+        const userSelect = document.getElementById('userSelect');
+        const groupsSelect = document.getElementById('groupsSelect');
+        
+        const userId = userSelect.value;
+        const groupIds = Array.from(groupsSelect.selectedOptions).map(option => parseInt(option.value));
+
+        if (!userId) {
+            this.showError('Por favor, selecione um usuário');
+            return;
+        }
+
+        if (groupIds.length === 0) {
+            this.showError('Por favor, selecione pelo menos um grupo');
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch('/api/group-admins', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    user_id: userId,
+                    group_ids: groupIds
+                })
+            });
+
+            if (response.ok) {
+                this.showSuccess('Subadministrador designado com sucesso!');
+                document.getElementById('addGroupAdminForm').reset();
+                await this.loadData();
+            } else {
+                const error = await response.json();
+                throw new Error(error.detail || 'Erro ao designar subadministrador');
+            }
+        } catch (error) {
+            console.error('Erro ao adicionar subadministrador:', error);
+            this.showError('Erro ao designar subadministrador: ' + error.message);
+        }
+    }
+
+    openEditModal(userId) {
+        const admin = this.groupAdmins.find(admin => admin.user_id === userId);
+        if (!admin) return;
+
+        document.getElementById('editUserId').value = admin.user_id;
+        
+        // Popular select de grupos no modal
+        this.populateGroupsSelect(document.getElementById('editGroupsSelect'));
+        
+        // Selecionar os grupos atuais
+        const editGroupsSelect = document.getElementById('editGroupsSelect');
+        admin.group_ids.forEach(groupId => {
+            const option = Array.from(editGroupsSelect.options).find(opt => parseInt(opt.value) === groupId);
+            if (option) option.selected = true;
+        });
+
+        document.getElementById('editGroupAdminModal').style.display = 'block';
+    }
+
+    closeEditModal() {
+        document.getElementById('editGroupAdminModal').style.display = 'none';
+        document.getElementById('editGroupAdminForm').reset();
+    }
+
+    async updateGroupAdmin() {
+        const userId = document.getElementById('editUserId').value;
+        const groupIds = Array.from(document.getElementById('editGroupsSelect').selectedOptions)
+            .map(option => parseInt(option.value));
+
+        if (groupIds.length === 0) {
+            this.showError('Por favor, selecione pelo menos um grupo');
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/api/group-admins/${userId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    group_ids: groupIds
+                })
+            });
+
+            if (response.ok) {
+                this.showSuccess('Subadministrador atualizado com sucesso!');
+                this.closeEditModal();
+                await this.loadData();
+            } else {
+                const error = await response.json();
+                throw new Error(error.detail || 'Erro ao atualizar subadministrador');
+            }
+        } catch (error) {
+            console.error('Erro ao atualizar subadministrador:', error);
+            this.showError('Erro ao atualizar subadministrador: ' + error.message);
+        }
+    }
+
+    async deleteGroupAdmin(userId) {
+        if (!confirm('Tem certeza que deseja remover este subadministrador? Esta ação não pode ser desfeita.')) {
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/api/group-admins/${userId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                this.showSuccess('Subadministrador removido com sucesso!');
+                await this.loadData();
+            } else {
+                const error = await response.json();
+                throw new Error(error.detail || 'Erro ao remover subadministrador');
+            }
+        } catch (error) {
+            console.error('Erro ao remover subadministrador:', error);
+            this.showError('Erro ao remover subadministrador: ' + error.message);
+        }
+    }
+
+    renderGroupAdmins() {
+        const tbody = document.querySelector('#groupAdminsTable tbody');
+        
+        if (this.groupAdmins.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="empty-state">
+                        <i class="fas fa-user-shield"></i>
+                        <h4>Nenhum subadministrador designado</h4>
+                        <p>Comece designando um usuário como subadministrador</p>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = this.groupAdmins.map(admin => `
+            <tr>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(90deg, var(--primary), var(--accent)); display: grid; place-items: center; color: white; font-weight: bold;">
+                            ${admin.user_name ? admin.user_name.charAt(0).toUpperCase() : 'U'}
+                        </div>
+                        <div>
+                            <strong>${admin.user_name || 'N/A'}</strong>
+                        </div>
+                    </div>
+                </td>
+                <td>${admin.user_email || 'N/A'}</td>
+                <td>
+                    <div class="groups-badges">
+                        ${admin.group_names.map(name => `
+                            <span class="group-badge">
+                                <i class="fas fa-layer-group"></i>
+                                ${name}
+                            </span>
+                        `).join('')}
+                    </div>
+                </td>
+                <td>${new Date(admin.created_at).toLocaleDateString('pt-BR')}</td>
+                <td>
+                    <div class="table-actions">
+                        <button class="btn outline edit-admin" data-user-id="${admin.user_id}">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                        <button class="btn danger delete-admin" data-user-id="${admin.user_id}">
+                            <i class="fas fa-trash"></i> Remover
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+
+        // Adicionar event listeners aos botões
+        tbody.querySelectorAll('.edit-admin').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const userId = e.target.closest('button').dataset.userId;
+                this.openEditModal(userId);
+            });
+        });
+
+        tbody.querySelectorAll('.delete-admin').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const userId = e.target.closest('button').dataset.userId;
+                this.deleteGroupAdmin(userId);
+            });
+        });
+    }
+
+    showSuccess(message) {
+        this.showNotification(message, 'success');
+    }
+
+    showError(message) {
+        this.showNotification(message, 'error');
+    }
+
+    showNotification(message, type = 'info') {
+        // Criar elemento de notificação
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.innerHTML = `
+            <div class="notification-content">
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                <span>${message}</span>
+            </div>
+        `;
+
+        // Estilos da notificação
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            background: ${type === 'success' ? 'var(--success)' : type === 'error' ? 'var(--error)' : 'var(--primary)'};
+            color: white;
+            border-radius: var(--radius);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 10000;
+            animation: slideInRight 0.3s ease;
+            max-width: 400px;
+        `;
+
+        document.body.appendChild(notification);
+
+        // Remover após 5 segundos
+        setTimeout(() => {
+            notification.style.animation = 'slideOutRight 0.3s ease';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }, 5000);
+    }
+
+    logout() {
+        localStorage.removeItem('token');
+        window.location.href = 'login.html';
+    }
+}
+
+// Inicializar quando o DOM estiver carregado
+document.addEventListener('DOMContentLoaded', () => {
+    new GroupAdminManager();
+});
+
+// Adicionar estilos CSS para animações das notificações
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideOutRight {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+    
+    .notification-content {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .notification-content i {
+        font-size: 1.2rem;
+    }
+`;
+document.head.appendChild(style);
