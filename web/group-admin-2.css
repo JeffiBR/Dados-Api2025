@@ -1,0 +1,245 @@
+/* ====== ESTILOS ESPECÍFICOS PARA GERENCIAMENTO DE USUÁRIOS POR SUBADMIN ====== */
+
+/* Informações do Grupo */
+.group-info {
+    padding: 1rem;
+    background: rgba(79, 70, 229, 0.1);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-dark);
+    font-weight: 600;
+    color: var(--primary);
+}
+
+body.light-mode .group-info {
+    background: rgba(79, 70, 229, 0.05);
+    border: 1px solid var(--border-light);
+}
+
+/* Checkbox Group para Páginas Permitidas */
+.pages-checkbox-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.page-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border: 1px solid var(--border-dark);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+body.light-mode .page-checkbox {
+    border: 1px solid var(--border-light);
+}
+
+.page-checkbox:hover {
+    border-color: var(--primary);
+    background: rgba(79, 70, 229, 0.05);
+}
+
+.page-checkbox input[type="checkbox"] {
+    margin: 0;
+}
+
+.page-checkbox-label {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Status dos Usuários */
+.user-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.status-active {
+    background: rgba(22, 163, 74, 0.1);
+    color: var(--success);
+}
+
+.status-expired {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error);
+}
+
+.status-warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warn);
+}
+
+/* Preview de Data de Expiração */
+.expiration-preview {
+    padding: 1rem;
+    background: var(--input-dark);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-dark);
+    font-weight: 600;
+    text-align: center;
+    color: var(--primary);
+}
+
+body.light-mode .expiration-preview {
+    background: var(--input-light);
+    border: 1px solid var(--border-light);
+}
+
+/* Form Input Styles */
+.form-input {
+    width: 100%;
+    padding: 1rem;
+    border: 2px solid var(--border-dark);
+    border-radius: var(--radius);
+    background: var(--input-dark);
+    color: var(--text-dark);
+    font-size: 1rem;
+    transition: var(--transition);
+}
+
+body.light-mode .form-input {
+    background: var(--input-light);
+    color: var(--text-light);
+    border: 2px solid var(--border-light);
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(79,70,229,0.13);
+}
+
+/* Badges para páginas permitidas */
+.pages-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.page-badge {
+    background: rgba(79, 70, 229, 0.1);
+    color: var(--primary);
+    padding: 0.2rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    border: 1px solid rgba(79, 70, 229, 0.2);
+}
+
+/* Ações rápidas */
+.quick-actions {
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+}
+
+.quick-action-btn {
+    padding: 0.4rem 0.6rem;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.quick-action-btn.primary {
+    background: rgba(79, 70, 229, 0.1);
+    color: var(--primary);
+}
+
+.quick-action-btn.primary:hover {
+    background: var(--primary);
+    color: white;
+}
+
+.quick-action-btn.warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warn);
+}
+
+.quick-action-btn.warning:hover {
+    background: var(--warn);
+    color: white;
+}
+
+.quick-action-btn.danger {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error);
+}
+
+.quick-action-btn.danger:hover {
+    background: var(--error);
+    color: white;
+}
+
+/* Empty state específico */
+.empty-state-compact {
+    text-align: center;
+    padding: 2rem;
+    color: var(--muted-dark);
+}
+
+.empty-state-compact i {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    opacity: 0.5;
+}
+
+.empty-state-compact h4 {
+    margin-bottom: 0.5rem;
+    color: var(--muted-dark);
+}
+
+body.light-mode .empty-state-compact,
+body.light-mode .empty-state-compact h4 {
+    color: var(--muted-light);
+}
+
+/* Responsividade para tabela de usuários */
+@media (max-width: 1024px) {
+    .pages-checkbox-group {
+        grid-template-columns: 1fr;
+    }
+    
+    .pages-badges {
+        flex-direction: column;
+    }
+    
+    .quick-actions {
+        flex-direction: column;
+    }
+}
+
+/* Loading states específicos */
+.loading-skeleton {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.skeleton-line {
+    height: 1rem;
+    background: var(--border-dark);
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+}
+
+body.light-mode .skeleton-line {
+    background: var(--border-light);
+}
