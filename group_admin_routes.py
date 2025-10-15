@@ -6,7 +6,9 @@ from datetime import datetime, date, timedelta
 from pydantic import BaseModel, Field
 import logging
 import asyncio
-from main import get_current_user, UserProfile, require_page_access, supabase, supabase_admin, APIError
+
+# Importar dependências compartilhadas
+from dependencies import get_current_user, UserProfile, require_page_access, supabase, supabase_admin, APIError, calcular_data_expiracao
 
 # Criar router específico para group admins
 group_admin_router = APIRouter(prefix="/api/group-admin", tags=["group-admin"])
@@ -98,10 +100,6 @@ async def get_group_admin_user(current_user: UserProfile = Depends(get_current_u
     # Adiciona os grupos gerenciados ao perfil do usuário
     current_user.managed_groups = managed_groups
     return current_user
-
-def calcular_data_expiracao(dias_acesso: int) -> date:
-    """Calcula a data de expiração baseada nos dias de acesso"""
-    return date.today() + timedelta(days=dias_acesso)
 
 # --------------------------------------------------------------------------
 # --- ENDPOINTS PARA GERENCIAMENTO DE SUBADMINISTRADORES (APENAS ADMIN GERAL) ---
