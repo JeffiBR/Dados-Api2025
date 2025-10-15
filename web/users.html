@@ -69,7 +69,10 @@
             
             <div class="page-content">
                 <div class="page-header">
-                    <div class="page-title"><h1><i class="fas fa-users-cog"></i>Gerenciar Usuários</h1><p>Crie, edite e defina permissões para os usuários do sistema.</p></div>
+                    <div class="page-title">
+                        <h1><i class="fas fa-users-cog"></i>Gerenciar Usuários</h1>
+                        <p>Crie, edite e defina permissões para os usuários do sistema.</p>
+                    </div>
                 </div>
 
                 <!-- Tabs para navegação -->
@@ -83,57 +86,73 @@
 
                     <!-- Tab: Gerenciamento de Usuários -->
                     <div id="users-tab" class="tab-content active">
+                        <!-- Formulário de Usuário -->
                         <div class="card form-container">
                             <h3 id="formTitle">Adicionar Novo Usuário</h3>
                             <input type="hidden" id="userId">
-                            <div class="form-group">
-                                <label for="fullName">Nome Completo</label>
-                                <input type="text" id="fullName" placeholder="Digite o nome completo">
+                            
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="fullName">Nome Completo *</label>
+                                    <input type="text" id="fullName" placeholder="Digite o nome completo" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="email">Email *</label>
+                                    <input type="email" id="email" placeholder="Digite o email" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="password">Senha *</label>
+                                    <input type="password" id="password" placeholder="Mínimo 6 caracteres" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="role">Nível de Acesso</label>
+                                    <select id="role">
+                                        <option value="user">Usuário</option>
+                                        <option value="group_admin">Admin de Grupo</option>
+                                        <option value="admin">Admin Geral</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label for="email">Email</label>
-                                <input type="email" id="email" placeholder="Digite o email">
-                            </div>
-                            <div class="form-group">
-                                <label for="password">Senha</label>
-                                <input type="password" id="password" placeholder="Obrigatório para novos usuários">
-                            </div>
-                            <div class="form-group">
-                                <label for="role">Nível de Acesso</label>
-                                <select id="role">
-                                     <option value="user">Usuário</option>
-    <option value="group_admin">Admin de Grupo</option>
-    <option value="admin">Admin Geral</option>
-                                </select>
-                            </div>
+                            
                             <div class="form-group full-width">
                                 <label>Permissões de Página (para nível 'Usuário')</label>
                                 <div id="permissions-container" class="permissions-grid">
                                     <!-- Permissões serão carregadas aqui -->
                                 </div>
                             </div>
+                            
                             <div class="form-actions">
-                                <button id="saveUserBtn" class="btn btn-primary"><i class="fas fa-save"></i>Salvar</button>
-                                <button id="cancelButton" class="btn btn-secondary" style="display:none;">Cancelar Edição</button>
+                                <button id="saveUserBtn" class="btn btn-primary btn-create">
+                                    <i class="fas fa-user-plus"></i>Criar Usuário
+                                </button>
+                                <button id="cancelButton" class="btn btn-secondary" style="display:none;">
+                                    <i class="fas fa-times"></i>Cancelar
+                                </button>
                             </div>
                         </div>
                         
+                        <!-- Tabela de Usuários -->
                         <div class="card table-container" style="margin-top: 2rem;">
-                            <div class="card-header"><h3>Usuários Cadastrados</h3></div>
+                            <div class="card-header">
+                                <h3><i class="fas fa-list"></i>Usuários Cadastrados</h3>
+                            </div>
                             <div class="card-content">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>Nome</th>
-                                            <th>Email</th>
-                                            <th>Senha</th>
-                                            <th>Nível</th>
-                                            <th>Permissões</th>
-                                            <th>Ações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="usersTableBody"></tbody>
-                                </table>
+                                <div class="table-responsive">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Usuário</th>
+                                                <th>Senha</th>
+                                                <th>Nível</th>
+                                                <th>Permissões</th>
+                                                <th>Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="usersTableBody">
+                                            <!-- Usuários serão carregados aqui -->
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -143,51 +162,66 @@
                         <div class="card form-container">
                             <h3 id="groupFormTitle">Criar Novo Grupo</h3>
                             <input type="hidden" id="groupId">
-                            <div class="form-group">
-                                <label for="groupName">Nome do Grupo</label>
-                                <input type="text" id="groupName" placeholder="Digite o nome do grupo">
+                            
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="groupName">Nome do Grupo</label>
+                                    <input type="text" id="groupName" placeholder="Digite o nome do grupo">
+                                </div>
+                                <div class="form-group">
+                                    <label for="accessDays">Dias de Acesso</label>
+                                    <input type="number" id="accessDays" placeholder="30" min="1" max="365" value="30">
+                                </div>
+                                <div class="form-group">
+                                    <label for="maxUsers">Máximo de Usuários</label>
+                                    <input type="number" id="maxUsers" placeholder="10" min="1" max="1000" value="10">
+                                </div>
+                                <div class="form-group">
+                                    <label for="groupAdmin">Admin do Grupo</label>
+                                    <select id="groupAdmin">
+                                        <option value="">Selecione um administrador</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label for="accessDays">Dias de Acesso</label>
-                                <input type="number" id="accessDays" placeholder="30" min="1" max="365" value="30">
-                            </div>
-                            <div class="form-group">
-                                <label for="maxUsers">Máximo de Usuários</label>
-                                <input type="number" id="maxUsers" placeholder="10" min="1" max="1000" value="10">
-                            </div>
-                            <div class="form-group">
-                                <label for="groupAdmin">Admin do Grupo</label>
-                                <select id="groupAdmin">
-                                    <option value="">Selecione um administrador</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
+                            
+                            <div class="form-group full-width">
                                 <label for="groupDescription">Descrição</label>
                                 <textarea id="groupDescription" placeholder="Descrição opcional do grupo" rows="3"></textarea>
                             </div>
+                            
                             <div class="form-actions">
-                                <button id="saveGroupBtn" class="btn btn-primary"><i class="fas fa-save"></i> Salvar Grupo</button>
-                                <button id="cancelGroupButton" class="btn btn-secondary" style="display:none;">Cancelar</button>
+                                <button id="saveGroupBtn" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Salvar Grupo
+                                </button>
+                                <button id="cancelGroupButton" class="btn btn-secondary" style="display:none;">
+                                    <i class="fas fa-times"></i> Cancelar
+                                </button>
                             </div>
                         </div>
 
                         <div class="card table-container" style="margin-top: 2rem;">
-                            <div class="card-header"><h3>Grupos Cadastrados</h3></div>
+                            <div class="card-header">
+                                <h3><i class="fas fa-layer-group"></i>Grupos Cadastrados</h3>
+                            </div>
                             <div class="card-content">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>Nome</th>
-                                            <th>Admin</th>
-                                            <th>Dias de Acesso</th>
-                                            <th>Usuários</th>
-                                            <th>Descrição</th>
-                                            <th>Criado em</th>
-                                            <th>Ações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="groupsTableBody"></tbody>
-                                </table>
+                                <div class="table-responsive">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Nome</th>
+                                                <th>Admin</th>
+                                                <th>Dias de Acesso</th>
+                                                <th>Usuários</th>
+                                                <th>Descrição</th>
+                                                <th>Criado em</th>
+                                                <th>Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="groupsTableBody">
+                                            <!-- Grupos serão carregados aqui -->
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -195,45 +229,57 @@
                     <!-- Tab: Associações Usuário-Grupo -->
                     <div id="associations-tab" class="tab-content">
                         <div class="card form-container">
-                            <h3>Adicionar Usuário ao Grupo</h3>
-                            <div class="form-group">
-                                <label for="userSelect">Usuário</label>
-                                <select id="userSelect">
-                                    <option value="">Selecione um usuário</option>
-                                </select>
+                            <h3><i class="fas fa-link"></i>Adicionar Usuário ao Grupo</h3>
+                            
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="userSelect">Usuário</label>
+                                    <select id="userSelect">
+                                        <option value="">Selecione um usuário</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="groupSelect">Grupo</label>
+                                    <select id="groupSelect">
+                                        <option value="">Selecione um grupo</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="expirationDate">Data de Expiração (opcional)</label>
+                                    <input type="date" id="expirationDate">
+                                    <small>Se não informado, será calculada automaticamente baseada nos dias de acesso do grupo</small>
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label for="groupSelect">Grupo</label>
-                                <select id="groupSelect">
-                                    <option value="">Selecione um grupo</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="expirationDate">Data de Expiração (opcional)</label>
-                                <input type="date" id="expirationDate">
-                                <small>Se não informado, será calculada automaticamente baseada nos dias de acesso do grupo</small>
-                            </div>
+                            
                             <div class="form-actions">
-                                <button id="addUserToGroupBtn" class="btn btn-primary"><i class="fas fa-user-plus"></i> Adicionar ao Grupo</button>
+                                <button id="addUserToGroupBtn" class="btn btn-primary">
+                                    <i class="fas fa-user-plus"></i> Adicionar ao Grupo
+                                </button>
                             </div>
                         </div>
 
                         <div class="card table-container" style="margin-top: 2rem;">
-                            <div class="card-header"><h3>Associações Usuário-Grupo</h3></div>
+                            <div class="card-header">
+                                <h3><i class="fas fa-list-check"></i>Associações Usuário-Grupo</h3>
+                            </div>
                             <div class="card-content">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>Usuário</th>
-                                            <th>Email</th>
-                                            <th>Grupo</th>
-                                            <th>Data de Expiração</th>
-                                            <th>Status</th>
-                                            <th>Ações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="userGroupsTableBody"></tbody>
-                                </table>
+                                <div class="table-responsive">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Usuário</th>
+                                                <th>Email</th>
+                                                <th>Grupo</th>
+                                                <th>Data de Expiração</th>
+                                                <th>Status</th>
+                                                <th>Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="userGroupsTableBody">
+                                            <!-- Associações serão carregadas aqui -->
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -242,7 +288,7 @@
                     <div id="admin-groups-tab" class="tab-content">
                         <div class="card">
                             <div class="card-header">
-                                <h3>Visão Geral de Grupos</h3>
+                                <h3><i class="fas fa-chart-pie"></i>Visão Geral de Grupos</h3>
                             </div>
                             <div class="card-content">
                                 <div class="tabs">
@@ -251,20 +297,24 @@
                                 </div>
                                 
                                 <div id="all-groups-tab" class="subtab-content active">
-                                    <table>
-                                        <thead>
-                                            <tr>
-                                                <th>Nome</th>
-                                                <th>Admin</th>
-                                                <th>Dias de Acesso</th>
-                                                <th>Usuários</th>
-                                                <th>Máximo</th>
-                                                <th>Status</th>
-                                                <th>Ações</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="allGroupsTableBody"></tbody>
-                                    </table>
+                                    <div class="table-responsive">
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>Nome</th>
+                                                    <th>Admin</th>
+                                                    <th>Dias de Acesso</th>
+                                                    <th>Usuários</th>
+                                                    <th>Máximo</th>
+                                                    <th>Status</th>
+                                                    <th>Ações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="allGroupsTableBody">
+                                                <!-- Todos os grupos serão carregados aqui -->
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                                 
                                 <div id="group-users-tab" class="subtab-content">
@@ -274,19 +324,23 @@
                                             <option value="">Todos os grupos</option>
                                         </select>
                                     </div>
-                                    <table>
-                                        <thead>
-                                            <tr>
-                                                <th>Grupo</th>
-                                                <th>Usuário</th>
-                                                <th>Email</th>
-                                                <th>Data de Expiração</th>
-                                                <th>Status</th>
-                                                <th>Permissões</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="allGroupUsersTableBody"></tbody>
-                                    </table>
+                                    <div class="table-responsive">
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>Grupo</th>
+                                                    <th>Usuário</th>
+                                                    <th>Email</th>
+                                                    <th>Data de Expiração</th>
+                                                    <th>Status</th>
+                                                    <th>Permissões</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="allGroupUsersTableBody">
+                                                <!-- Todos os usuários por grupo serão carregados aqui -->
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -295,11 +349,68 @@
             </div>
         </div>
     </div>
-    
+
+    <!-- Scripts JavaScript -->
     <script src="users.js"></script>
     <script src="groups.js"></script>
     <script src="user-menu.js"></script>
     <script src="user-activity-monitor.js"></script>
     <script src="mobile-menu.js"></script>
+
+    <style>
+        /* Estilos adicionais para melhorar a responsividade */
+        .table-responsive {
+            overflow-x: auto;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .tabs {
+                flex-wrap: wrap;
+            }
+            
+            .tab-button {
+                flex: 1;
+                min-width: 120px;
+                text-align: center;
+            }
+        }
+        
+        /* Melhorias visuais para os cards */
+        .card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        /* Estados de loading */
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+        
+        .loading::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: inherit;
+        }
+    </style>
 </body>
 </html>
