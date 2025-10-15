@@ -9,6 +9,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const marketCnpjInput = document.getElementById('marketCnpj');
     const marketAddressInput = document.getElementById('marketAddress');
 
+    const getSession = async () => {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+            console.error('Erro ao recuperar sessão:', error);
+            return null;
+        }
+        return data.session;
+    };
+
     const loadMarkets = async () => {
         tableBody.innerHTML = `
             <tr>
@@ -18,7 +27,17 @@ document.addEventListener('DOMContentLoaded', () => {
             </tr>`;
             
         try {
-            const response = await fetch(`${API_URL}/public`);
+            const session = await getSession();
+            if (!session) {
+                throw new Error('Usuário não autenticado');
+            }
+
+            const response = await fetch(API_URL, {
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`
+                }
+            });
+            
             if (!response.ok) {
                 throw new Error('Falha na resposta da rede.');
             }
