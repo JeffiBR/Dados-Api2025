@@ -1,4 +1,4 @@
-// users.js - Gerenciamento de usuários - Versão Corrigida e Melhorada
+// users.js - Gerenciamento de usuários - Versão Corrigida
 document.addEventListener('DOMContentLoaded', () => {
     // --- ELEMENTOS DA UI ---
     const tableBody = document.getElementById('usersTableBody');
@@ -33,7 +33,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- LÓGICA DE NEGÓCIO ---
 
-    // Função para inicializar o grid de permissões
     function initializePermissionsGrid() {
         permissionsContainer.innerHTML = '';
         
@@ -44,21 +43,43 @@ document.addEventListener('DOMContentLoaded', () => {
             
             permissionCard.innerHTML = `
                 <div class="permission-header">
-                    <div class="permission-icon"><i class="fas ${permission.icon}"></i></div>
-                    <div class="permission-name">${permission.name}</div>
+                    <div class="permission-icon">
+                        <i class="fas ${permission.icon}"></i>
+                    </div>
+                    <div class="permission-info">
+                        <div class="permission-name">${permission.name}</div>
+                        <div class="permission-description">${permission.description}</div>
+                    </div>
                 </div>
-                <div class="permission-description">${permission.description}</div>
                 <span class="category-indicator ${permission.category}">${getCategoryName(permission.category)}</span>
-                <div class="permission-checkbox"></div>
+                <div class="permission-checkbox">
+                    <i class="fas fa-check"></i>
+                </div>
             `;
             
             permissionCard.addEventListener('click', () => {
                 if (roleSelect.value === 'user') {
                     permissionCard.classList.toggle('selected');
+                    updateCheckboxVisibility();
                 }
             });
             
             permissionsContainer.appendChild(permissionCard);
+        });
+        updateCheckboxVisibility();
+    }
+
+    function updateCheckboxVisibility() {
+        const permissionCards = permissionsContainer.querySelectorAll('.permission-card');
+        permissionCards.forEach(card => {
+            const checkbox = card.querySelector('.permission-checkbox');
+            if (card.classList.contains('selected')) {
+                checkbox.style.opacity = '1';
+                checkbox.style.transform = 'scale(1)';
+            } else {
+                checkbox.style.opacity = '0';
+                checkbox.style.transform = 'scale(0)';
+            }
         });
     }
 
@@ -81,8 +102,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Função para definir as permissões selecionadas
     const setSelectedPermissions = (permissions) => {
         permissionsContainer.querySelectorAll('.permission-card').forEach(card => {
-            card.classList.toggle('selected', permissions.includes(card.dataset.permission));
+            const hasPermission = permissions.includes(card.dataset.permission);
+            card.classList.toggle('selected', hasPermission);
         });
+        updateCheckboxVisibility();
     };
 
     // Atualizar visibilidade das permissões baseado no nível de acesso
@@ -91,42 +114,47 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function updatePermissionsVisibility() {
-        const permissionCards = permissionsContainer.querySelectorAll('.permission-card');
+        const isUser = roleSelect.value === 'user';
+        permissionsContainer.style.opacity = isUser ? '1' : '0.6';
+        permissionsContainer.style.pointerEvents = isUser ? 'all' : 'none';
         
-        if (roleSelect.value === 'admin' || roleSelect.value === 'group_admin') {
-            permissionsContainer.style.opacity = '0.6';
-            permissionsContainer.style.pointerEvents = 'none';
-            // Limpar seleções para admin geral e admin de grupo
+        if (!isUser) {
             setSelectedPermissions([]);
-        } else {
-            permissionsContainer.style.opacity = '1';
-            permissionsContainer.style.pointerEvents = 'all';
         }
     }
 
     const loadUsers = async () => {
         try {
+            console.log('Carregando usuários...');
             const response = await authenticatedFetch('/api/users');
             
             if (!response.ok) {
-                throw new Error('Erro ao carregar usuários');
+                throw new Error(`Erro HTTP: ${response.status}`);
             }
             
             const users = await response.json();
+            console.log('Usuários carregados:', users);
             renderUsersTable(users);
         } catch (error) {
             console.error('Erro ao carregar usuários:', error);
             showAlert('Não foi possível carregar a lista de usuários.', 'error');
+            // Mostrar dados de exemplo para debug
+            renderUsersTable([]);
         }
     };
 
     function renderUsersTable(users) {
+        if (!tableBody) {
+            console.error('Elemento usersTableBody não encontrado');
+            return;
+        }
+
         tableBody.innerHTML = '';
         
-        if (users.length === 0) {
+        if (!users || users.length === 0) {
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="6" class="empty-state">
+                    <td colspan="5" class="empty-state">
                         <div class="empty-icon">
                             <i class="fas fa-users"></i>
                         </div>
@@ -142,27 +170,32 @@ document.addEventListener('DOMContentLoaded', () => {
             const row = document.createElement('tr');
             row.dataset.user = JSON.stringify(user);
 
-            // Formatar permissões para exibição
-            const permissionsText = formatPermissionsForDisplay(user.allowed_pages);
+            const permissionsText = formatPermissionsForDisplay(user.allowed_pages, user.role);
 
             row.innerHTML = `
                 <td>
                     <div class="user-info-cell">
                         <div class="user-avatar-small">
                             ${user.avatar_url ? 
-                                `<img src="${user.avatar_url}" alt="${user.full_name}">` : 
-                                `<div class="avatar-placeholder">${getInitials(user.full_name)}</div>`
+                                `<img src="${user.avatar_url}" alt="${user.full_name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : 
+                                ''
                             }
+                            <div class="avatar-placeholder" style="${user.avatar_url ? 'display:none' : ''}">
+                                ${getInitials(user.full_name)}
+                            </div>
                         </div>
                         <div class="user-details">
-                            <strong>${user.full_name || 'N/A'}</strong>
-                            <span>${user.email || 'N/A'}</span>
+                            <div class="user-name">${user.full_name || 'N/A'}</div>
+                            <div class="user-email">${user.email || 'N/A'}</div>
                         </div>
                     </div>
                 </td>
                 <td>
                     <div class="password-display">
                         <span class="pwd-hidden">••••••••</span>
+                        <button class="btn-icon view-pwd" title="Visualizar senha" onclick="togglePassword(this)">
+                            <i class="fas fa-eye"></i>
+                        </button>
                     </div>
                 </td>
                 <td>
@@ -184,7 +217,45 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             tableBody.appendChild(row);
         });
+
+        // Adicionar event listeners para os botões de edição e exclusão
+        addTableEventListeners();
     }
+
+    function addTableEventListeners() {
+        tableBody.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const row = this.closest('tr');
+                const user = JSON.parse(row.dataset.user);
+                populateFormForEdit(user);
+            });
+        });
+
+        tableBody.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const row = this.closest('tr');
+                const user = JSON.parse(row.dataset.user);
+                deleteUser(user.id, user.full_name);
+            });
+        });
+    }
+
+    // Função global para alternar visibilidade da senha
+    window.togglePassword = function(button) {
+        const passwordDisplay = button.closest('.password-display');
+        const hiddenSpan = passwordDisplay.querySelector('.pwd-hidden');
+        const icon = button.querySelector('i');
+        
+        if (hiddenSpan.textContent === '••••••••') {
+            hiddenSpan.textContent = 'senha123'; // Senha padrão ou você pode buscar do usuário
+            icon.className = 'fas fa-eye-slash';
+            button.title = 'Ocultar senha';
+        } else {
+            hiddenSpan.textContent = '••••••••';
+            icon.className = 'fas fa-eye';
+            button.title = 'Visualizar senha';
+        }
+    };
 
     function getInitials(name) {
         if (!name) return 'U';
@@ -200,12 +271,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return roles[role] || role;
     }
 
-    function formatPermissionsForDisplay(permissions) {
+    function formatPermissionsForDisplay(permissions, role) {
+        if (role === 'admin' || role === 'group_admin') {
+            return '<span class="all-permissions">Todas as permissões</span>';
+        }
+        
         if (!permissions || permissions.length === 0) {
             return '<span class="no-permissions">Nenhuma permissão</span>';
         }
         
-        if (permissions.length <= 2) {
+        if (permissions.length <= 3) {
             return permissions.map(perm => {
                 const permissionInfo = availablePermissions.find(p => p.key === perm);
                 return permissionInfo ? 
@@ -214,14 +289,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }).join('');
         }
         
-        const firstTwo = permissions.slice(0, 2).map(perm => {
+        const firstThree = permissions.slice(0, 3).map(perm => {
             const permissionInfo = availablePermissions.find(p => p.key === perm);
             return permissionInfo ? 
                 `<span class="permission-tag">${permissionInfo.name}</span>` : 
                 `<span class="permission-tag">${perm}</span>`;
         }).join('');
         
-        return `${firstTwo}<span class="more-permissions">+${permissions.length - 2}</span>`;
+        return `${firstThree}<span class="more-permissions">+${permissions.length - 3}</span>`;
     }
 
     const resetForm = () => {
@@ -236,27 +311,34 @@ document.addEventListener('DOMContentLoaded', () => {
         roleSelect.value = 'user';
         setSelectedPermissions([]);
         updatePermissionsVisibility();
-        saveButton.innerHTML = '<i class="fas fa-plus"></i> Adicionar Usuário';
+        saveButton.innerHTML = '<i class="fas fa-user-plus"></i> Criar Usuário';
+        saveButton.className = 'btn btn-primary btn-create';
         cancelButton.style.display = 'none';
     };
 
     const populateFormForEdit = (user) => {
-        formTitle.textContent = `Editando Usuário: ${user.full_name}`;
+        formTitle.textContent = `Editando: ${user.full_name}`;
         userIdInput.value = user.id;
-        fullNameInput.value = user.full_name;
-        emailInput.value = user.email;
+        fullNameInput.value = user.full_name || '';
+        emailInput.value = user.email || '';
         emailInput.disabled = true;
         passwordInput.value = '';
-        passwordInput.placeholder = 'Deixe em branco para não alterar';
-        passwordInput.disabled = true;
-        roleSelect.value = user.role;
+        passwordInput.placeholder = 'Deixe em branco para manter a senha atual';
+        passwordInput.disabled = false;
+        roleSelect.value = user.role || 'user';
         
         setSelectedPermissions(user.allowed_pages || []);
         updatePermissionsVisibility();
         
         saveButton.innerHTML = '<i class="fas fa-save"></i> Atualizar Usuário';
+        saveButton.className = 'btn btn-primary btn-update';
         cancelButton.style.display = 'inline-flex';
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        // Scroll suave para o topo
+        document.querySelector('.form-container').scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+        });
     };
 
     const saveUser = async () => {
@@ -266,60 +348,76 @@ document.addEventListener('DOMContentLoaded', () => {
         const password = passwordInput.value;
         const role = roleSelect.value;
         
-        // Para admin geral e admin de grupo, não enviar permissões específicas
         const allowed_pages = (role === 'admin' || role === 'group_admin') ? [] : getSelectedPermissions();
 
+        // Validações
         if (!full_name) {
             showAlert('Nome completo é obrigatório.', 'error');
+            fullNameInput.focus();
             return;
         }
 
         const isUpdating = !!id;
         
-        if (!isUpdating && (!email || !password)) {
-            showAlert('Email e Senha são obrigatórios para novos usuários.', 'error');
-            return;
+        if (!isUpdating) {
+            if (!email) {
+                showAlert('Email é obrigatório para novos usuários.', 'error');
+                emailInput.focus();
+                return;
+            }
+            if (!password) {
+                showAlert('Senha é obrigatória para novos usuários.', 'error');
+                passwordInput.focus();
+                return;
+            }
         }
 
         if (!isUpdating && password.length < 6) {
             showAlert('A senha deve ter pelo menos 6 caracteres.', 'error');
+            passwordInput.focus();
             return;
         }
 
         const url = isUpdating ? `/api/users/${id}` : '/api/users';
         const method = isUpdating ? 'PUT' : 'POST';
         
-        let body;
+        let requestBody;
         if (isUpdating) {
-            body = JSON.stringify({ full_name, role, allowed_pages });
+            requestBody = { full_name, role, allowed_pages };
+            // Incluir senha apenas se for fornecida
+            if (password) {
+                requestBody.password = password;
+            }
         } else {
-            body = JSON.stringify({ email, password, full_name, role, allowed_pages });
+            requestBody = { email, password, full_name, role, allowed_pages };
         }
 
         const originalButtonText = saveButton.innerHTML;
         saveButton.disabled = true;
-        saveButton.innerHTML = isUpdating ? '<i class="fas fa-spinner fa-spin"></i> Atualizando...' : '<i class="fas fa-spinner fa-spin"></i> Criando...';
+        saveButton.innerHTML = isUpdating ? 
+            '<i class="fas fa-spinner fa-spin"></i> Atualizando...' : 
+            '<i class="fas fa-spinner fa-spin"></i> Criando...';
 
         try {
             const response = await authenticatedFetch(url, { 
                 method, 
-                body,
+                body: JSON.stringify(requestBody),
                 headers: {
                     'Content-Type': 'application/json'
                 }
             });
             
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || 'Erro ao salvar usuário');
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || `Erro ${response.status}: ${response.statusText}`);
             }
             
-            showAlert(`Usuário ${isUpdating ? 'atualizado' : 'criado'} com sucesso!`, 'success');
+            showAlert(`✅ Usuário ${isUpdating ? 'atualizado' : 'criado'} com sucesso!`, 'success');
             resetForm();
-            loadUsers();
+            await loadUsers();
         } catch (error) {
             console.error('Erro ao salvar usuário:', error);
-            showAlert(`Erro: ${error.message}`, 'error');
+            showAlert(`❌ Erro: ${error.message}`, 'error');
         } finally {
             saveButton.disabled = false;
             saveButton.innerHTML = originalButtonText;
@@ -327,23 +425,29 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const deleteUser = async (id, userName) => {
-        if (!confirm(`Tem certeza que deseja excluir o usuário "${userName}"? Esta ação não pode ser desfeita.`)) return;
+        if (!confirm(`Tem certeza que deseja excluir o usuário "${userName}"?\n\nEsta ação não pode ser desfeita.`)) {
+            return;
+        }
 
         try {
-            const response = await authenticatedFetch(`/api/users/${id}`, { method: 'DELETE' });
+            const response = await authenticatedFetch(`/api/users/${id}`, { 
+                method: 'DELETE' 
+            });
+            
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || 'Falha ao excluir o usuário.');
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || 'Falha ao excluir o usuário.');
             }
-            showAlert('Usuário excluído com sucesso!', 'success');
-            loadUsers();
+            
+            showAlert('✅ Usuário excluído com sucesso!', 'success');
+            await loadUsers();
         } catch (error) {
             console.error('Erro ao excluir usuário:', error);
-            showAlert(`Erro: ${error.message}`, 'error');
+            showAlert(`❌ ${error.message}`, 'error');
         }
     };
 
-    // Função para exibir alertas
+    // Sistema de alertas
     function showAlert(message, type = 'info') {
         // Remove alertas existentes
         const existingAlerts = document.querySelectorAll('.custom-alert');
@@ -353,46 +457,29 @@ document.addEventListener('DOMContentLoaded', () => {
         alert.className = `custom-alert alert-${type}`;
         alert.innerHTML = `
             <div class="alert-content">
-                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-triangle' : 'info-circle'}"></i>
                 <span>${message}</span>
-                <button class="alert-close"><i class="fas fa-times"></i></button>
+                <button class="alert-close" onclick="this.parentElement.parentElement.remove()">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
         `;
         
-        document.querySelector('.page-content').insertBefore(alert, document.querySelector('.tabs-container'));
+        document.body.appendChild(alert);
         
         // Auto-remover após 5 segundos
         setTimeout(() => {
-            if (alert.parentNode) {
+            if (alert.parentElement) {
                 alert.style.animation = 'slideOutRight 0.3s ease forwards';
                 setTimeout(() => alert.remove(), 300);
             }
         }, 5000);
-        
-        // Fechar ao clicar no botão
-        alert.querySelector('.alert-close').addEventListener('click', () => {
-            alert.style.animation = 'slideOutRight 0.3s ease forwards';
-            setTimeout(() => alert.remove(), 300);
-        });
     }
 
     // --- EVENT LISTENERS ---
-    
-    tableBody.addEventListener('click', (e) => {
-        const editButton = e.target.closest('.edit-btn');
-        const deleteButton = e.target.closest('.delete-btn');
-        
-        if (editButton) {
-            const user = JSON.parse(editButton.closest('tr').dataset.user);
-            populateFormForEdit(user);
-        }
-
-        if (deleteButton) {
-            const user = JSON.parse(deleteButton.closest('tr').dataset.user);
-            deleteUser(user.id, user.full_name);
-        }
-    });
-    
     saveButton.addEventListener('click', saveUser);
     cancelButton.addEventListener('click', resetForm);
+
+    // Inicializar
+    resetForm();
 });
