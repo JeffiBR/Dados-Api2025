@@ -4,126 +4,143 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerenciar Subadministradores | Sistema de Preços</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="designer.css">
     <link rel="stylesheet" href="group-admin.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth.js"></script>
+    <script src="menu.js"></script>
+    <script src="user-menu.js"></script>
+    <script src="theme.js"></script>
 </head>
-<body>
+<body class="theme-dark">
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            if (!await requireAuth()) return;
+            await initializeDynamicMenu();
+            await checkAccessExpiration();
+            routeGuard('users');
+        });
+    </script>
+
     <div class="app-container">
-        <!-- Sidebar -->
-        <div class="sidebar" id="sidebar">
+        <aside class="sidebar" id="sidebarMenu">
             <div class="sidebar-header">
-                <h1><i class="fas fa-chart-line"></i> Preços AL</h1>
+                <i class="fas fa-bolt"></i>
+                <h1>Preços AL</h1>
             </div>
             <nav class="sidebar-nav">
                 <ul>
-                    <li class="nav-header">Principal</li>
-                    <li><a href="dashboard.html"><i class="fas fa-home"></i> Dashboard</a></li>
-                    <li><a href="search.html"><i class="fas fa-search"></i> Buscar Produtos</a></li>
-                    <li><a href="compare.html"><i class="fas fa-chart-bar"></i> Comparar Preços</a></li>
-                    <li><a href="baskets.html"><i class="fas fa-shopping-basket"></i> Cestas Básicas</a></li>
+                    <li class="nav-header">ANÁLISE</li>
+                    <li><a href="/search.html"><i class="fas fa-search"></i> Busca</a></li>
+                    <li data-required-permission="compare"><a href="/compare.html"><i class="fas fa-chart-bar"></i> Comparador</a></li>
+                    <li data-required-permission="dashboard"><a href="/dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+                    <li data-required-permission="baskets"><a href="/cesta.html"><i class="fas fa-shopping-basket"></i> Minhas Cestas</a></li>
                     
-                    <li class="nav-header">Administração</li>
-                    <li><a href="users.html"><i class="fas fa-users"></i> Usuários</a></li>
-                    <li><a href="groups.html"><i class="fas fa-layer-group"></i> Grupos</a></li>
-                    <li><a href="group-admin.html" class="active"><i class="fas fa-user-shield"></i> Subadministradores</a></li>
-                    <li><a href="markets.html"><i class="fas fa-store"></i> Supermercados</a></li>
-                    <li><a href="categories.html"><i class="fas fa-tags"></i> Categorias</a></li>
+                    <li class="nav-header">ADMINISTRAÇÃO</li>
+                    <li data-required-permission="coleta"><a href="/admin.html"><i class="fas fa-database"></i> Coleta</a></li>
+                    <li data-required-permission="collections"><a href="/collections.html"><i class="fas fa-history"></i> Histórico de Coletas</a></li>
+                    <li data-required-permission="product_log"><a href="/product-log.html"><i class="fas fa-file-alt"></i> Log de Produtos</a></li>
+                    <li data-required-permission="user_logs"><a href="/user-logs.html"><i class="fas fa-user-clock"></i> Logs de Usuários</a></li>
+                    <li data-required-permission="prune"><a href="/prune.html"><i class="fas fa-broom"></i> Limpeza de Dados</a></li>
                     
-                    <li class="nav-header">Sistema</li>
-                    <li><a href="collection.html"><i class="fas fa-sync"></i> Coleta de Dados</a></li>
-                    <li><a href="logs.html"><i class="fas fa-clipboard-list"></i> Logs</a></li>
+                    <li class="nav-header">CONFIGURAÇÃO</li>
+                    <li data-required-permission="markets"><a href="/markets.html"><i class="fas fa-store"></i> Gerenciar Mercados</a></li>
+                    <li data-required-permission="users"><a href="/users.html"><i class="fas fa-users"></i> Gerenciar Usuários</a></li>
+                    <li data-required-permission="users"><a href="/groups.html"><i class="fas fa-layer-group"></i> Gerenciar Grupos</a></li>
+                    <li data-required-permission="users"><a href="/group-admin.html" class="active"><i class="fas fa-user-shield"></i> Subadministradores</a></li>
                 </ul>
             </nav>
             <div class="theme-switcher">
-                <span>Modo Escuro</span>
+                <span>Tema</span>
                 <button id="themeToggle"><i class="fas fa-moon"></i></button>
             </div>
-        </div>
+        </aside>
 
-        <!-- Main Content -->
-        <div class="content-wrapper">
-            <!-- Top Bar -->
-            <div class="top-bar">
-                <button class="mobile-menu-button" id="mobileMenuButton">
-                    <i class="fas fa-bars"></i>
-                </button>
-                <div class="user-menu">
-                    <div class="user-menu-btn" id="userMenuButton">
-                        <div class="user-avatar">
-                            <img src="" alt="Avatar" id="userAvatar">
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <div class="main-content">
+            <header class="top-bar">
+                <div class="top-bar-left">
+                    <button class="mobile-menu-btn" id="mobileMenuBtn">
+                        <span></span><span></span><span></span>
+                    </button>
+                </div>
+                <div class="top-bar-right">
+                    <div class="user-menu" id="userMenu">
+                        <button class="user-menu-btn" id="userMenuBtn">
+                            <div class="user-avatar">
+                                <img src="https://ui-avatars.com/api/?name=U" alt="User" id="userAvatar">
+                            </div>
+                            <div class="user-info">
+                                <span class="user-name">Usuário</span>
+                                <span class="user-role">...</span>
+                            </div>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="user-dropdown" id="userDropdown">
+                            <a href="/profile.html" class="dropdown-item">
+                                <i class="fas fa-user"></i>
+                                <span>Meu Perfil</span>
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="#" class="dropdown-item logout-btn" id="logoutBtn">
+                                <i class="fas fa-sign-out-alt"></i>
+                                <span>Sair</span>
+                            </a>
                         </div>
-                        <div class="user-info">
-                            <span class="user-name" id="userName">Carregando...</span>
-                            <span class="user-role" id="userRole">Usuário</span>
-                        </div>
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
-                    <div class="user-dropdown" id="userDropdown">
-                        <a href="profile.html" class="dropdown-item">
-                            <i class="fas fa-user"></i>
-                            <span>Meu Perfil</span>
-                        </a>
-                        <a href="settings.html" class="dropdown-item">
-                            <i class="fas fa-cog"></i>
-                            <span>Configurações</span>
-                        </a>
-                        <div class="dropdown-divider"></div>
-                        <a href="#" class="dropdown-item logout-btn" id="logoutBtn">
-                            <i class="fas fa-sign-out-alt"></i>
-                            <span>Sair</span>
-                        </a>
                     </div>
                 </div>
-            </div>
+            </header>
 
-            <div class="main-content">
-                <div class="page-header">
-                    <div class="page-title">
-                        <h1><i class="fas fa-user-shield"></i> Gerenciar Subadministradores</h1>
-                        <p>Designar e gerenciar subadministradores para grupos específicos</p>
+            <div class="page-content">
+                <main class="admin-panel">
+                    <div class="panel-header">
+                        <i class="fas fa-user-shield"></i>
+                        <h2>Gerenciar Subadministradores</h2>
                     </div>
-                </div>
-
-                <!-- Card de Adicionar Subadmin -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Designar Subadministrador</h3>
-                    </div>
-                    <div class="card-content">
-                        <form id="addGroupAdminForm" class="form-grid">
-                            <div class="form-group">
-                                <label for="userSelect">Selecionar Usuário</label>
-                                <select id="userSelect" required>
+                    <p class="panel-description">Designar e gerenciar subadministradores para grupos específicos do sistema.</p>
+                    
+                    <!-- Painel de Designar Subadministrador -->
+                    <div class="coleta-config-panel">
+                        <div class="panel-header">
+                            <i class="fas fa-user-plus"></i>
+                            <h3>Designar Subadministrador</h3>
+                        </div>
+                        
+                        <div class="config-grid">
+                            <div class="config-group">
+                                <label>Usuário para Designar</label>
+                                <select id="userSelect" class="form-select" required>
                                     <option value="">Selecione um usuário</option>
                                 </select>
+                                <small class="form-hint">Apenas usuários comuns podem ser designados como subadministradores</small>
                             </div>
-                            <div class="form-group">
-                                <label for="groupsSelect">Grupos para Gerenciar</label>
-                                <select id="groupsSelect" multiple required style="height: 120px;">
-                                    <!-- Opções de grupos serão carregadas via JavaScript -->
+                            
+                            <div class="config-group">
+                                <label>Grupos para Gerenciar</label>
+                                <select id="groupsSelect" multiple class="form-select" required style="height: 120px;">
+                                    <!-- Grupos serão carregados via JavaScript -->
                                 </select>
                                 <small class="form-hint">Segure Ctrl (ou Cmd) para selecionar múltiplos grupos</small>
                             </div>
-                            <div class="form-group full-width">
-                                <div class="form-actions">
-                                    <button type="submit" class="btn">
-                                        <i class="fas fa-user-plus"></i> Designar Subadministrador
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+                        </div>
 
-                <!-- Lista de Subadministradores -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Subadministradores Designados</h3>
+                        <button id="addGroupAdminBtn" class="btn"><i class="fas fa-user-plus"></i> Designar Subadministrador</button>
                     </div>
-                    <div class="card-content">
+                    
+                    <!-- Lista de Subadministradores Designados -->
+                    <div class="admin-panel">
+                        <div class="panel-header">
+                            <i class="fas fa-list"></i>
+                            <h3>Subadministradores Designados</h3>
+                        </div>
+                        
                         <div class="table-container">
-                            <table id="groupAdminsTable" class="data-table">
+                            <table class="data-table" id="groupAdminsTable">
                                 <thead>
                                     <tr>
                                         <th>Usuário</th>
@@ -139,12 +156,12 @@
                             </table>
                         </div>
                     </div>
-                </div>
+                </main>
             </div>
         </div>
     </div>
 
-    <!-- Modal para Editar Subadmin -->
+    <!-- Modal para Editar Subadministrador -->
     <div id="editGroupAdminModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -170,8 +187,8 @@
         </div>
     </div>
 
-    <script src="js/auth.js"></script>
-    <script src="js/sidebar.js"></script>
-    <script src="js/group-admin.js"></script>
+    <script src="mobile-menu.js"></script>
+    <script src="user-activity-monitor.js"></script>
+    <script src="group-admin.js"></script>
 </body>
 </html>
