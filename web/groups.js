@@ -100,22 +100,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadAdminsForSelect() {
         try {
-            const response = await authenticatedFetch('/api/users');
-            if (!response.ok) throw new Error('Erro ao carregar usuários');
+            console.log("🔍 Carregando usuários para select de admin...");
+            
+            const response = await authenticatedFetch('/api/users/for-group-admin');
+            
+            if (!response.ok) {
+                let errorMessage = `Erro ${response.status} ao carregar usuários`;
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.detail || errorMessage;
+                } catch (e) {
+                    console.error("Não foi possível parsear resposta de erro:", e);
+                }
+                throw new Error(errorMessage);
+            }
             
             const users = await response.json();
-            if (!groupAdminSelect) return;
+            console.log(`✅ ${users.length} usuários carregados para select de admin`);
+            
+            if (!groupAdminSelect) {
+                console.error("❌ groupAdminSelect não encontrado");
+                return;
+            }
             
             groupAdminSelect.innerHTML = '<option value="">Selecione um administrador</option>';
             users.forEach(user => {
                 const option = document.createElement('option');
                 option.value = user.id;
-                option.textContent = `${user.full_name} (${user.email})`;
+                option.textContent = `${user.full_name || 'Sem nome'} (${user.email}) - ${getRoleDisplayName(user.role)}`;
                 groupAdminSelect.appendChild(option);
             });
+            
         } catch (error) {
-            console.error('Erro ao carregar administradores para select:', error);
+            console.error('❌ Erro ao carregar administradores para select:', error);
+            showErrorInUI(`Falha ao carregar usuários: ${error.message}`);
         }
+    }
+
+    function getRoleDisplayName(role) {
+        const roles = {
+            'admin': 'Admin Geral',
+            'group_admin': 'Admin de Grupo',
+            'user': 'Usuário'
+        };
+        return roles[role] || role;
     }
 
     async function saveGroup(event) {
@@ -332,6 +360,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const option = document.createElement('option');
                 option.value = group.id;
                 option.textContent = `${group.nome} (${group.dias_acesso} dias)`;
+                option.dataset.maxUsers = group.max_usuarios;
+                option.dataset.diasAcesso = group.dias_acesso;
                 groupSelect.appendChild(option);
             });
         } catch (error) {
@@ -349,6 +379,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!userId || !groupId) {
             alert('Usuário e grupo são obrigatórios.');
             return;
+        }
+
+        // Verificar se o grupo atingiu o limite máximo
+        const selectedGroup = groupSelect.options[groupSelect.selectedIndex];
+        const maxUsers = parseInt(selectedGroup.dataset.maxUsers);
+        
+        try {
+            const userCountResponse = await authenticatedFetch(`/api/user-groups?group_id=${groupId}`);
+            if (userCountResponse.ok) {
+                const userGroups = await userCountResponse.json();
+                if (userGroups.length >= maxUsers) {
+                    alert(`❌ Este grupo atingiu o limite máximo de ${maxUsers} usuários.`);
+                    return;
+                }
+            }
+        } catch (error) {
+            console.error('Erro ao verificar limite do grupo:', error);
         }
 
         const body = JSON.stringify({ 
@@ -435,12 +482,17 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const adminName = group.profiles ? (group.profiles.full_name || group.profiles.email) : 'N/A';
             
+            // Calcular status do grupo
+            let status = 'Disponível';
+            let statusClass = 'status-active';
+            
             row.innerHTML = `
                 <td>${group.nome}</td>
                 <td>${adminName}</td>
                 <td>${group.dias_acesso} dias</td>
                 <td>${group.max_usuarios} usuários</td>
                 <td>${new Date(group.created_at).toLocaleDateString('pt-BR')}</td>
+                <td><span class="status-badge ${statusClass}">${status}</span></td>
                 <td class="actions">
                     <button class="btn-icon edit-group-btn" title="Editar"><i class="fas fa-pencil-alt"></i></button>
                     <button class="btn-icon delete-group-btn" title="Excluir"><i class="fas fa-trash-alt"></i></button>
@@ -650,14 +702,25 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Inicializar abas
-    initializeTabs();
-
     // Configurar data mínima para o campo de expiração
     if (expirationDateInput) {
         const today = new Date().toISOString().split('T')[0];
         expirationDateInput.min = today;
+        
+        // Calcular data de expiração padrão baseada no grupo selecionado
+        groupSelect.addEventListener('change', (e) => {
+            const selectedGroup = e.target.options[e.target.selectedIndex];
+            if (selectedGroup.value && selectedGroup.dataset.diasAcesso) {
+                const diasAcesso = parseInt(selectedGroup.dataset.diasAcesso);
+                const expirationDate = new Date();
+                expirationDate.setDate(expirationDate.getDate() + diasAcesso);
+                expirationDateInput.value = expirationDate.toISOString().split('T')[0];
+            }
+        });
     }
+
+    // Inicializar abas
+    initializeTabs();
 
     // Debug: verificar se os elementos foram encontrados
     console.log('Elementos carregados:', {
