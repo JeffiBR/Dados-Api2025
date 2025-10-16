@@ -1625,6 +1625,22 @@ async def get_my_groups_detailed(current_user: UserProfile = Depends(get_current
         logging.error(f"Erro ao listar grupos do usuário: {e}")
         raise HTTPException(status_code=500, detail="Erro ao listar grupos")
 
+# NOVO ENDPOINT: Remover associação usuário-grupo
+@app.delete("/api/user-groups/{user_group_id}", status_code=204)
+async def delete_user_group(
+    user_group_id: int, 
+    admin_user: UserProfile = Depends(require_page_access('users'))
+):
+    """Remove uma associação usuário-grupo específica"""
+    try:
+        await asyncio.to_thread(
+            lambda: supabase.table('user_groups').delete().eq('id', user_group_id).execute()
+        )
+        return
+    except Exception as e:
+        logging.error(f"Erro ao deletar associação usuário-grupo {user_group_id}: {e}")
+        raise HTTPException(status_code=400, detail="Erro ao remover usuário do grupo")
+
 # --- Servir o Frontend ---
 app.mount("/", StaticFiles(directory="web", html=True), name="static")
 
@@ -1635,4 +1651,3 @@ app.mount("/", StaticFiles(directory="web", html=True), name="static")
 @app.get("/")
 def read_root():
     return {"message": "Bem-vindo à API de Preços AL - Versão 3.3.0"}
-
