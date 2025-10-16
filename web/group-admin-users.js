@@ -1,4 +1,5 @@
 // group-admin-users.js - Gerenciamento de Usuários por Subadministrador - COMPLETO
+// VERSÃO COM LAYOUT COMPACTO
 
 class GroupAdminUsersManager {
     constructor() {
@@ -35,6 +36,7 @@ class GroupAdminUsersManager {
             await this.loadGroupUsers();
             console.log('Usuários carregados, configurando UI...');
             this.setupEventListeners();
+            this.setupResponsiveLayout();
             this.renderAllowedPagesCheckboxes();
             this.updateGroupInfo();
             console.log('Inicialização completa');
@@ -42,6 +44,16 @@ class GroupAdminUsersManager {
             console.error('Erro na inicialização:', error);
             this.showError('Erro ao inicializar: ' + error.message);
         }
+    }
+
+    setupResponsiveLayout() {
+        const handleResize = () => {
+            const isMobile = window.innerWidth < 768;
+            document.body.classList.toggle('mobile-layout', isMobile);
+        };
+
+        window.addEventListener('resize', handleResize);
+        handleResize(); // Chamar inicialmente
     }
 
     async checkAuth() {
@@ -615,14 +627,14 @@ class GroupAdminUsersManager {
             return `
                 <tr>
                     <td>
-                        <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
                             <div class="user-avatar-small">
                                 ${user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}
                             </div>
                             <div>
                                 <strong>${user.full_name || 'N/A'}</strong>
                                 <br>
-                                <small style="color: var(--muted-dark);">${user.id}</small>
+                                <small style="color: var(--muted-dark); font-size: 0.75rem;">${user.id}</small>
                             </div>
                         </div>
                     </td>
@@ -838,14 +850,14 @@ class GroupAdminUsersManager {
             return `
                 <tr>
                     <td>
-                        <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
                             <div class="user-avatar-small">
                                 ${user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}
                             </div>
                             <div>
                                 <strong>${user.full_name || 'N/A'}</strong>
                                 <br>
-                                <small style="color: var(--muted-dark);">${user.id}</small>
+                                <small style="color: var(--muted-dark); font-size: 0.75rem;">${user.id}</small>
                             </div>
                         </div>
                     </td>
