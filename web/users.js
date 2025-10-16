@@ -10,8 +10,67 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordInput = document.getElementById('password');
     const roleSelect = document.getElementById('role');
     const permissionCards = document.querySelectorAll('.permission-card');
+    const managedGroupsContainer = document.getElementById('managedGroupsContainer');
+    const managedGroupsDiv = document.getElementById('managedGroups');
+
+    // --- VARIÁVEIS GLOBAIS ---
+    let allGroups = [];
 
     // --- LÓGICA DE NEGÓCIO ---
+
+    // Função para carregar grupos
+    const loadGroups = async () => {
+        try {
+            const response = await authenticatedFetch('/api/groups');
+            if (response.ok) {
+                allGroups = await response.json();
+                renderGroupOptions();
+            }
+        } catch (error) {
+            console.error('Erro ao carregar grupos:', error);
+        }
+    };
+
+    // Função para renderizar opções de grupos
+    const renderGroupOptions = () => {
+        managedGroupsDiv.innerHTML = '';
+        allGroups.forEach(group => {
+            const card = document.createElement('div');
+            card.className = 'permission-card';
+            card.innerHTML = `
+                <div class="permission-header">
+                    <div class="permission-icon"><i class="fas fa-layer-group"></i></div>
+                    <div class="permission-name">${group.nome}</div>
+                </div>
+                <div class="permission-description">${group.descricao || 'Sem descrição'} - ${group.dias_acesso} dias de acesso</div>
+                <span class="category-indicator configuracao">Grupo</span>
+                <div class="permission-checkbox"></div>
+            `;
+            card.dataset.groupId = group.id;
+            managedGroupsDiv.appendChild(card);
+        });
+
+        // Adicionar event listener para os cards de grupo
+        managedGroupsDiv.querySelectorAll('.permission-card').forEach(card => {
+            card.addEventListener('click', () => {
+                card.classList.toggle('selected');
+            });
+        });
+    };
+
+    // Função para obter grupos selecionados
+    const getSelectedManagedGroups = () => {
+        return Array.from(managedGroupsDiv.querySelectorAll('.permission-card.selected'))
+            .map(card => parseInt(card.dataset.groupId));
+    };
+
+    // Função para definir grupos selecionados
+    const setSelectedManagedGroups = (groupIds) => {
+        managedGroupsDiv.querySelectorAll('.permission-card').forEach(card => {
+            const groupId = parseInt(card.dataset.groupId);
+            card.classList.toggle('selected', groupIds.includes(groupId));
+        });
+    };
 
     // Função para obter as permissões selecionadas
     const getSelectedPermissions = () => {
@@ -34,6 +93,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Event listener para mudança de role
+    roleSelect.addEventListener('change', () => {
+        const isGroupAdmin = roleSelect.value === 'group_admin';
+        managedGroupsContainer.style.display = isGroupAdmin ? 'block' : 'none';
+        
+        // Se for admin geral, selecionar todas as permissões automaticamente
+        if (roleSelect.value === 'admin') {
+            permissionCards.forEach(card => {
+                card.classList.add('selected');
+            });
+        }
+    });
+
     const loadUsers = async () => {
         try {
             const response = await authenticatedFetch('/api/users');
@@ -49,6 +121,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const row = document.createElement('tr');
                 row.dataset.user = JSON.stringify(user);
 
+                // Determinar texto do nível
+                let roleText = 'Usuário';
+                if (user.role === 'admin') roleText = 'Admin Geral';
+                if (user.role === 'group_admin') roleText = 'Admin de Grupo';
+
                 row.innerHTML = `
                     <td>${user.full_name || 'N/A'}</td>
                     <td>${user.email || 'N/A'}</td>
@@ -56,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${user.plain_password ? `<span class="pwd-hidden">••••••••</span><span class="pwd-real" style="display:none;">${user.plain_password}</span>` : '<span class="pwd-hidden">Oculto</span>'}
                         ${user.plain_password ? '<button class="btn-icon reveal-pwd" title="Revelar senha"><i class="fas fa-eye"></i></button>' : ''}
                     </td>
-                    <td>${user.role === 'admin' ? 'Admin Geral' : 'Usuário'}</td>
+                    <td>${roleText}</td>
                     <td>${(user.allowed_pages || []).length} permissões</td>
                     <td class="actions">
                         <button class="btn-icon edit-btn" title="Editar"><i class="fas fa-pencil-alt"></i></button>
@@ -82,6 +159,8 @@ document.addEventListener('DOMContentLoaded', () => {
         passwordInput.placeholder = 'Obrigatório para novos usuários';
         roleSelect.value = 'user';
         setSelectedPermissions([]);
+        setSelectedManagedGroups([]);
+        managedGroupsContainer.style.display = 'none';
         saveButton.innerHTML = '<i class="fas fa-save"></i> Salvar';
         cancelButton.style.display = 'none';
     };
@@ -99,6 +178,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         setSelectedPermissions(user.allowed_pages || []);
         
+        // Configurar grupos gerenciados se for admin de grupo
+        if (user.role === 'group_admin' && user.managed_groups) {
+            managedGroupsContainer.style.display = 'block';
+            setSelectedManagedGroups(user.managed_groups);
+        } else {
+            managedGroupsContainer.style.display = 'none';
+        }
+        
         saveButton.innerHTML = '<i class="fas fa-save"></i> Atualizar';
         cancelButton.style.display = 'inline-flex';
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -111,9 +198,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const password = passwordInput.value;
         const role = roleSelect.value;
         const allowed_pages = getSelectedPermissions();
+        const managed_groups = role === 'group_admin' ? getSelectedManagedGroups() : [];
 
         if (!full_name) {
             alert('Nome completo é obrigatório.');
+            return;
+        }
+
+        // Validações específicas para admin de grupo
+        if (role === 'group_admin' && managed_groups.length === 0) {
+            alert('Admin de grupo deve ter pelo menos um grupo associado.');
             return;
         }
 
@@ -129,9 +223,21 @@ document.addEventListener('DOMContentLoaded', () => {
         
         let body;
         if (isUpdating) {
-            body = JSON.stringify({ full_name, role, allowed_pages });
+            body = JSON.stringify({ 
+                full_name, 
+                role, 
+                allowed_pages, 
+                managed_groups 
+            });
         } else {
-            body = JSON.stringify({ email, password, full_name, role, allowed_pages });
+            body = JSON.stringify({ 
+                email, 
+                password, 
+                full_name, 
+                role, 
+                allowed_pages, 
+                managed_groups 
+            });
         }
 
         const originalButtonText = saveButton.innerHTML;
@@ -216,5 +322,11 @@ document.addEventListener('DOMContentLoaded', () => {
     cancelButton.addEventListener('click', resetForm);
     
     // Inicialização da página
-    loadUsers();
+    const initializePage = async () => {
+        await loadGroups();
+        await loadUsers();
+        resetForm();
+    };
+
+    initializePage();
 });
