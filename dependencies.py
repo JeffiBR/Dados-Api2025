@@ -51,6 +51,48 @@ async def verificar_acesso_usuario(user_id: str) -> bool:
         logging.error(f"Erro ao verificar acesso do usuário {user_id}: {e}")
         return False
 
+async def get_user_managed_groups(user_id: str) -> List[int]:
+    """Obtém a lista de grupos que um usuário pode gerenciar como subadmin"""
+    try:
+        response = await asyncio.to_thread(
+            supabase.table('group_admins')
+            .select('group_ids')
+            .eq('user_id', user_id)
+            .single()
+            .execute
+        )
+        if response.data:
+            return response.data.get('group_ids', [])
+        return []
+    except Exception as e:
+        logging.error(f"Erro ao buscar grupos gerenciados pelo usuário {user_id}: {e}")
+        return []
+
+async def verify_group_admin_access(user_id: str, group_id: int) -> bool:
+    """Verifica se um usuário tem permissão de subadmin para um grupo específico"""
+    try:
+        managed_groups = await get_user_managed_groups(user_id)
+        return group_id in managed_groups
+    except Exception as e:
+        logging.error(f"Erro ao verificar acesso de subadmin: {e}")
+        return False
+
+async def get_group_admin_user(current_user: UserProfile = Depends(get_current_user)) -> UserProfile:
+    """Dependência para verificar se o usuário é subadmin"""
+    if current_user.role == 'admin':
+        return current_user
+    
+    managed_groups = await get_user_managed_groups(current_user.id)
+    if not managed_groups:
+        raise HTTPException(
+            status_code=403, 
+            detail="Acesso negado. Você não tem permissões de subadministrador."
+        )
+    
+    # Adiciona os grupos gerenciados ao perfil do usuário
+    current_user.managed_groups = managed_groups
+    return current_user
+
 # --- Funções de dependência compartilhadas ---
 async def get_current_user(authorization: str = Header(None)) -> UserProfile:
     if not authorization or not authorization.startswith("Bearer "):
@@ -187,3 +229,59 @@ def require_page_access(page_key: str):
             raise HTTPException(status_code=403, detail=f"Acesso negado à funcionalidade: {page_key}")
         return current_user
     return _verify_access
+
+# --- Classes de exceção personalizadas ---
+class APIError(Exception):
+    """Exceção personalizada para erros de API"""
+    def __init__(self, message: str, code: str = None, details: str = None):
+        self.message = message
+        self.code = code
+        self.details = details
+        super().__init__(self.message)
+
+# --- Funções de utilidade para logging ---
+def setup_logging():
+    """Configura o logging da aplicação"""
+    logging.basicConfig(
+        level=logging.INFO,
+        format='[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+
+def log_user_activity(user_id: str, action: str, details: dict = None):
+    """Registra atividade do usuário de forma assíncrona"""
+    try:
+        log_data = {
+            "user_id": user_id,
+            "action_type": action,
+            "details": details or {},
+            "created_at": datetime.now().isoformat()
+        }
+        
+        # Executar em thread separada para não bloquear
+        asyncio.create_task(
+            asyncio.to_thread(
+                supabase_admin.table('user_activity_logs').insert(log_data).execute
+            )
+        )
+    except Exception as e:
+        logging.error(f"Erro ao registrar atividade do usuário: {e}")
+
+# --- Validações comuns ---
+def validate_email(email: str) -> bool:
+    """Valida formato de email básico"""
+    import re
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(pattern, email) is not None
+
+def validate_password_strength(password: str) -> bool:
+    """Valida força da senha (mínimo 8 caracteres)"""
+    return len(password) >= 8
+
+# --- Constantes compartilhadas ---
+DEFAULT_ACCESS_DAYS = 30
+MAX_ACCESS_DAYS = 365
+MIN_ACCESS_DAYS = 1
+
+# Inicializar logging
+setup_logging()
