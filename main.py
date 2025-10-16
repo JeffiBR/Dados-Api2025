@@ -1444,65 +1444,59 @@ async def list_user_groups(
             query.order('created_at', desc=True).execute
         )
         
+        # Se não há dados, retornar lista vazia imediatamente
         if not user_groups_response.data:
             return []
         
         user_groups_with_details = []
         
         for user_group in user_groups_response.data:
-            group_response = await asyncio.to_thread(
-                supabase_admin.table('grupos').select('*').eq('id', user_group['group_id']).single().execute
-            )
-            
-            profile_response = await asyncio.to_thread(
-                supabase_admin.table('profiles').select('full_name').eq('id', user_group['user_id']).execute
-            )
-            
-            user_email = "N/A"
             try:
-                auth_response = await asyncio.to_thread(
-                    lambda: supabase_admin.auth.admin.get_user_by_id(user_group['user_id'])
+                # Buscar informações do grupo
+                group_response = await asyncio.to_thread(
+                    supabase_admin.table('grupos').select('*').eq('id', user_group['group_id']).execute
                 )
-                if auth_response.user:
-                    user_email = auth_response.user.email
+                grupo_data = group_response.data[0] if group_response.data else {'nome': 'Grupo Não Encontrado', 'dias_acesso': 0}
+                
+                # Buscar informações do perfil
+                profile_response = await asyncio.to_thread(
+                    supabase_admin.table('profiles').select('full_name').eq('id', user_group['user_id']).execute
+                )
+                user_name = profile_response.data[0]['full_name'] if profile_response.data else 'N/A'
+                
+                # Buscar email do usuário
+                user_email = "N/A"
+                try:
+                    auth_response = await asyncio.to_thread(
+                        lambda: supabase_admin.auth.admin.get_user_by_id(user_group['user_id'])
+                    )
+                    if auth_response.user:
+                        user_email = auth_response.user.email
+                except Exception as e:
+                    logging.error(f"Erro ao buscar email do usuário {user_group['user_id']}: {e}")
+                
+                user_group_detail = UserGroupWithDetails(
+                    id=user_group['id'],
+                    user_id=user_group['user_id'],
+                    group_id=user_group['group_id'],
+                    data_expiracao=user_group['data_expiracao'],
+                    created_at=user_group['created_at'],
+                    grupo_nome=grupo_data['nome'],
+                    grupo_dias_acesso=grupo_data['dias_acesso'],
+                    user_name=user_name,
+                    user_email=user_email
+                )
+                user_groups_with_details.append(user_group_detail)
+                
             except Exception as e:
-                logging.error(f"Erro ao buscar email do usuário {user_group['user_id']}: {e}")
-            
-            user_name = profile_response.data[0]['full_name'] if profile_response.data else 'N/A'
-            grupo_data = group_response.data if group_response.data else {'nome': 'N/A', 'dias_acesso': 0}
-            
-            user_group_detail = UserGroupWithDetails(
-                id=user_group['id'],
-                user_id=user_group['user_id'],
-                group_id=user_group['group_id'],
-                data_expiracao=user_group['data_expiracao'],
-                created_at=user_group['created_at'],
-                grupo_nome=grupo_data['nome'],
-                grupo_dias_acesso=grupo_data['dias_acesso'],
-                user_name=user_name,
-                user_email=user_email
-            )
-            user_groups_with_details.append(user_group_detail)
+                logging.error(f"Erro ao processar user_group {user_group.get('id')}: {e}")
+                continue  # Continuar com os próximos registros mesmo se um falhar
         
         return user_groups_with_details
         
     except Exception as e:
         logging.error(f"Erro ao listar associações usuário-grupo: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Erro interno ao listar associações: {str(e)}")
-
-@app.delete("/api/user-groups/{user_group_id}", status_code=204)
-async def remove_user_from_group(
-    user_group_id: int,
-    admin_user: UserProfile = Depends(require_page_access('users'))
-):
-    try:
-        await asyncio.to_thread(
-            lambda: supabase.table('user_groups').delete().eq('id', user_group_id).execute()
-        )
-        return
-    except Exception as e:
-        logging.error(f"Erro ao remover usuário do grupo: {e}")
-        raise HTTPException(status_code=400, detail="Erro ao remover usuário do grupo")
 
 @app.get("/api/users/{user_id}/groups", response_model=List[UserGroupWithDetails])
 async def get_user_groups(
@@ -1517,45 +1511,50 @@ async def get_user_groups(
             .execute
         )
         
+        # Se não há dados, retornar lista vazia
         if not user_groups_response.data:
             return []
         
         user_groups = []
         
         for user_group in user_groups_response.data:
-            group_response = await asyncio.to_thread(
-                supabase_admin.table('grupos').select('*').eq('id', user_group['group_id']).single().execute
-            )
-            
-            if group_response.data:
-                profile_response = await asyncio.to_thread(
-                    supabase_admin.table('profiles').select('full_name').eq('id', user_id).execute
+            try:
+                group_response = await asyncio.to_thread(
+                    supabase_admin.table('grupos').select('*').eq('id', user_group['group_id']).execute
                 )
                 
-                user_email = "N/A"
-                try:
-                    auth_response = await asyncio.to_thread(
-                        lambda: supabase_admin.auth.admin.get_user_by_id(user_id)
+                if group_response.data:
+                    profile_response = await asyncio.to_thread(
+                        supabase_admin.table('profiles').select('full_name').eq('id', user_id).execute
                     )
-                    if auth_response.user:
-                        user_email = auth_response.user.email
-                except Exception as e:
-                    logging.error(f"Erro ao buscar email do usuário {user_id}: {e}")
-                
-                user_name = profile_response.data[0]['full_name'] if profile_response.data else 'N/A'
-                
-                group_detail = UserGroupWithDetails(
-                    id=user_group['id'],
-                    user_id=user_group['user_id'],
-                    group_id=user_group['group_id'],
-                    data_expiracao=user_group['data_expiracao'],
-                    created_at=user_group['created_at'],
-                    grupo_nome=group_response.data['nome'],
-                    grupo_dias_acesso=group_response.data['dias_acesso'],
-                    user_name=user_name,
-                    user_email=user_email
-                )
-                user_groups.append(group_detail)
+                    
+                    user_email = "N/A"
+                    try:
+                        auth_response = await asyncio.to_thread(
+                            lambda: supabase_admin.auth.admin.get_user_by_id(user_id)
+                        )
+                        if auth_response.user:
+                            user_email = auth_response.user.email
+                    except Exception as e:
+                        logging.error(f"Erro ao buscar email do usuário {user_id}: {e}")
+                    
+                    user_name = profile_response.data[0]['full_name'] if profile_response.data else 'N/A'
+                    
+                    group_detail = UserGroupWithDetails(
+                        id=user_group['id'],
+                        user_id=user_group['user_id'],
+                        group_id=user_group['group_id'],
+                        data_expiracao=user_group['data_expiracao'],
+                        created_at=user_group['created_at'],
+                        grupo_nome=group_response.data[0]['nome'],
+                        grupo_dias_acesso=group_response.data[0]['dias_acesso'],
+                        user_name=user_name,
+                        user_email=user_email
+                    )
+                    user_groups.append(group_detail)
+            except Exception as e:
+                logging.error(f"Erro ao processar grupo do usuário {user_id}: {e}")
+                continue
         
         return user_groups
         
@@ -1636,3 +1635,4 @@ app.mount("/", StaticFiles(directory="web", html=True), name="static")
 @app.get("/")
 def read_root():
     return {"message": "Bem-vindo à API de Preços AL - Versão 3.3.0"}
+
