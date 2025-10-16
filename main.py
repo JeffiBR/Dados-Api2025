@@ -1563,45 +1563,68 @@ async def get_user_groups(
         logging.error(f"Erro ao buscar grupos do usuário: {e}")
         raise HTTPException(status_code=500, detail="Erro ao buscar grupos do usuário")
 
-@app.get("/api/my-groups", response_model=List[UserGroupWithDetails])
-async def get_my_groups(current_user: UserProfile = Depends(get_current_user)):
+# NOVO ENDPOINT CORRIGIDO PARA COMPATIBILIDADE COM FRONTEND
+@app.get("/api/my-groups-detailed", response_model=List[dict])
+async def get_my_groups_detailed(current_user: UserProfile = Depends(get_current_user)):
+    """Endpoint alternativo para compatibilidade com frontend existente"""
     try:
-        user_groups_response = await asyncio.to_thread(
-            supabase_admin.table('user_groups').select('*')
-            .eq('user_id', current_user.id)
-            .order('created_at', desc=True)
-            .execute
-        )
+        # Reutilizar a lógica do group_admin_routes
+        if current_user.role == 'admin':
+            groups_response = await asyncio.to_thread(
+                supabase.table('grupos').select('*').order('nome').execute
+            )
+            groups = groups_response.data or []
+        else:
+            # Buscar grupos gerenciados pelo subadmin
+            managed_groups = []
+            try:
+                admin_response = await asyncio.to_thread(
+                    supabase.table('group_admins').select('group_ids').eq('user_id', current_user.id).execute
+                )
+                if admin_response.data:
+                    managed_groups = admin_response.data[0].get('group_ids', [])
+            except Exception as e:
+                logging.error(f"Erro ao buscar grupos gerenciados: {e}")
+            
+            if not managed_groups:
+                return []
+            
+            groups_response = await asyncio.to_thread(
+                supabase.table('grupos')
+                .select('*')
+                .in_('id', managed_groups)
+                .order('nome')
+                .execute
+            )
+            groups = groups_response.data or []
         
-        if not user_groups_response.data:
-            return []
-        
-        my_groups = []
-        
-        for user_group in user_groups_response.data:
-            group_response = await asyncio.to_thread(
-                supabase_admin.table('grupos').select('*').eq('id', user_group['group_id']).single().execute
+        # Formatar resposta para o frontend
+        groups_with_details = []
+        for group in groups:
+            # Contar usuários ativos no grupo
+            user_groups_response = await asyncio.to_thread(
+                supabase_admin.table('user_groups')
+                .select('user_id', count='exact')
+                .eq('group_id', group['id'])
+                .gte('data_expiracao', date.today().isoformat())
+                .execute
             )
             
-            if group_response.data:
-                group_detail = UserGroupWithDetails(
-                    id=user_group['id'],
-                    user_id=user_group['user_id'],
-                    group_id=user_group['group_id'],
-                    data_expiracao=user_group['data_expiracao'],
-                    created_at=user_group['created_at'],
-                    grupo_nome=group_response.data['nome'],
-                    grupo_dias_acesso=group_response.data['dias_acesso'],
-                    user_name=current_user.email,
-                    user_email=current_user.email
-                )
-                my_groups.append(group_detail)
+            group_with_details = {
+                'group_id': group['id'],
+                'grupo_nome': group['nome'],
+                'grupo_dias_acesso': group['dias_acesso'],
+                'usuarios_ativos': user_groups_response.count or 0,
+                'descricao': group.get('descricao', ''),
+                'created_at': group.get('created_at')
+            }
+            groups_with_details.append(group_with_details)
         
-        return my_groups
+        return groups_with_details
         
     except Exception as e:
-        logging.error(f"Erro ao buscar grupos do usuário atual: {e}")
-        raise HTTPException(status_code=500, detail="Erro ao buscar seus grupos")
+        logging.error(f"Erro ao listar grupos do usuário: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao listar grupos")
 
 # --- Servir o Frontend ---
 app.mount("/", StaticFiles(directory="web", html=True), name="static")
