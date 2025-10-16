@@ -26,12 +26,17 @@ class GroupAdminUsersManager {
     }
 
     async init() {
+        console.log('Inicializando GroupAdminUsersManager...');
         await this.checkAuth();
+        console.log('Auth verificado, carregando dados...');
         await this.loadUserData();
+        console.log('Dados carregados, carregando usuários...');
         await this.loadGroupUsers();
+        console.log('Usuários carregados, configurando UI...');
         this.setupEventListeners();
         this.renderAllowedPagesCheckboxes();
         this.updateGroupInfo();
+        console.log('Inicialização completa');
     }
 
     async checkAuth() {
@@ -55,11 +60,18 @@ class GroupAdminUsersManager {
             this.currentUser = await response.json();
             this.updateUserInfo(this.currentUser);
 
-            // Verificar se é subadmin
-            if (this.currentUser.role !== 'admin' && (!this.currentUser.managed_groups || this.currentUser.managed_groups.length === 0)) {
-                this.showError('Acesso negado. Você não tem permissões de subadministrador.');
-                window.location.href = 'dashboard.html';
-                return;
+            // Verificar se é admin ou subadmin
+            if (this.currentUser.role !== 'admin') {
+                // Para não-admins, verificar se tem grupos gerenciados
+                await this.loadUserData();
+                
+                if (this.managedGroups.length === 0) {
+                    this.showError('Acesso negado. Você não tem permissões de subadministrador.');
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 3000);
+                    return;
+                }
             }
 
         } catch (error) {
@@ -72,8 +84,8 @@ class GroupAdminUsersManager {
         try {
             const token = localStorage.getItem('token');
             
-            // Carregar grupos gerenciados
-            const groupsResponse = await fetch('/api/my-groups', {
+            // CORREÇÃO: Usar o endpoint correto para grupos detalhados
+            const groupsResponse = await fetch('/api/my-groups-detailed', {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -81,13 +93,22 @@ class GroupAdminUsersManager {
 
             if (groupsResponse.ok) {
                 this.managedGroups = await groupsResponse.json();
+                console.log('Grupos carregados:', this.managedGroups);
+                
+                // Verificar se há grupos
+                if (this.managedGroups.length === 0) {
+                    this.showError('Nenhum grupo designado para gerenciamento.');
+                    return;
+                }
             } else {
+                const errorText = await groupsResponse.text();
+                console.error('Erro na resposta:', groupsResponse.status, errorText);
                 throw new Error('Falha ao carregar grupos');
             }
 
         } catch (error) {
             console.error('Erro ao carregar dados do usuário:', error);
-            this.showError('Erro ao carregar informações do grupo');
+            this.showError('Erro ao carregar informações do grupo: ' + error.message);
         }
     }
 
