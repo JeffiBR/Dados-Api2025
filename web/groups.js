@@ -1,12 +1,6 @@
-// groups.js - Gerenciamento de grupos e associações - Versão Corrigida
+// groups.js - Gerenciamento de Grupos e Associações
 document.addEventListener('DOMContentLoaded', () => {
-    // Elementos da UI
-    const groupsTableBody = document.getElementById('groupsTableBody');
-    const userGroupsTableBody = document.getElementById('userGroupsTableBody');
-    const userSelect = document.getElementById('userSelect');
-    const groupSelect = document.getElementById('groupSelect');
-    
-    // Formulário de grupos
+    // --- ELEMENTOS DA UI ---
     const groupFormTitle = document.getElementById('groupFormTitle');
     const groupIdInput = document.getElementById('groupId');
     const groupNameInput = document.getElementById('groupName');
@@ -14,55 +8,73 @@ document.addEventListener('DOMContentLoaded', () => {
     const groupDescriptionInput = document.getElementById('groupDescription');
     const saveGroupBtn = document.getElementById('saveGroupBtn');
     const cancelGroupButton = document.getElementById('cancelGroupButton');
-    const addUserToGroupBtn = document.getElementById('addUserToGroupBtn');
+    const groupsTableBody = document.getElementById('groupsTableBody');
+
+    // --- ELEMENTOS PARA ASSOCIAÇÕES ---
+    const userSelect = document.getElementById('userSelect');
+    const groupSelect = document.getElementById('groupSelect');
     const expirationDateInput = document.getElementById('expirationDate');
+    const addUserToGroupBtn = document.getElementById('addUserToGroupBtn');
+    const userGroupsTableBody = document.getElementById('userGroupsTableBody');
 
-    // Carregar dados iniciais
-    loadGroups();
-    loadUserGroups();
-    loadUsersForSelect();
-    loadGroupsForSelect();
+    // --- FUNÇÕES PARA GRUPOS ---
 
-    // Funções para grupos
-    async function loadGroups() {
+    const loadGroups = async () => {
         try {
             const response = await authenticatedFetch('/api/groups');
+            
             if (!response.ok) {
-                const errorData = await response.json().catch(() => null);
-                throw new Error(errorData?.detail || `Erro ${response.status} ao carregar grupos`);
+                throw new Error('Erro ao carregar grupos');
             }
             
             const groups = await response.json();
-            renderGroupsTable(groups);
+            
+            groupsTableBody.innerHTML = '';
+            groups.forEach(group => {
+                const row = document.createElement('tr');
+                row.dataset.group = JSON.stringify(group);
+
+                row.innerHTML = `
+                    <td>${group.nome}</td>
+                    <td>${group.dias_acesso} dias</td>
+                    <td>${group.descricao || 'Sem descrição'}</td>
+                    <td>${new Date(group.created_at).toLocaleDateString('pt-BR')}</td>
+                    <td class="actions">
+                        <button class="btn-icon edit-group-btn" title="Editar"><i class="fas fa-pencil-alt"></i></button>
+                        <button class="btn-icon delete-group-btn" title="Excluir"><i class="fas fa-trash-alt"></i></button>
+                    </td>
+                `;
+                groupsTableBody.appendChild(row);
+            });
         } catch (error) {
             console.error('Erro ao carregar grupos:', error);
-            alert(`Não foi possível carregar a lista de grupos: ${error.message}`);
+            alert('Não foi possível carregar a lista de grupos.');
         }
-    }
+    };
 
-    function renderGroupsTable(groups) {
-        if (!groupsTableBody) return;
+    const resetGroupForm = () => {
+        groupFormTitle.textContent = 'Criar Novo Grupo';
+        groupIdInput.value = '';
+        groupNameInput.value = '';
+        accessDaysInput.value = '30';
+        groupDescriptionInput.value = '';
+        saveGroupBtn.innerHTML = '<i class="fas fa-save"></i> Salvar Grupo';
+        cancelGroupButton.style.display = 'none';
+    };
+
+    const populateGroupFormForEdit = (group) => {
+        groupFormTitle.textContent = `Editando Grupo: ${group.nome}`;
+        groupIdInput.value = group.id;
+        groupNameInput.value = group.nome;
+        accessDaysInput.value = group.dias_acesso;
+        groupDescriptionInput.value = group.descricao || '';
         
-        groupsTableBody.innerHTML = '';
-        groups.forEach(group => {
-            const row = document.createElement('tr');
-            row.dataset.group = JSON.stringify(group);
-            
-            row.innerHTML = `
-                <td>${group.nome}</td>
-                <td>${group.dias_acesso} dias</td>
-                <td>${group.descricao || '-'}</td>
-                <td>${new Date(group.created_at).toLocaleDateString('pt-BR')}</td>
-                <td class="actions">
-                    <button class="btn-icon edit-group-btn" title="Editar"><i class="fas fa-pencil-alt"></i></button>
-                    <button class="btn-icon delete-group-btn" title="Excluir"><i class="fas fa-trash-alt"></i></button>
-                </td>
-            `;
-            groupsTableBody.appendChild(row);
-        });
-    }
+        saveGroupBtn.innerHTML = '<i class="fas fa-save"></i> Atualizar Grupo';
+        cancelGroupButton.style.display = 'inline-flex';
+        window.scrollTo({ top: document.querySelector('.form-container').offsetTop, behavior: 'smooth' });
+    };
 
-    async function saveGroup() {
+    const saveGroup = async () => {
         const id = groupIdInput.value;
         const nome = groupNameInput.value.trim();
         const dias_acesso = parseInt(accessDaysInput.value);
@@ -73,13 +85,14 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (!dias_acesso || dias_acesso < 1) {
-            alert('Dias de acesso deve ser um número positivo.');
+        if (!dias_acesso || dias_acesso < 1 || dias_acesso > 365) {
+            alert('Dias de acesso deve ser entre 1 e 365.');
             return;
         }
 
-        const url = id ? `/api/groups/${id}` : '/api/groups';
-        const method = id ? 'PUT' : 'POST';
+        const isUpdating = !!id;
+        const url = isUpdating ? `/api/groups/${id}` : '/api/groups';
+        const method = isUpdating ? 'PUT' : 'POST';
         
         const body = JSON.stringify({ 
             nome, 
@@ -89,20 +102,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const originalButtonText = saveGroupBtn.innerHTML;
         saveGroupBtn.disabled = true;
-        saveGroupBtn.innerHTML = id ? 'Atualizando...' : 'Criando...';
+        saveGroupBtn.innerHTML = isUpdating ? 'Atualizando...' : 'Criando...';
 
         try {
             const response = await authenticatedFetch(url, { method, body });
             
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData?.detail || 'Erro ao salvar grupo');
+                const error = await response.json();
+                throw new Error(error.detail || 'Erro ao salvar grupo');
             }
             
-            alert(`Grupo ${id ? 'atualizado' : 'criado'} com sucesso!`);
+            alert(`Grupo ${isUpdating ? 'atualizado' : 'criado'} com sucesso!`);
             resetGroupForm();
             loadGroups();
-            loadGroupsForSelect();
+            loadGroupsForSelect(); // Recarregar grupos no select
         } catch (error) {
             console.error('Erro ao salvar grupo:', error);
             alert(`Erro: ${error.message}`);
@@ -110,120 +123,38 @@ document.addEventListener('DOMContentLoaded', () => {
             saveGroupBtn.disabled = false;
             saveGroupBtn.innerHTML = originalButtonText;
         }
-    }
+    };
 
-    function resetGroupForm() {
-        groupFormTitle.textContent = 'Criar Novo Grupo';
-        groupIdInput.value = '';
-        groupNameInput.value = '';
-        accessDaysInput.value = '30';
-        groupDescriptionInput.value = '';
-        cancelGroupButton.style.display = 'none';
-    }
-
-    function populateGroupFormForEdit(group) {
-        groupFormTitle.textContent = `Editando Grupo: ${group.nome}`;
-        groupIdInput.value = group.id;
-        groupNameInput.value = group.nome;
-        accessDaysInput.value = group.dias_acesso;
-        groupDescriptionInput.value = group.descricao || '';
-        cancelGroupButton.style.display = 'inline-flex';
-        window.scrollTo({ top: document.getElementById('groupFormTitle').offsetTop - 100, behavior: 'smooth' });
-    }
-
-    async function deleteGroup(id, groupName) {
-        if (!confirm(`Tem certeza que deseja excluir o grupo "${groupName}"? Todas as associações com usuários serão removidas.`)) return;
+    const deleteGroup = async (id, groupName) => {
+        if (!confirm(`Tem certeza que deseja excluir o grupo "${groupName}"? Esta ação não pode ser desfeita e removerá todos os usuários associados.`)) return;
 
         try {
             const response = await authenticatedFetch(`/api/groups/${id}`, { method: 'DELETE' });
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData?.detail || 'Falha ao excluir o grupo.');
+                const error = await response.json();
+                throw new Error(error.detail || 'Falha ao excluir o grupo.');
             }
             alert('Grupo excluído com sucesso!');
             loadGroups();
-            loadGroupsForSelect();
-            loadUserGroups();
+            loadGroupsForSelect(); // Recarregar grupos no select
+            loadUserGroups(); // Recarregar associações
         } catch (error) {
             console.error('Erro ao excluir grupo:', error);
             alert(error.message);
         }
-    }
+    };
 
-    // Funções para associações usuário-grupo
-    async function loadUserGroups() {
-        try {
-            const response = await authenticatedFetch('/api/user-groups');
-            
-            if (!response.ok) {
-                if (response.status === 500) {
-                    // Se for erro 500, pode ser que não haja dados
-                    console.log('Nenhuma associação usuário-grupo encontrada');
-                    renderUserGroupsTable([]);
-                    return;
-                }
-                const errorData = await response.json().catch(() => null);
-                throw new Error(errorData?.detail || `Erro ${response.status} ao carregar associações`);
-            }
-            
-            const userGroups = await response.json();
-            renderUserGroupsTable(userGroups);
-        } catch (error) {
-            console.error('Erro ao carregar associações:', error);
-            // Em caso de erro, renderizar tabela vazia
-            renderUserGroupsTable([]);
-            alert(`Não foi possível carregar as associações usuário-grupo: ${error.message}`);
-        }
-    }
+    // --- FUNÇÕES PARA ASSOCIAÇÕES USUÁRIO-GRUPO ---
 
-    function renderUserGroupsTable(userGroups) {
-        if (!userGroupsTableBody) return;
-        
-        userGroupsTableBody.innerHTML = '';
-        
-        if (!userGroups || userGroups.length === 0) {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td colspan="6" class="no-data">
-                    <i class="fas fa-info-circle"></i>
-                    Nenhuma associação usuário-grupo encontrada
-                </td>
-            `;
-            userGroupsTableBody.appendChild(row);
-            return;
-        }
-        
-        const today = new Date().toISOString().split('T')[0];
-        
-        userGroups.forEach(userGroup => {
-            const isExpired = userGroup.data_expiracao < today;
-            const status = isExpired ? 'Expirado' : 'Ativo';
-            const statusClass = isExpired ? 'status-expired' : 'status-active';
-            
-            const row = document.createElement('tr');
-            row.dataset.userGroup = JSON.stringify(userGroup);
-            
-            row.innerHTML = `
-                <td>${userGroup.user_name || 'N/A'}</td>
-                <td>${userGroup.user_email || 'N/A'}</td>
-                <td>${userGroup.grupo_nome}</td>
-                <td>${new Date(userGroup.data_expiracao).toLocaleDateString('pt-BR')}</td>
-                <td><span class="status-badge ${statusClass}">${status}</span></td>
-                <td class="actions">
-                    <button class="btn-icon remove-user-group-btn" title="Remover do grupo"><i class="fas fa-user-times"></i></button>
-                </td>
-            `;
-            userGroupsTableBody.appendChild(row);
-        });
-    }
-
-    async function loadUsersForSelect() {
+    const loadUsersForSelect = async () => {
         try {
             const response = await authenticatedFetch('/api/users');
-            if (!response.ok) throw new Error('Erro ao carregar usuários');
+            
+            if (!response.ok) {
+                throw new Error('Erro ao carregar usuários');
+            }
             
             const users = await response.json();
-            if (!userSelect) return;
             
             userSelect.innerHTML = '<option value="">Selecione um usuário</option>';
             users.forEach(user => {
@@ -235,15 +166,17 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Erro ao carregar usuários para select:', error);
         }
-    }
+    };
 
-    async function loadGroupsForSelect() {
+    const loadGroupsForSelect = async () => {
         try {
             const response = await authenticatedFetch('/api/groups');
-            if (!response.ok) throw new Error('Erro ao carregar grupos');
+            
+            if (!response.ok) {
+                throw new Error('Erro ao carregar grupos');
+            }
             
             const groups = await response.json();
-            if (!groupSelect) return;
             
             groupSelect.innerHTML = '<option value="">Selecione um grupo</option>';
             groups.forEach(group => {
@@ -255,43 +188,88 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Erro ao carregar grupos para select:', error);
         }
-    }
+    };
 
-    async function addUserToGroup() {
+    const loadUserGroups = async () => {
+        try {
+            const response = await authenticatedFetch('/api/user-groups');
+            
+            if (!response.ok) {
+                throw new Error('Erro ao carregar associações');
+            }
+            
+            const userGroups = await response.json();
+            
+            userGroupsTableBody.innerHTML = '';
+            userGroups.forEach(userGroup => {
+                const isExpired = new Date(userGroup.data_expiracao) < new Date();
+                const statusClass = isExpired ? 'status-expired' : 'status-active';
+                const statusText = isExpired ? 'Expirado' : 'Ativo';
+
+                const row = document.createElement('tr');
+                row.dataset.userGroup = JSON.stringify(userGroup);
+
+                row.innerHTML = `
+                    <td>${userGroup.user_name || 'N/A'}</td>
+                    <td>${userGroup.user_email || 'N/A'}</td>
+                    <td>${userGroup.grupo_nome}</td>
+                    <td>${new Date(userGroup.data_expiracao).toLocaleDateString('pt-BR')}</td>
+                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                    <td class="actions">
+                        <button class="btn-icon renew-user-btn" title="Renovar Acesso"><i class="fas fa-sync-alt"></i></button>
+                        <button class="btn-icon remove-user-btn" title="Remover do Grupo"><i class="fas fa-user-minus"></i></button>
+                    </td>
+                `;
+                userGroupsTableBody.appendChild(row);
+            });
+        } catch (error) {
+            console.error('Erro ao carregar associações usuário-grupo:', error);
+            alert('Não foi possível carregar as associações usuário-grupo.');
+        }
+    };
+
+    const addUserToGroup = async () => {
         const userId = userSelect.value;
         const groupId = parseInt(groupSelect.value);
         const expirationDate = expirationDateInput.value;
 
         if (!userId || !groupId) {
-            alert('Usuário e grupo são obrigatórios.');
+            alert('Usuário e Grupo são obrigatórios.');
             return;
         }
 
-        const body = JSON.stringify({ 
-            user_id: userId, 
-            group_id: groupId,
-            data_expiracao: expirationDate || null
-        });
+        const bodyData = {
+            user_id: userId,
+            group_id: groupId
+        };
+
+        if (expirationDate) {
+            bodyData.data_expiracao = expirationDate;
+        }
 
         const originalButtonText = addUserToGroupBtn.innerHTML;
         addUserToGroupBtn.disabled = true;
         addUserToGroupBtn.innerHTML = 'Adicionando...';
 
         try {
-            const response = await authenticatedFetch('/api/user-groups', { 
-                method: 'POST', 
-                body 
+            const response = await authenticatedFetch('/api/user-groups', {
+                method: 'POST',
+                body: JSON.stringify(bodyData)
             });
             
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData?.detail || 'Erro ao adicionar usuário ao grupo');
+                const error = await response.json();
+                throw new Error(error.detail || 'Erro ao adicionar usuário ao grupo');
             }
             
             alert('Usuário adicionado ao grupo com sucesso!');
+            
+            // Limpar formulário
             userSelect.value = '';
             groupSelect.value = '';
             expirationDateInput.value = '';
+            
+            // Recarregar dados
             loadUserGroups();
         } catch (error) {
             console.error('Erro ao adicionar usuário ao grupo:', error);
@@ -300,63 +278,98 @@ document.addEventListener('DOMContentLoaded', () => {
             addUserToGroupBtn.disabled = false;
             addUserToGroupBtn.innerHTML = originalButtonText;
         }
-    }
+    };
 
-    async function removeUserFromGroup(userGroupId, userName, groupName) {
-        if (!confirm(`Tem certeza que deseja remover ${userName} do grupo ${groupName}?`)) return;
+    const renewUserAccess = async (userGroupId, userId, days = 30) => {
+        try {
+            const response = await authenticatedFetch(`/api/group-admin/users/${userId}/renew`, {
+                method: 'POST',
+                body: JSON.stringify({ dias_adicionais: days })
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Erro ao renovar acesso');
+            }
+            
+            alert('Acesso renovado com sucesso!');
+            loadUserGroups();
+        } catch (error) {
+            console.error('Erro ao renovar acesso:', error);
+            alert(error.message);
+        }
+    };
+
+    const removeUserFromGroup = async (userGroupId, userName) => {
+        if (!confirm(`Tem certeza que deseja remover "${userName}" do grupo?`)) return;
 
         try {
-            const response = await authenticatedFetch(`/api/user-groups/${userGroupId}`, { method: 'DELETE' });
+            const response = await authenticatedFetch(`/api/user-groups/${userGroupId}`, { 
+                method: 'DELETE' 
+            });
+            
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData?.detail || 'Falha ao remover usuário do grupo.');
+                const error = await response.json();
+                throw new Error(error.detail || 'Falha ao remover usuário do grupo.');
             }
+            
             alert('Usuário removido do grupo com sucesso!');
             loadUserGroups();
         } catch (error) {
             console.error('Erro ao remover usuário do grupo:', error);
             alert(error.message);
         }
-    }
+    };
 
-    // Event Listeners
-    if (groupsTableBody) {
-        groupsTableBody.addEventListener('click', (e) => {
-            const editButton = e.target.closest('.edit-group-btn');
-            const deleteButton = e.target.closest('.delete-group-btn');
-            
-            if (editButton) {
-                const group = JSON.parse(editButton.closest('tr').dataset.group);
-                populateGroupFormForEdit(group);
+    // --- EVENT LISTENERS ---
+
+    // Event listeners para grupos
+    groupsTableBody.addEventListener('click', (e) => {
+        const editButton = e.target.closest('.edit-group-btn');
+        const deleteButton = e.target.closest('.delete-group-btn');
+        
+        if (editButton) {
+            const group = JSON.parse(editButton.closest('tr').dataset.group);
+            populateGroupFormForEdit(group);
+        }
+
+        if (deleteButton) {
+            const group = JSON.parse(deleteButton.closest('tr').dataset.group);
+            deleteGroup(group.id, group.nome);
+        }
+    });
+
+    // Event listeners para associações
+    userGroupsTableBody.addEventListener('click', (e) => {
+        const renewButton = e.target.closest('.renew-user-btn');
+        const removeButton = e.target.closest('.remove-user-btn');
+        
+        if (renewButton) {
+            const userGroup = JSON.parse(renewButton.closest('tr').dataset.userGroup);
+            const days = prompt('Quantos dias adicionais de acesso?', '30');
+            if (days && !isNaN(days)) {
+                renewUserAccess(userGroup.id, userGroup.user_id, parseInt(days));
             }
+        }
 
-            if (deleteButton) {
-                const group = JSON.parse(deleteButton.closest('tr').dataset.group);
-                deleteGroup(group.id, group.nome);
-            }
-        });
-    }
+        if (removeButton) {
+            const userGroup = JSON.parse(removeButton.closest('tr').dataset.userGroup);
+            removeUserFromGroup(userGroup.id, userGroup.user_name);
+        }
+    });
 
-    if (userGroupsTableBody) {
-        userGroupsTableBody.addEventListener('click', (e) => {
-            const removeButton = e.target.closest('.remove-user-group-btn');
-            
-            if (removeButton) {
-                const userGroup = JSON.parse(removeButton.closest('tr').dataset.userGroup);
-                removeUserFromGroup(userGroup.id, userGroup.user_name, userGroup.grupo_nome);
-            }
-        });
-    }
+    saveGroupBtn.addEventListener('click', saveGroup);
+    cancelGroupButton.addEventListener('click', resetGroupForm);
+    addUserToGroupBtn.addEventListener('click', addUserToGroup);
 
-    if (saveGroupBtn) {
-        saveGroupBtn.addEventListener('click', saveGroup);
-    }
+    // --- INICIALIZAÇÃO ---
+    const initializePage = async () => {
+        await loadGroups();
+        await loadUsersForSelect();
+        await loadGroupsForSelect();
+        await loadUserGroups();
+        resetGroupForm();
+    };
 
-    if (cancelGroupButton) {
-        cancelGroupButton.addEventListener('click', resetGroupForm);
-    }
-
-    if (addUserToGroupBtn) {
-        addUserToGroupBtn.addEventListener('click', addUserToGroup);
-    }
+    initializePage();
 });
