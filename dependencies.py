@@ -118,7 +118,7 @@ async def get_current_user(authorization: str = Header(None)) -> UserProfile:
         
         # Buscar grupos gerenciados se for subadmin
         managed_groups = []
-        if role != 'admin':
+        if role == 'group_admin' or role != 'admin':
             try:
                 # Verificar se é subadmin
                 admin_response = await asyncio.to_thread(
@@ -185,7 +185,7 @@ async def get_current_user_optional(authorization: str = Header(None)) -> Option
         
         # Buscar grupos gerenciados se for subadmin
         managed_groups = []
-        if role != 'admin':
+        if role == 'group_admin' or role != 'admin':
             try:
                 admin_response = await asyncio.to_thread(
                     supabase.table('group_admins').select('group_ids').eq('user_id', user_id).execute
