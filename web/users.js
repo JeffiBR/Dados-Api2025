@@ -33,6 +33,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Função para renderizar opções de grupos
     const renderGroupOptions = () => {
+        // Verifica se o elemento existe
+        if (!managedGroupsDiv) {
+            console.warn('Elemento managedGroupsDiv não encontrado');
+            return;
+        }
+
         managedGroupsDiv.innerHTML = '';
         allGroups.forEach(group => {
             const card = document.createElement('div');
@@ -60,12 +66,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Função para obter grupos selecionados
     const getSelectedManagedGroups = () => {
+        if (!managedGroupsDiv) return [];
+
         return Array.from(managedGroupsDiv.querySelectorAll('.permission-card.selected'))
             .map(card => parseInt(card.dataset.groupId));
     };
 
     // Função para definir grupos selecionados
     const setSelectedManagedGroups = (groupIds) => {
+        if (!managedGroupsDiv) return;
+
         managedGroupsDiv.querySelectorAll('.permission-card').forEach(card => {
             const groupId = parseInt(card.dataset.groupId);
             card.classList.toggle('selected', groupIds.includes(groupId));
@@ -96,7 +106,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Event listener para mudança de role
     roleSelect.addEventListener('change', () => {
         const isGroupAdmin = roleSelect.value === 'group_admin';
-        managedGroupsContainer.style.display = isGroupAdmin ? 'block' : 'none';
+        
+        // Mostrar ou ocultar o container de grupos gerenciados
+        if (managedGroupsContainer) {
+            managedGroupsContainer.style.display = isGroupAdmin ? 'block' : 'none';
+        }
         
         // Se for admin geral, selecionar todas as permissões automaticamente
         if (roleSelect.value === 'admin') {
@@ -160,7 +174,12 @@ document.addEventListener('DOMContentLoaded', () => {
         roleSelect.value = 'user';
         setSelectedPermissions([]);
         setSelectedManagedGroups([]);
-        managedGroupsContainer.style.display = 'none';
+        
+        // Esconder o container de grupos gerenciados
+        if (managedGroupsContainer) {
+            managedGroupsContainer.style.display = 'none';
+        }
+        
         saveButton.innerHTML = '<i class="fas fa-save"></i> Salvar';
         cancelButton.style.display = 'none';
     };
@@ -180,10 +199,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Configurar grupos gerenciados se for admin de grupo
         if (user.role === 'group_admin' && user.managed_groups) {
-            managedGroupsContainer.style.display = 'block';
+            if (managedGroupsContainer) {
+                managedGroupsContainer.style.display = 'block';
+            }
             setSelectedManagedGroups(user.managed_groups);
         } else {
-            managedGroupsContainer.style.display = 'none';
+            if (managedGroupsContainer) {
+                managedGroupsContainer.style.display = 'none';
+            }
         }
         
         saveButton.innerHTML = '<i class="fas fa-save"></i> Atualizar';
