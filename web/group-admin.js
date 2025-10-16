@@ -9,10 +9,14 @@ class GroupAdminManager {
     }
 
     async init() {
+        console.log('Inicializando GroupAdminManager...');
         await this.checkAuth();
+        console.log('Auth verificado, carregando dados...');
         await this.loadData();
+        console.log('Dados carregados, configurando UI...');
         this.setupEventListeners();
         this.renderGroupAdmins();
+        console.log('Inicialização completa');
     }
 
     async checkAuth() {
@@ -38,7 +42,9 @@ class GroupAdminManager {
             // Verificar se é admin
             if (userData.role !== 'admin') {
                 this.showError('Acesso negado. Apenas administradores podem gerenciar subadministradores.');
-                window.location.href = 'dashboard.html';
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 3000);
                 return;
             }
 
@@ -64,17 +70,23 @@ class GroupAdminManager {
     formatRole(role) {
         const roles = {
             'admin': 'Administrador',
-            'user': 'Usuário'
+            'user': 'Usuário',
+            'subadmin': 'Subadministrador'
         };
         return roles[role] || role;
     }
 
     async loadData() {
-        await Promise.all([
-            this.loadUsers(),
-            this.loadGroups(),
-            this.loadGroupAdmins()
-        ]);
+        try {
+            await Promise.all([
+                this.loadUsers(),
+                this.loadGroups(),
+                this.loadGroupAdmins()
+            ]);
+        } catch (error) {
+            console.error('Erro ao carregar dados:', error);
+            this.showError('Erro ao carregar dados. Tente recarregar a página.');
+        }
     }
 
     async loadUsers() {
@@ -90,11 +102,13 @@ class GroupAdminManager {
                 this.allUsers = await response.json();
                 this.populateUserSelect();
             } else {
+                const errorText = await response.text();
+                console.error('Erro na resposta de usuários:', response.status, errorText);
                 throw new Error('Falha ao carregar usuários');
             }
         } catch (error) {
             console.error('Erro ao carregar usuários:', error);
-            this.showError('Erro ao carregar lista de usuários');
+            this.showError('Erro ao carregar lista de usuários: ' + error.message);
         }
     }
 
@@ -111,11 +125,13 @@ class GroupAdminManager {
                 this.allGroups = await response.json();
                 this.populateGroupsSelect();
             } else {
+                const errorText = await response.text();
+                console.error('Erro na resposta de grupos:', response.status, errorText);
                 throw new Error('Falha ao carregar grupos');
             }
         } catch (error) {
             console.error('Erro ao carregar grupos:', error);
-            this.showError('Erro ao carregar lista de grupos');
+            this.showError('Erro ao carregar lista de grupos: ' + error.message);
         }
     }
 
@@ -132,11 +148,13 @@ class GroupAdminManager {
                 this.groupAdmins = await response.json();
                 this.renderGroupAdmins();
             } else {
+                const errorText = await response.text();
+                console.error('Erro na resposta de subadministradores:', response.status, errorText);
                 throw new Error('Falha ao carregar subadministradores');
             }
         } catch (error) {
             console.error('Erro ao carregar subadministradores:', error);
-            this.showError('Erro ao carregar lista de subadministradores');
+            this.showError('Erro ao carregar lista de subadministradores: ' + error.message);
         }
     }
 
@@ -144,11 +162,21 @@ class GroupAdminManager {
         const userSelect = document.getElementById('userSelect');
         userSelect.innerHTML = '<option value="">Selecione um usuário</option>';
         
+        if (this.allUsers.length === 0) {
+            userSelect.innerHTML = '<option value="">Nenhum usuário disponível</option>';
+            return;
+        }
+        
         // Filtrar apenas usuários que não são admin e não são já subadmins
         const availableUsers = this.allUsers.filter(user => 
             user.role !== 'admin' && 
             !this.groupAdmins.some(admin => admin.user_id === user.id)
         );
+
+        if (availableUsers.length === 0) {
+            userSelect.innerHTML = '<option value="">Nenhum usuário disponível</option>';
+            return;
+        }
 
         availableUsers.forEach(user => {
             const option = document.createElement('option');
@@ -156,15 +184,19 @@ class GroupAdminManager {
             option.textContent = `${user.full_name} (${user.email})`;
             userSelect.appendChild(option);
         });
-
-        if (availableUsers.length === 0) {
-            userSelect.innerHTML = '<option value="">Nenhum usuário disponível</option>';
-        }
     }
 
     populateGroupsSelect(selectElement = null) {
         const targetSelect = selectElement || document.getElementById('groupsSelect');
         targetSelect.innerHTML = '';
+        
+        if (this.allGroups.length === 0) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'Nenhum grupo disponível';
+            targetSelect.appendChild(option);
+            return;
+        }
         
         this.allGroups.forEach(group => {
             const option = document.createElement('option');
@@ -241,12 +273,13 @@ class GroupAdminManager {
 
             if (response.ok) {
                 this.showSuccess('Subadministrador designado com sucesso!');
-                document.getElementById('userSelect').value = '';
+                // Limpar seleções
+                userSelect.value = '';
                 groupsSelect.selectedIndex = -1;
                 await this.loadData();
             } else {
-                const error = await response.json();
-                throw new Error(error.detail || 'Erro ao designar subadministrador');
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Erro ao designar subadministrador');
             }
         } catch (error) {
             console.error('Erro ao adicionar subadministrador:', error);
@@ -256,7 +289,10 @@ class GroupAdminManager {
 
     openEditModal(userId) {
         const admin = this.groupAdmins.find(admin => admin.user_id === userId);
-        if (!admin) return;
+        if (!admin) {
+            this.showError('Subadministrador não encontrado');
+            return;
+        }
 
         document.getElementById('editUserId').value = admin.user_id;
         
@@ -265,10 +301,12 @@ class GroupAdminManager {
         
         // Selecionar os grupos atuais
         const editGroupsSelect = document.getElementById('editGroupsSelect');
-        admin.group_ids.forEach(groupId => {
-            const option = Array.from(editGroupsSelect.options).find(opt => parseInt(opt.value) === groupId);
-            if (option) option.selected = true;
-        });
+        if (admin.group_ids && Array.isArray(admin.group_ids)) {
+            admin.group_ids.forEach(groupId => {
+                const option = Array.from(editGroupsSelect.options).find(opt => parseInt(opt.value) === groupId);
+                if (option) option.selected = true;
+            });
+        }
 
         document.getElementById('editGroupAdminModal').style.display = 'block';
     }
@@ -306,8 +344,8 @@ class GroupAdminManager {
                 this.closeEditModal();
                 await this.loadData();
             } else {
-                const error = await response.json();
-                throw new Error(error.detail || 'Erro ao atualizar subadministrador');
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Erro ao atualizar subadministrador');
             }
         } catch (error) {
             console.error('Erro ao atualizar subadministrador:', error);
@@ -333,8 +371,8 @@ class GroupAdminManager {
                 this.showSuccess('Subadministrador removido com sucesso!');
                 await this.loadData();
             } else {
-                const error = await response.json();
-                throw new Error(error.detail || 'Erro ao remover subadministrador');
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Erro ao remover subadministrador');
             }
         } catch (error) {
             console.error('Erro ao remover subadministrador:', error);
@@ -344,6 +382,11 @@ class GroupAdminManager {
 
     renderGroupAdmins() {
         const tbody = document.querySelector('#groupAdminsTable tbody');
+        
+        if (!tbody) {
+            console.error('Elemento tbody não encontrado');
+            return;
+        }
         
         if (this.groupAdmins.length === 0) {
             tbody.innerHTML = `
@@ -358,7 +401,12 @@ class GroupAdminManager {
             return;
         }
 
-        tbody.innerHTML = this.groupAdmins.map(admin => `
+        tbody.innerHTML = this.groupAdmins.map(admin => {
+            const groupNames = admin.group_names && Array.isArray(admin.group_names) 
+                ? admin.group_names 
+                : [];
+                
+            return `
             <tr>
                 <td>
                     <div style="display: flex; align-items: center; gap: 10px;">
@@ -373,15 +421,17 @@ class GroupAdminManager {
                 <td>${admin.user_email || 'N/A'}</td>
                 <td>
                     <div class="groups-badges">
-                        ${admin.group_names.map(name => `
+                        ${groupNames.map(name => `
                             <span class="group-badge">
                                 <i class="fas fa-layer-group"></i>
                                 ${name}
                             </span>
                         `).join('')}
+                        ${groupNames.length === 0 ? 
+                            '<span class="group-badge" style="background: rgba(107, 114, 128, 0.1); color: var(--muted-dark);">Nenhum grupo</span>' : ''}
                     </div>
                 </td>
-                <td>${new Date(admin.created_at).toLocaleDateString('pt-BR')}</td>
+                <td>${admin.created_at ? new Date(admin.created_at).toLocaleDateString('pt-BR') : 'N/A'}</td>
                 <td>
                     <div class="table-actions">
                         <button class="btn outline edit-admin" data-user-id="${admin.user_id}">
@@ -393,7 +443,7 @@ class GroupAdminManager {
                     </div>
                 </td>
             </tr>
-        `).join('');
+        `}).join('');
 
         // Adicionar event listeners aos botões
         tbody.querySelectorAll('.edit-admin').forEach(button => {
