@@ -1,4 +1,4 @@
-// auth.js - VERSÃO COMPLETA E ATUALIZADA
+// auth.js - VERSÃO COMPLETA E CORRIGIDA
 
 const SUPABASE_URL = 'https://zhaetrzpkkgzfrwxfqdw.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpoYWV0cnpwa2tnemZyd3hmcWR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0MjM3MzksImV4cCI6MjA3Mjk5OTczOX0.UHoWWZahvp_lMDH8pK539YIAFTAUnQk9mBX5tdixwN0';
@@ -20,9 +20,17 @@ async function authenticatedFetch(url, options = {}) {
         throw error;
     }
 
+    // VALIDAÇÃO DO TOKEN - CORREÇÃO ADICIONADA
+    const token = session.access_token;
+    if (!token || typeof token !== 'string' || token.split('.').length !== 3) {
+        console.error('Token JWT inválido:', token);
+        await handleAuthError();
+        throw new Error("Token de autenticação inválido.");
+    }
+
     const defaultHeaders = {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`
+        'Authorization': `Bearer ${token}`
     };
 
     const finalOptions = {
@@ -69,6 +77,9 @@ async function authenticatedFetch(url, options = {}) {
         if (error.message.includes('Sessão expirada')) {
             throw error;
         }
+        if (error.message.includes('Token de autenticação inválido')) {
+            throw error;
+        }
         throw new Error(`Erro de rede: ${error.message}`);
     }
 }
@@ -96,10 +107,13 @@ async function fetchUserProfile(forceRefresh = false) {
         return currentUserProfile;
     }
     
-    const session = await getSession();
-    if (!session) return null;
-
     try {
+        const session = await getSession();
+        if (!session) {
+            console.log('Nenhuma sessão encontrada em fetchUserProfile');
+            return null;
+        }
+
         const response = await authenticatedFetch('/api/users/me');
         if (!response.ok) {
             if (response.status === 401 || response.status === 404) {
@@ -116,7 +130,7 @@ async function fetchUserProfile(forceRefresh = false) {
         console.error("Erro em fetchUserProfile:", error);
         
         // Se for erro de sessão, redireciona para login
-        if (error.code === 'NO_SESSION' || error.message.includes('Sessão expirada')) {
+        if (error.code === 'NO_SESSION' || error.message.includes('Sessão expirada') || error.message.includes('Token de autenticação inválido')) {
             redirectToLogin();
         }
         return null;
@@ -129,7 +143,23 @@ async function fetchUserProfile(forceRefresh = false) {
 async function getSession() {
     try {
         const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
+        if (error) {
+            console.error('Erro ao obter sessão:', error);
+            // Limpar sessão inválida
+            await supabase.auth.signOut();
+            return null;
+        }
+        
+        // Validar se a sessão e o token são válidos
+        if (session && session.access_token) {
+            const tokenParts = session.access_token.split('.');
+            if (tokenParts.length !== 3) {
+                console.error('Token JWT malformado');
+                await supabase.auth.signOut();
+                return null;
+            }
+        }
+        
         return session;
     } catch (error) {
         console.error('Erro ao obter sessão:', error);
@@ -198,7 +228,16 @@ async function routeGuard(requiredPermission = null) {
 async function checkAuth() {
     try {
         const session = await getSession();
-        return !!session;
+        if (!session) return false;
+        
+        // Verificação adicional do token
+        const token = session.access_token;
+        if (!token || token.split('.').length !== 3) {
+            console.error('Token inválido em checkAuth');
+            return false;
+        }
+        
+        return true;
     } catch (error) {
         console.error('Erro ao verificar autenticação:', error);
         return false;
@@ -248,39 +287,51 @@ async function hasPermission(permission) {
  * Inicializa a autenticação e verifica o estado do usuário
  */
 async function initAuth() {
-    // Verifica sessão atual ao inicializar
-    await checkAndUpdateAuthState();
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log('Evento de autenticação:', event);
+    try {
+        // Verifica sessão atual ao inicializar
+        await checkAndUpdateAuthState();
         
-        switch (event) {
-            case 'SIGNED_IN':
-                console.log('Usuário fez login');
-                clearUserProfileCache();
-                await fetchUserProfile(true);
-                break;
-                
-            case 'SIGNED_OUT':
-                console.log('Usuário fez logout');
-                clearUserProfileCache();
-                currentUserProfile = null;
-                notifyAuthStateChange();
-                break;
-                
-            case 'TOKEN_REFRESHED':
-                console.log('Token atualizado');
-                break;
-                
-            case 'USER_UPDATED':
-                console.log('Usuário atualizado');
-                clearUserProfileCache();
-                await fetchUserProfile(true);
-                break;
-        }
-    });
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log('Evento de autenticação:', event);
+            
+            switch (event) {
+                case 'SIGNED_IN':
+                    console.log('Usuário fez login');
+                    clearUserProfileCache();
+                    await fetchUserProfile(true);
+                    break;
+                    
+                case 'SIGNED_OUT':
+                    console.log('Usuário fez logout');
+                    clearUserProfileCache();
+                    currentUserProfile = null;
+                    notifyAuthStateChange();
+                    break;
+                    
+                case 'TOKEN_REFRESHED':
+                    console.log('Token atualizado');
+                    break;
+                    
+                case 'USER_UPDATED':
+                    console.log('Usuário atualizado');
+                    clearUserProfileCache();
+                    await fetchUserProfile(true);
+                    break;
+                    
+                case 'USER_DELETED':
+                    console.log('Usuário deletado');
+                    clearUserProfileCache();
+                    currentUserProfile = null;
+                    notifyAuthStateChange();
+                    break;
+            }
+        });
 
-    return subscription;
+        return subscription;
+    } catch (error) {
+        console.error('Erro na inicialização da autenticação:', error);
+        return null;
+    }
 }
 
 /**
@@ -334,17 +385,24 @@ async function signUp(email, password, userMetadata = {}) {
  * Verifica e atualiza o estado de autenticação globalmente
  */
 async function checkAndUpdateAuthState() {
-    const isAuthenticated = await checkAuth();
-    let user = null;
-    
-    if (isAuthenticated) {
-        user = await fetchUserProfile();
-    } else {
+    try {
+        const isAuthenticated = await checkAuth();
+        let user = null;
+        
+        if (isAuthenticated) {
+            user = await fetchUserProfile();
+        } else {
+            clearUserProfileCache();
+        }
+        
+        notifyAuthStateChange(isAuthenticated, user);
+        return isAuthenticated;
+    } catch (error) {
+        console.error('Erro em checkAndUpdateAuthState:', error);
         clearUserProfileCache();
+        notifyAuthStateChange(false, null);
+        return false;
     }
-    
-    notifyAuthStateChange(isAuthenticated, user);
-    return isAuthenticated;
 }
 
 /**
@@ -505,8 +563,12 @@ function setupGlobalErrorHandling() {
 
 // Inicializa a autenticação quando o script é carregado
 document.addEventListener('DOMContentLoaded', function() {
-    initAuth().catch(console.error);
-    setupGlobalErrorHandling();
+    setTimeout(() => {
+        initAuth().catch(error => {
+            console.error('Falha na inicialização da autenticação:', error);
+        });
+        setupGlobalErrorHandling();
+    }, 1000); // Delay para garantir que tudo está carregado
 });
 
 // Torna as funções disponíveis globalmente
@@ -530,4 +592,4 @@ window.onAuthStateChange = onAuthStateChange;
 window.checkAccessExpiration = checkAccessExpiration;
 window.showAccessExpiredMessage = showAccessExpiredMessage;
 
-console.log('✅ auth.js carregado com sucesso - Versão Completa');
+console.log('✅ auth.js carregado com sucesso - Versão Corrigida');
