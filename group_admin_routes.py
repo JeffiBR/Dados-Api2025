@@ -56,7 +56,7 @@ class UserRenewRequest(BaseModel):
     dias_adicionais: int = Field(..., ge=1, le=365)
 
 # --------------------------------------------------------------------------
-# --- FUNÇÕES AUXILIARES PARA SUBADMINISTRADORES ---
+# --- FUNÇões AUXILIARES PARA SUBADMINISTRADORES ---
 # --------------------------------------------------------------------------
 
 async def get_user_managed_groups(user_id: str) -> List[int]:
