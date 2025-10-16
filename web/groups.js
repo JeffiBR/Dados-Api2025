@@ -154,7 +154,14 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadUserGroups() {
         try {
             const response = await authenticatedFetch('/api/user-groups');
+            
             if (!response.ok) {
+                if (response.status === 500) {
+                    // Se for erro 500, pode ser que não haja dados
+                    console.log('Nenhuma associação usuário-grupo encontrada');
+                    renderUserGroupsTable([]);
+                    return;
+                }
                 const errorData = await response.json().catch(() => null);
                 throw new Error(errorData?.detail || `Erro ${response.status} ao carregar associações`);
             }
@@ -163,6 +170,8 @@ document.addEventListener('DOMContentLoaded', () => {
             renderUserGroupsTable(userGroups);
         } catch (error) {
             console.error('Erro ao carregar associações:', error);
+            // Em caso de erro, renderizar tabela vazia
+            renderUserGroupsTable([]);
             alert(`Não foi possível carregar as associações usuário-grupo: ${error.message}`);
         }
     }
@@ -171,6 +180,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!userGroupsTableBody) return;
         
         userGroupsTableBody.innerHTML = '';
+        
+        if (!userGroups || userGroups.length === 0) {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td colspan="6" class="no-data">
+                    <i class="fas fa-info-circle"></i>
+                    Nenhuma associação usuário-grupo encontrada
+                </td>
+            `;
+            userGroupsTableBody.appendChild(row);
+            return;
+        }
+        
         const today = new Date().toISOString().split('T')[0];
         
         userGroups.forEach(userGroup => {
