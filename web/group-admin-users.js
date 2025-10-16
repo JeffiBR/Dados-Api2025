@@ -1,4 +1,4 @@
-// group-admin-users.js - Gerenciamento de Usuários por Subadministrador
+// group-admin-users.js - Gerenciamento de Usuários por Subadministrador - CORRIGIDO
 
 class GroupAdminUsersManager {
     constructor() {
@@ -40,24 +40,19 @@ class GroupAdminUsersManager {
     }
 
     async checkAuth() {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            window.location.href = 'login.html';
-            return;
-        }
-
         try {
-            const response = await fetch('/api/users/me', {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error('Não autenticado');
+            const isAuthenticated = await checkAuth();
+            if (!isAuthenticated) {
+                window.location.href = 'login.html';
+                return;
             }
 
-            this.currentUser = await response.json();
+            // Usar fetchUserProfile em vez de chamada direta
+            this.currentUser = await fetchUserProfile();
+            if (!this.currentUser) {
+                throw new Error('Não foi possível carregar perfil do usuário');
+            }
+
             this.updateUserInfo(this.currentUser);
 
             // Verificar se é admin ou subadmin
@@ -82,17 +77,11 @@ class GroupAdminUsersManager {
 
     async loadUserData() {
         try {
-            const token = localStorage.getItem('token');
+            // CORREÇÃO: Usar authenticatedFetch em vez de fetch direto
+            const response = await authenticatedFetch('/api/my-groups-detailed');
             
-            // CORREÇÃO: Usar o endpoint correto para grupos detalhados
-            const groupsResponse = await fetch('/api/my-groups-detailed', {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (groupsResponse.ok) {
-                this.managedGroups = await groupsResponse.json();
+            if (response.ok) {
+                this.managedGroups = await response.json();
                 console.log('Grupos carregados:', this.managedGroups);
                 
                 // Verificar se há grupos
@@ -101,8 +90,8 @@ class GroupAdminUsersManager {
                     return;
                 }
             } else {
-                const errorText = await groupsResponse.text();
-                console.error('Erro na resposta:', groupsResponse.status, errorText);
+                const errorText = await response.text();
+                console.error('Erro na resposta:', response.status, errorText);
                 throw new Error('Falha ao carregar grupos');
             }
 
@@ -116,14 +105,10 @@ class GroupAdminUsersManager {
         if (this.managedGroups.length === 0) return;
 
         try {
-            const token = localStorage.getItem('token');
-            const groupId = this.managedGroups[0].group_id; // Subadmin gerencia apenas um grupo
+            const groupId = this.managedGroups[0].group_id;
 
-            const response = await fetch(`/api/group-admin/users?group_id=${groupId}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+            // CORREÇÃO: Usar authenticatedFetch
+            const response = await authenticatedFetch(`/api/group-admin/users?group_id=${groupId}`);
 
             if (response.ok) {
                 this.groupUsers = await response.json();
@@ -282,14 +267,13 @@ class GroupAdminUsersManager {
         const allowedPages = this.getSelectedPages('allowedPagesContainer');
 
         try {
-            const token = localStorage.getItem('token');
             const groupId = this.managedGroups[0].group_id;
 
-            const response = await fetch('/api/group-admin/users', {
+            // CORREÇÃO: Usar authenticatedFetch
+            const response = await authenticatedFetch('/api/group-admin/users', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     email: email,
@@ -369,12 +353,11 @@ class GroupAdminUsersManager {
         }
 
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`/api/group-admin/users/${userId}`, {
+            // CORREÇÃO: Usar authenticatedFetch
+            const response = await authenticatedFetch(`/api/group-admin/users/${userId}`, {
                 method: 'PUT',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     full_name: name,
@@ -403,12 +386,11 @@ class GroupAdminUsersManager {
         const days = parseInt(document.getElementById('renewDays').value);
 
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`/api/group-admin/users/${userId}/renew`, {
+            // CORREÇÃO: Usar authenticatedFetch
+            const response = await authenticatedFetch(`/api/group-admin/users/${userId}/renew`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     dias_adicionais: days
@@ -436,12 +418,9 @@ class GroupAdminUsersManager {
         }
 
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`/api/group-admin/users/${userId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+            // CORREÇÃO: Usar authenticatedFetch
+            const response = await authenticatedFetch(`/api/group-admin/users/${userId}`, {
+                method: 'DELETE'
             });
 
             if (response.ok) {
@@ -611,8 +590,7 @@ class GroupAdminUsersManager {
     }
 
     logout() {
-        localStorage.removeItem('token');
-        window.location.href = 'login.html';
+        signOut(); // Usar a função global signOut do auth.js
     }
 }
 
