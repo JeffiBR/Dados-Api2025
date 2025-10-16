@@ -75,10 +75,35 @@
                 <div class="card form-container">
                     <h3 id="formTitle">Adicionar Novo Usuário</h3>
                     <input type="hidden" id="userId">
-                    <div class="form-group"><label for="fullName">Nome Completo</label><input type="text" id="fullName" placeholder="Digite o nome completo"></div>
-                    <div class="form-group"><label for="email">Email</label><input type="email" id="email" placeholder="Digite o email"></div>
-                    <div class="form-group"><label for="password">Senha</label><input type="password" id="password" placeholder="Obrigatório para novos usuários"></div>
-                    <div class="form-group"><label for="role">Nível de Acesso</label><select id="role"><option value="user">Usuário</option><option value="admin">Admin Geral</option></select></div>
+                    <div class="form-group">
+                        <label for="fullName">Nome Completo</label>
+                        <input type="text" id="fullName" placeholder="Digite o nome completo">
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" placeholder="Digite o email">
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Senha</label>
+                        <input type="password" id="password" placeholder="Obrigatório para novos usuários">
+                    </div>
+                    <div class="form-group">
+                        <label for="role">Nível de Acesso</label>
+                        <select id="role">
+                            <option value="user">Usuário</option>
+                            <option value="admin">Admin Geral</option>
+                            <option value="group_admin">Admin de Grupo</option>
+                        </select>
+                    </div>
+
+                    <!-- Container para Grupos Gerenciados -->
+                    <div class="form-group full-width" id="managedGroupsContainer" style="display: none;">
+                        <label>Grupos Gerenciados (para nível 'Admin de Grupo')</label>
+                        <div id="managedGroups" class="permissions-grid">
+                            <!-- Os grupos serão carregados dinamicamente aqui -->
+                        </div>
+                    </div>
+
                     <div class="form-group full-width">
                         <label>Permissões de Página (para nível 'Usuário')</label>
                         <div id="permissions-container" class="permissions-grid">
@@ -151,17 +176,19 @@
                                 <span class="category-indicator administracao">Administração</span>
                                 <div class="permission-checkbox"></div>
                             </div>
+                            
                             <div class="permission-card" data-permission="baskets">
-    <div class="permission-header">
-        <div class="permission-icon"><i class="fas fa-shopping-basket"></i></div>
-        <div class="permission-name">Cesta Básica</div>
-    </div>
-    <div class="permission-description">
-        Acesso à funcionalidade de montar e gerenciar a cesta básica de produtos.
-    </div>
-    <span class="category-indicator analise">Análise</span>
-    <div class="permission-checkbox"></div>
-</div>
+                                <div class="permission-header">
+                                    <div class="permission-icon"><i class="fas fa-shopping-basket"></i></div>
+                                    <div class="permission-name">Cesta Básica</div>
+                                </div>
+                                <div class="permission-description">
+                                    Acesso à funcionalidade de montar e gerenciar a cesta básica de produtos.
+                                </div>
+                                <span class="category-indicator analise">Análise</span>
+                                <div class="permission-checkbox"></div>
+                            </div>
+                            
                             <div class="permission-card" data-permission="product_log">
                                 <div class="permission-header">
                                     <div class="permission-icon"><i class="fas fa-clipboard-list"></i></div>
@@ -173,16 +200,16 @@
                             </div>
 
                             <div class="permission-card" data-permission="user_logs">
-    <div class="permission-header">
-        <div class="permission-icon"><i class="fas fa-user-clock"></i></div>
-        <div class="permission-name">Logs de Usuários</div>
-    </div>
-    <div class="permission-description">
-        Permite visualizar atividades e registros de ações realizadas pelos usuários do sistema.
-    </div>
-    <span class="category-indicator administracao">Administração</span>
-    <div class="permission-checkbox"></div>
-</div>
+                                <div class="permission-header">
+                                    <div class="permission-icon"><i class="fas fa-user-clock"></i></div>
+                                    <div class="permission-name">Logs de Usuários</div>
+                                </div>
+                                <div class="permission-description">
+                                    Permite visualizar atividades e registros de ações realizadas pelos usuários do sistema.
+                                </div>
+                                <span class="category-indicator administracao">Administração</span>
+                                <div class="permission-checkbox"></div>
+                            </div>
                             
                             <div class="permission-card" data-permission="users">
                                 <div class="permission-header">
@@ -205,22 +232,22 @@
                     <div class="card-header"><h3>Usuários Cadastrados</h3></div>
                     <div class="card-content">
                         <table>
-                          <thead>
-  <tr>
-    <th>Nome</th>
-    <th>Email</th>
-    <th>Senha</th>
-    <th>Nível</th>
-    <th>Permissões</th>
-    <th>Ações</th>
-  </tr>
-</thead>
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Email</th>
+                                    <th>Senha</th>
+                                    <th>Nível</th>
+                                    <th>Permissões</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
                             <tbody id="usersTableBody"></tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- NOVA SEÇÃO: Gerenciar Grupos de Acesso -->
+                <!-- SEÇÃO: Gerenciar Grupos de Acesso -->
                 <div class="card table-container" style="margin-top: 2rem;">
                     <div class="card-header">
                         <h3>Gerenciar Grupos de Acesso</h3>
@@ -262,7 +289,7 @@
                     </div>
                 </div>
 
-                <!-- NOVA SEÇÃO: Associações Usuário-Grupo -->
+                <!-- SEÇÃO: Associações Usuário-Grupo -->
                 <div class="card table-container" style="margin-top: 2rem;">
                     <div class="card-header">
                         <h3>Associações Usuário-Grupo</h3>
@@ -314,7 +341,7 @@
     <script src="users.js"></script>
     <script src="groups.js"></script>
     <script src="user-menu.js"></script>
-     <script src="user-activity-monitor.js"></script>
+    <script src="user-activity-monitor.js"></script>
     <script src="mobile-menu.js"></script>
 </body>
 </html>
