@@ -21,21 +21,27 @@
         document.addEventListener('DOMContentLoaded', async function() {
             // Aguardar a inicialização da autenticação
             setTimeout(async () => {
-                if (!await checkAuth()) {
+                try {
+                    const isAuthenticated = await checkAuth();
+                    if (!isAuthenticated) {
+                        window.location.href = 'login.html';
+                        return;
+                    }
+                    
+                    // Verificar permissões
+                    const userProfile = await fetchUserProfile();
+                    if (!userProfile) {
+                        window.location.href = 'login.html';
+                        return;
+                    }
+                    
+                    // Subadmins têm acesso a esta página por padrão
+                    await initializeDynamicMenu();
+                    await checkAccessExpiration();
+                } catch (error) {
+                    console.error('Erro na inicialização:', error);
                     window.location.href = 'login.html';
-                    return;
                 }
-                
-                // Verificar permissões
-                const userProfile = await fetchUserProfile();
-                if (!userProfile) {
-                    window.location.href = 'login.html';
-                    return;
-                }
-                
-                // Subadmins têm acesso a esta página por padrão
-                await initializeDynamicMenu();
-                await checkAccessExpiration();
             }, 1000);
         });
     </script>
@@ -64,7 +70,7 @@
                     <li class="nav-header">CONFIGURAÇÃO</li>
                     <li data-required-permission="markets"><a href="/markets.html"><i class="fas fa-store"></i> Gerenciar Mercados</a></li>
                     <li data-required-permission="users"><a href="/users.html"><i class="fas fa-users"></i> Gerenciar Usuários</a></li>
-                    <li data-required-permission="users"><a href="/group-admin-users.html"><i class="fas fa-layer-group"></i> Gerenciar Grupos</a></li>
+                    <li data-required-permission="users"><a href="/group-admin-users.html" class="active"><i class="fas fa-layer-group"></i> Gerenciar Grupos</a></li>
                     <li data-required-permission="users"><a href="/group-admin.html"><i class="fas fa-user-shield"></i> Subadministradores</a></li>
                 </ul>
             </nav>
@@ -90,8 +96,8 @@
                                 <img src="https://ui-avatars.com/api/?name=U" alt="User" id="userAvatar">
                             </div>
                             <div class="user-info">
-                                <span class="user-name">Usuário</span>
-                                <span class="user-role">...</span>
+                                <span class="user-name" id="userName">Usuário</span>
+                                <span class="user-role" id="userRole">...</span>
                             </div>
                             <i class="fas fa-chevron-down"></i>
                         </button>
@@ -181,6 +187,9 @@
                         <div class="panel-header">
                             <i class="fas fa-list"></i>
                             <h3>Usuários do Meu Grupo</h3>
+                            <div class="panel-actions">
+                                <button id="refreshUsersBtn" class="btn outline"><i class="fas fa-sync-alt"></i> Atualizar</button>
+                            </div>
                         </div>
                         
                         <div class="table-container">
@@ -196,7 +205,11 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <!-- Dados serão preenchidos via JavaScript -->
+                                    <tr>
+                                        <td colspan="6" class="empty-state">
+                                            <i class="fas fa-spinner fa-spin"></i> Carregando usuários...
+                                        </td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
