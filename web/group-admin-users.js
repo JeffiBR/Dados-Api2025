@@ -27,16 +27,21 @@ class GroupAdminUsersManager {
 
     async init() {
         console.log('Inicializando GroupAdminUsersManager...');
-        await this.checkAuth();
-        console.log('Auth verificado, carregando dados...');
-        await this.loadUserData();
-        console.log('Dados carregados, carregando usuários...');
-        await this.loadGroupUsers();
-        console.log('Usuários carregados, configurando UI...');
-        this.setupEventListeners();
-        this.renderAllowedPagesCheckboxes();
-        this.updateGroupInfo();
-        console.log('Inicialização completa');
+        try {
+            await this.checkAuth();
+            console.log('Auth verificado, carregando dados...');
+            await this.loadUserData();
+            console.log('Dados carregados, carregando usuários...');
+            await this.loadGroupUsers();
+            console.log('Usuários carregados, configurando UI...');
+            this.setupEventListeners();
+            this.renderAllowedPagesCheckboxes();
+            this.updateGroupInfo();
+            console.log('Inicialização completa');
+        } catch (error) {
+            console.error('Erro na inicialização:', error);
+            this.showError('Erro ao inicializar: ' + error.message);
+        }
     }
 
     async checkAuth() {
@@ -47,7 +52,6 @@ class GroupAdminUsersManager {
                 return;
             }
 
-            // Usar fetchUserProfile em vez de chamada direta
             this.currentUser = await fetchUserProfile();
             if (!this.currentUser) {
                 throw new Error('Não foi possível carregar perfil do usuário');
@@ -58,9 +62,7 @@ class GroupAdminUsersManager {
             // Verificar se é admin ou subadmin
             if (this.currentUser.role !== 'admin') {
                 // Para não-admins, verificar se tem grupos gerenciados
-                await this.loadUserData();
-                
-                if (this.managedGroups.length === 0) {
+                if (!this.currentUser.managed_groups || this.currentUser.managed_groups.length === 0) {
                     this.showError('Acesso negado. Você não tem permissões de subadministrador.');
                     setTimeout(() => {
                         window.location.href = 'dashboard.html';
@@ -77,7 +79,13 @@ class GroupAdminUsersManager {
 
     async loadUserData() {
         try {
-            // CORREÇÃO: Usar authenticatedFetch em vez de fetch direto
+            // Se for admin, não precisa carregar grupos específicos
+            if (this.currentUser.role === 'admin') {
+                this.managedGroups = [{ group_id: 'admin', grupo_nome: 'Todos os Grupos', grupo_dias_acesso: 365 }];
+                return;
+            }
+
+            // Para subadmins, carregar grupos gerenciados
             const response = await authenticatedFetch('/api/my-groups-detailed');
             
             if (response.ok) {
@@ -102,13 +110,20 @@ class GroupAdminUsersManager {
     }
 
     async loadGroupUsers() {
-        if (this.managedGroups.length === 0) return;
-
         try {
-            const groupId = this.managedGroups[0].group_id;
-
-            // CORREÇÃO: Usar authenticatedFetch
-            const response = await authenticatedFetch(`/api/group-admin/users?group_id=${groupId}`);
+            let response;
+            
+            if (this.currentUser.role === 'admin') {
+                // Admin pode ver todos os usuários
+                response = await authenticatedFetch('/api/users');
+            } else if (this.managedGroups.length > 0) {
+                // Subadmin vê usuários do seu primeiro grupo
+                const groupId = this.managedGroups[0].group_id;
+                response = await authenticatedFetch(`/api/group-admin/users?group_id=${groupId}`);
+            } else {
+                this.showError('Nenhum grupo disponível para carregar usuários.');
+                return;
+            }
 
             if (response.ok) {
                 this.groupUsers = await response.json();
@@ -118,13 +133,21 @@ class GroupAdminUsersManager {
             }
         } catch (error) {
             console.error('Erro ao carregar usuários do grupo:', error);
-            this.showError('Erro ao carregar lista de usuários');
+            this.showError('Erro ao carregar lista de usuários: ' + error.message);
         }
     }
 
     updateUserInfo(userData) {
-        document.getElementById('userName').textContent = userData.full_name || 'Usuário';
-        document.getElementById('userRole').textContent = this.formatRole(userData.role);
+        const userNameElement = document.getElementById('userName');
+        const userRoleElement = document.getElementById('userRole');
+        
+        if (userNameElement) {
+            userNameElement.textContent = userData.full_name || 'Usuário';
+        }
+        
+        if (userRoleElement) {
+            userRoleElement.textContent = this.formatRole(userData.role);
+        }
         
         if (userData.avatar_url) {
             document.getElementById('userAvatar').src = userData.avatar_url;
@@ -138,15 +161,15 @@ class GroupAdminUsersManager {
         const roles = {
             'admin': 'Administrador',
             'user': 'Usuário',
-            'subadmin': 'Subadministrador'
+            'group_admin': 'Subadministrador'
         };
         return roles[role] || role;
     }
 
     updateGroupInfo() {
         if (this.managedGroups.length === 0) {
-            document.getElementById('currentGroupInfo').innerHTML = '<span style="color: var(--error);">Nenhum grupo designado</span>';
-            document.getElementById('activeUsersCount').innerHTML = '<span style="color: var(--error);">N/A</span>';
+            document.getElementById('currentGroupInfo').innerHTML = '<span style="color: #ef4444;">Nenhum grupo designado</span>';
+            document.getElementById('activeUsersCount').innerHTML = '<span style="color: #ef4444;">N/A</span>';
             return;
         }
 
@@ -167,6 +190,8 @@ class GroupAdminUsersManager {
 
     renderAllowedPagesCheckboxes(containerId = 'allowedPagesContainer', currentPages = []) {
         const container = document.getElementById(containerId);
+        if (!container) return;
+        
         container.innerHTML = '';
 
         this.availablePages.forEach(page => {
@@ -204,22 +229,39 @@ class GroupAdminUsersManager {
 
     setupEventListeners() {
         // Criar usuário
-        document.getElementById('createUserBtn').addEventListener('click', (e) => {
-            e.preventDefault();
-            this.createUser();
-        });
+        const createBtn = document.getElementById('createUserBtn');
+        if (createBtn) {
+            createBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.createUser();
+            });
+        }
+
+        // Atualizar lista
+        const refreshBtn = document.getElementById('refreshUsersBtn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => {
+                this.loadGroupUsers();
+            });
+        }
 
         // Formulário de editar usuário
-        document.getElementById('editUserForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.updateUser();
-        });
+        const editForm = document.getElementById('editUserForm');
+        if (editForm) {
+            editForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.updateUser();
+            });
+        }
 
         // Formulário de renovar acesso
-        document.getElementById('renewAccessForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.renewUserAccess();
-        });
+        const renewForm = document.getElementById('renewAccessForm');
+        if (renewForm) {
+            renewForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.renewUserAccess();
+            });
+        }
 
         // Fechar modais
         document.querySelectorAll('.close-modal').forEach(button => {
@@ -238,15 +280,21 @@ class GroupAdminUsersManager {
         });
 
         // Calcular nova data de expiração ao mudar dias
-        document.getElementById('renewDays').addEventListener('change', (e) => {
-            this.updateRenewalPreview();
-        });
+        const renewDays = document.getElementById('renewDays');
+        if (renewDays) {
+            renewDays.addEventListener('change', () => {
+                this.updateRenewalPreview();
+            });
+        }
 
         // Logout
-        document.getElementById('logoutBtn').addEventListener('click', (e) => {
-            e.preventDefault();
-            this.logout();
-        });
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.logout();
+            });
+        }
     }
 
     async createUser() {
@@ -267,22 +315,43 @@ class GroupAdminUsersManager {
         const allowedPages = this.getSelectedPages('allowedPagesContainer');
 
         try {
-            const groupId = this.managedGroups[0].group_id;
-
-            // CORREÇÃO: Usar authenticatedFetch
-            const response = await authenticatedFetch('/api/group-admin/users', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    email: email,
-                    password: password,
-                    full_name: name,
-                    allowed_pages: allowedPages,
-                    group_id: groupId
-                })
-            });
+            let response;
+            
+            if (this.currentUser.role === 'admin') {
+                // Admin cria usuário normalmente
+                response = await authenticatedFetch('/api/users', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        password: password,
+                        full_name: name,
+                        role: 'user',
+                        allowed_pages: allowedPages
+                    })
+                });
+            } else if (this.managedGroups.length > 0) {
+                // Subadmin cria usuário no grupo
+                const groupId = this.managedGroups[0].group_id;
+                response = await authenticatedFetch('/api/group-admin/users', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        password: password,
+                        full_name: name,
+                        allowed_pages: allowedPages,
+                        group_id: groupId
+                    })
+                });
+            } else {
+                this.showError('Nenhum grupo disponível para criar usuário');
+                return;
+            }
 
             if (response.ok) {
                 this.showSuccess('Usuário criado com sucesso!');
@@ -305,7 +374,10 @@ class GroupAdminUsersManager {
     }
 
     getSelectedPages(containerId) {
-        const checkboxes = document.querySelectorAll(`#${containerId} input[type="checkbox"]:checked`);
+        const container = document.getElementById(containerId);
+        if (!container) return [];
+        
+        const checkboxes = container.querySelectorAll('input[type="checkbox"]:checked');
         return Array.from(checkboxes).map(cb => cb.value);
     }
 
@@ -353,19 +425,34 @@ class GroupAdminUsersManager {
         }
 
         try {
-            // CORREÇÃO: Usar authenticatedFetch
-            const response = await authenticatedFetch(`/api/group-admin/users/${userId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    full_name: name,
-                    email: email,
-                    allowed_pages: allowedPages,
-                    data_expiracao: expiration
-                })
-            });
+            let response;
+            
+            if (this.currentUser.role === 'admin') {
+                response = await authenticatedFetch(`/api/users/${userId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        full_name: name,
+                        role: 'user',
+                        allowed_pages: allowedPages
+                    })
+                });
+            } else {
+                response = await authenticatedFetch(`/api/group-admin/users/${userId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        full_name: name,
+                        email: email,
+                        allowed_pages: allowedPages,
+                        data_expiracao: expiration
+                    })
+                });
+            }
 
             if (response.ok) {
                 this.showSuccess('Usuário atualizado com sucesso!');
@@ -386,7 +473,6 @@ class GroupAdminUsersManager {
         const days = parseInt(document.getElementById('renewDays').value);
 
         try {
-            // CORREÇÃO: Usar authenticatedFetch
             const response = await authenticatedFetch(`/api/group-admin/users/${userId}/renew`, {
                 method: 'POST',
                 headers: {
@@ -418,10 +504,17 @@ class GroupAdminUsersManager {
         }
 
         try {
-            // CORREÇÃO: Usar authenticatedFetch
-            const response = await authenticatedFetch(`/api/group-admin/users/${userId}`, {
-                method: 'DELETE'
-            });
+            let response;
+            
+            if (this.currentUser.role === 'admin') {
+                response = await authenticatedFetch(`/api/users/${userId}`, {
+                    method: 'DELETE'
+                });
+            } else {
+                response = await authenticatedFetch(`/api/group-admin/users/${userId}`, {
+                    method: 'DELETE'
+                });
+            }
 
             if (response.ok) {
                 this.showSuccess('Usuário removido com sucesso!');
@@ -467,11 +560,12 @@ class GroupAdminUsersManager {
 
     renderGroupUsers() {
         const tbody = document.querySelector('#groupUsersTable tbody');
+        if (!tbody) return;
         
         if (this.groupUsers.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="6" class="empty-state-compact">
+                    <td colspan="6" class="empty-state">
                         <i class="fas fa-users"></i>
                         <h4>Nenhum usuário no grupo</h4>
                         <p>Comece criando o primeiro usuário</p>
@@ -507,7 +601,7 @@ class GroupAdminUsersManager {
                                 </span>
                             `).join('')}
                             ${user.allowed_pages && user.allowed_pages.length === 0 ? 
-                                '<span class="page-badge" style="background: rgba(107, 114, 128, 0.1); color: var(--muted-dark);">Nenhuma</span>' : ''}
+                                '<span class="page-badge" style="background: rgba(107, 114, 128, 0.1); color: #6b7280;">Nenhuma</span>' : ''}
                         </div>
                     </td>
                     <td>${user.data_expiracao ? new Date(user.data_expiracao).toLocaleDateString('pt-BR') : 'N/A'}</td>
@@ -568,6 +662,9 @@ class GroupAdminUsersManager {
     }
 
     showNotification(message, type = 'info') {
+        // Remover notificações existentes
+        document.querySelectorAll('.notification').forEach(n => n.remove());
+        
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
         notification.innerHTML = `
@@ -576,6 +673,41 @@ class GroupAdminUsersManager {
                 <span>${message}</span>
             </div>
         `;
+
+        // Adicionar estilos básicos se não existirem
+        if (!document.querySelector('#notification-styles')) {
+            const styles = document.createElement('style');
+            styles.id = 'notification-styles';
+            styles.textContent = `
+                .notification {
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    padding: 12px 16px;
+                    border-radius: 8px;
+                    color: white;
+                    z-index: 1000;
+                    animation: slideInRight 0.3s ease;
+                }
+                .notification.success { background: #10b981; }
+                .notification.error { background: #ef4444; }
+                .notification.info { background: #3b82f6; }
+                .notification-content {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+                @keyframes slideInRight {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes slideOutRight {
+                    from { transform: translateX(0); opacity: 1; }
+                    to { transform: translateX(100%); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(styles);
+        }
 
         document.body.appendChild(notification);
 
@@ -590,7 +722,11 @@ class GroupAdminUsersManager {
     }
 
     logout() {
-        signOut(); // Usar a função global signOut do auth.js
+        if (typeof signOut === 'function') {
+            signOut();
+        } else {
+            window.location.href = 'login.html';
+        }
     }
 }
 
