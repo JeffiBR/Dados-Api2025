@@ -1,4 +1,4 @@
-// group-admin-users.js - Gerenciamento de Usuários por Subadministrador - CORRIGIDO
+// group-admin-users.js - Gerenciamento de Usuários por Subadministrador - COMPLETO
 
 class GroupAdminUsersManager {
     constructor() {
@@ -295,6 +295,13 @@ class GroupAdminUsersManager {
                 this.logout();
             });
         }
+
+        // Fechar modais com ESC
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.closeModals();
+            }
+        });
     }
 
     async createUser() {
@@ -381,6 +388,30 @@ class GroupAdminUsersManager {
         return Array.from(checkboxes).map(cb => cb.value);
     }
 
+    openViewPermissionsModal(user) {
+        document.getElementById('viewUserName').textContent = user.full_name || 'N/A';
+        document.getElementById('viewUserEmail').textContent = user.email || 'N/A';
+        document.getElementById('viewUserExpiration').textContent = 
+            user.data_expiracao ? new Date(user.data_expiracao).toLocaleDateString('pt-BR') : 'N/A';
+        
+        const permissionsContainer = document.getElementById('viewUserPermissions');
+        permissionsContainer.innerHTML = '';
+        
+        this.availablePages.forEach(page => {
+            const hasPermission = user.allowed_pages && user.allowed_pages.includes(page);
+            const permissionItem = document.createElement('div');
+            permissionItem.className = `permission-item ${hasPermission ? 'active' : 'inactive'}`;
+            permissionItem.innerHTML = `
+                <i class="fas fa-${this.getPageIcon(page)}"></i>
+                <span>${this.pageLabels[page] || page}</span>
+                ${hasPermission ? '<i class="fas fa-check" style="margin-left: auto; color: var(--success);"></i>' : ''}
+            `;
+            permissionsContainer.appendChild(permissionItem);
+        });
+        
+        document.getElementById('viewPermissionsModal').classList.add('active');
+    }
+
     openEditModal(user) {
         document.getElementById('editUserId').value = user.id;
         document.getElementById('editUserName').value = user.full_name || '';
@@ -389,13 +420,13 @@ class GroupAdminUsersManager {
 
         this.renderAllowedPagesCheckboxes('editAllowedPagesContainer', user.allowed_pages || []);
 
-        document.getElementById('editUserModal').style.display = 'block';
+        document.getElementById('editUserModal').classList.add('active');
     }
 
     openRenewModal(user) {
         document.getElementById('renewUserId').value = user.id;
         this.updateRenewalPreview();
-        document.getElementById('renewAccessModal').style.display = 'block';
+        document.getElementById('renewAccessModal').classList.add('active');
     }
 
     updateRenewalPreview() {
@@ -408,8 +439,9 @@ class GroupAdminUsersManager {
     }
 
     closeModals() {
-        document.getElementById('editUserModal').style.display = 'none';
-        document.getElementById('renewAccessModal').style.display = 'none';
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.classList.remove('active');
+        });
     }
 
     async updateUser() {
@@ -583,23 +615,29 @@ class GroupAdminUsersManager {
             return `
                 <tr>
                     <td>
-                        <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
                             <div class="user-avatar-small">
                                 ${user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}
                             </div>
                             <div>
                                 <strong>${user.full_name || 'N/A'}</strong>
+                                <br>
+                                <small style="color: var(--muted-dark);">${user.id}</small>
                             </div>
                         </div>
                     </td>
                     <td>${user.email || 'N/A'}</td>
                     <td>
                         <div class="pages-badges">
-                            ${(user.allowed_pages || []).map(page => `
+                            ${(user.allowed_pages || []).slice(0, 3).map(page => `
                                 <span class="page-badge">
                                     ${this.pageLabels[page] || page}
                                 </span>
                             `).join('')}
+                            ${user.allowed_pages && user.allowed_pages.length > 3 ? 
+                                `<span class="page-badge" style="background: rgba(107, 114, 128, 0.1); color: #6b7280;">
+                                    +${user.allowed_pages.length - 3}
+                                </span>` : ''}
                             ${user.allowed_pages && user.allowed_pages.length === 0 ? 
                                 '<span class="page-badge" style="background: rgba(107, 114, 128, 0.1); color: #6b7280;">Nenhuma</span>' : ''}
                         </div>
@@ -607,19 +645,22 @@ class GroupAdminUsersManager {
                     <td>${user.data_expiracao ? new Date(user.data_expiracao).toLocaleDateString('pt-BR') : 'N/A'}</td>
                     <td>
                         <span class="user-status ${statusClass}">
-                            <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
+                            <i class="fas fa-circle"></i>
                             ${statusText}
                         </span>
                     </td>
                     <td>
                         <div class="quick-actions">
-                            <button class="quick-action-btn primary edit-user" data-user-id="${user.id}">
+                            <button class="quick-action-btn info view-permissions" data-user-id="${user.id}" title="Ver Permissões">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="quick-action-btn primary edit-user" data-user-id="${user.id}" title="Editar">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button class="quick-action-btn warning renew-user" data-user-id="${user.id}">
+                            <button class="quick-action-btn warning renew-user" data-user-id="${user.id}" title="Renovar Acesso">
                                 <i class="fas fa-redo"></i>
                             </button>
-                            <button class="quick-action-btn danger delete-user" data-user-id="${user.id}">
+                            <button class="quick-action-btn danger delete-user" data-user-id="${user.id}" title="Excluir">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
@@ -629,6 +670,21 @@ class GroupAdminUsersManager {
         }).join('');
 
         // Adicionar event listeners aos botões
+        this.attachUserActionListeners();
+    }
+
+    attachUserActionListeners() {
+        const tbody = document.querySelector('#groupUsersTable tbody');
+        if (!tbody) return;
+
+        tbody.querySelectorAll('.view-permissions').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const userId = e.target.closest('button').dataset.userId;
+                const user = this.groupUsers.find(u => u.id === userId);
+                if (user) this.openViewPermissionsModal(user);
+            });
+        });
+
         tbody.querySelectorAll('.edit-user').forEach(button => {
             button.addEventListener('click', (e) => {
                 const userId = e.target.closest('button').dataset.userId;
@@ -674,50 +730,18 @@ class GroupAdminUsersManager {
             </div>
         `;
 
-        // Adicionar estilos básicos se não existirem
-        if (!document.querySelector('#notification-styles')) {
-            const styles = document.createElement('style');
-            styles.id = 'notification-styles';
-            styles.textContent = `
-                .notification {
-                    position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    padding: 12px 16px;
-                    border-radius: 8px;
-                    color: white;
-                    z-index: 1000;
-                    animation: slideInRight 0.3s ease;
-                }
-                .notification.success { background: #10b981; }
-                .notification.error { background: #ef4444; }
-                .notification.info { background: #3b82f6; }
-                .notification-content {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                }
-                @keyframes slideInRight {
-                    from { transform: translateX(100%); opacity: 0; }
-                    to { transform: translateX(0); opacity: 1; }
-                }
-                @keyframes slideOutRight {
-                    from { transform: translateX(0); opacity: 1; }
-                    to { transform: translateX(100%); opacity: 0; }
-                }
-            `;
-            document.head.appendChild(styles);
-        }
-
         document.body.appendChild(notification);
 
+        // Remover automaticamente após 5 segundos
         setTimeout(() => {
-            notification.style.animation = 'slideOutRight 0.3s ease';
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
-                }
-            }, 300);
+            if (notification.parentNode) {
+                notification.style.animation = 'slideOutRight 0.3s ease';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }
         }, 5000);
     }
 
@@ -727,6 +751,148 @@ class GroupAdminUsersManager {
         } else {
             window.location.href = 'login.html';
         }
+    }
+
+    // Método para exportar dados dos usuários
+    exportUsersData() {
+        const data = this.groupUsers.map(user => ({
+            'Nome': user.full_name,
+            'Email': user.email,
+            'ID': user.id,
+            'Páginas Permitidas': (user.allowed_pages || []).map(page => this.pageLabels[page] || page).join(', '),
+            'Data de Expiração': user.data_expiracao ? new Date(user.data_expiracao).toLocaleDateString('pt-BR') : 'N/A',
+            'Status': this.getStatusText(this.getUserStatus(user.data_expiracao))
+        }));
+
+        const csv = this.convertToCSV(data);
+        this.downloadCSV(csv, 'usuarios_grupo.csv');
+    }
+
+    convertToCSV(data) {
+        const headers = Object.keys(data[0]);
+        const csvRows = [headers.join(';')];
+        
+        for (const row of data) {
+            const values = headers.map(header => {
+                const escaped = ('' + row[header]).replace(/"/g, '""');
+                return `"${escaped}"`;
+            });
+            csvRows.push(values.join(';'));
+        }
+        
+        return csvRows.join('\n');
+    }
+
+    downloadCSV(csv, filename) {
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // Método para buscar usuários
+    searchUsers(searchTerm) {
+        if (!searchTerm) {
+            this.renderGroupUsers();
+            return;
+        }
+
+        const filteredUsers = this.groupUsers.filter(user => 
+            user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user.id?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
+        this.renderFilteredUsers(filteredUsers);
+    }
+
+    renderFilteredUsers(users) {
+        const tbody = document.querySelector('#groupUsersTable tbody');
+        if (!tbody) return;
+        
+        if (users.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="empty-state">
+                        <i class="fas fa-search"></i>
+                        <h4>Nenhum usuário encontrado</h4>
+                        <p>Tente alterar os termos da busca</p>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = users.map(user => {
+            const status = this.getUserStatus(user.data_expiracao);
+            const statusClass = `status-${status}`;
+            const statusText = this.getStatusText(status);
+
+            return `
+                <tr>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div class="user-avatar-small">
+                                ${user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}
+                            </div>
+                            <div>
+                                <strong>${user.full_name || 'N/A'}</strong>
+                                <br>
+                                <small style="color: var(--muted-dark);">${user.id}</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td>${user.email || 'N/A'}</td>
+                    <td>
+                        <div class="pages-badges">
+                            ${(user.allowed_pages || []).slice(0, 3).map(page => `
+                                <span class="page-badge">
+                                    ${this.pageLabels[page] || page}
+                                </span>
+                            `).join('')}
+                            ${user.allowed_pages && user.allowed_pages.length > 3 ? 
+                                `<span class="page-badge" style="background: rgba(107, 114, 128, 0.1); color: #6b7280;">
+                                    +${user.allowed_pages.length - 3}
+                                </span>` : ''}
+                            ${user.allowed_pages && user.allowed_pages.length === 0 ? 
+                                '<span class="page-badge" style="background: rgba(107, 114, 128, 0.1); color: #6b7280;">Nenhuma</span>' : ''}
+                        </div>
+                    </td>
+                    <td>${user.data_expiracao ? new Date(user.data_expiracao).toLocaleDateString('pt-BR') : 'N/A'}</td>
+                    <td>
+                        <span class="user-status ${statusClass}">
+                            <i class="fas fa-circle"></i>
+                            ${statusText}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="quick-actions">
+                            <button class="quick-action-btn info view-permissions" data-user-id="${user.id}" title="Ver Permissões">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="quick-action-btn primary edit-user" data-user-id="${user.id}" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="quick-action-btn warning renew-user" data-user-id="${user.id}" title="Renovar Acesso">
+                                <i class="fas fa-redo"></i>
+                            </button>
+                            <button class="quick-action-btn danger delete-user" data-user-id="${user.id}" title="Excluir">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        this.attachUserActionListeners();
     }
 }
 
