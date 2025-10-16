@@ -1,4 +1,4 @@
-# main.py (completo e corrigido com Cestas Básicas, Grupos e Subadministradores) - VERSÃO 3.3.0
+# main.py (completo e corrigido com Cestas Básicas, Grupos e Subadministradores) - VERSÃO 3.4.0
 import os
 import asyncio
 from datetime import date, timedelta, datetime
@@ -26,7 +26,7 @@ load_dotenv()
 app = FastAPI(
     title="API de Preços Arapiraca",
     description="Sistema completo para coleta e análise de preços de supermercados.",
-    version="3.3.0"
+    version="3.4.0"
 )
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] [%(levelname)s] %(message)s')
 
@@ -88,13 +88,15 @@ class UserCreate(BaseModel):
     email: str
     password: str
     full_name: str
-    role: str
+    role: str = Field(default="user")
     allowed_pages: List[str] = []
+    managed_groups: Optional[List[int]] = Field(None, description="IDs dos grupos que o admin de grupo pode gerenciar")
 
 class UserUpdate(BaseModel):
     full_name: str
     role: str
     allowed_pages: List[str]
+    managed_groups: Optional[List[int]] = Field(None, description="IDs dos grupos que o admin de grupo pode gerenciar")
 
 class ProfileUpdateWithCredentials(BaseModel):
     full_name: Optional[str] = None
@@ -389,6 +391,10 @@ async def create_user(user_data: UserCreate, admin_user: UserProfile = Depends(r
     try:
         logging.info(f"Admin {admin_user.id} tentando criar usuário: {user_data.email}")
         
+        # Verificar se é admin de grupo
+        if user_data.role == "group_admin" and not user_data.managed_groups:
+            raise HTTPException(status_code=400, detail="Admin de grupo deve ter pelo menos um grupo associado.")
+        
         created_user_res = await asyncio.to_thread(
             lambda: supabase_admin.auth.admin.create_user({
                 "email": user_data.email, "password": user_data.password,
@@ -399,15 +405,29 @@ async def create_user(user_data: UserCreate, admin_user: UserProfile = Depends(r
         user_id = created_user_res.user.id
         logging.info(f"Usuário criado no Auth com ID: {user_id}")
         
+        # Atualizar perfil com role e páginas permitidas
         profile_update_response = await asyncio.to_thread(
             supabase_admin.table('profiles').update({
-                'role': user_data.role, 'allowed_pages': user_data.allowed_pages
+                'role': user_data.role, 
+                'allowed_pages': user_data.allowed_pages,
+                'full_name': user_data.full_name
             }).eq('id', user_id).execute
         )
         
         if not profile_update_response.data:
              logging.warning(f"Usuário {user_id} foi criado no Auth, mas o perfil não foi encontrado para atualizar.")
              raise HTTPException(status_code=404, detail="Usuário criado, mas o perfil não foi encontrado para definir as permissões.")
+        
+        # Se for admin de grupo, criar registro na tabela group_admins
+        if user_data.role == "group_admin" and user_data.managed_groups:
+            admin_record = {
+                'user_id': user_id,
+                'group_ids': user_data.managed_groups
+            }
+            await asyncio.to_thread(
+                supabase_admin.table('group_admins').insert(admin_record).execute
+            )
+            logging.info(f"Admin de grupo criado com ID {user_id} para grupos: {user_data.managed_groups}")
         
         logging.info(f"Perfil do usuário {user_id} atualizado com a role: {user_data.role}")
         return {"message": "Usuário criado com sucesso"}
@@ -420,10 +440,49 @@ async def create_user(user_data: UserCreate, admin_user: UserProfile = Depends(r
 
 @app.put("/api/users/{user_id}")
 async def update_user(user_id: str, user_data: UserUpdate, admin_user: UserProfile = Depends(require_page_access('users'))):
-    await asyncio.to_thread(
-        lambda: supabase_admin.table('profiles').update(user_data.dict()).eq('id', user_id).execute()
-    )
-    return {"message": "Usuário atualizado com sucesso"}
+    try:
+        # Atualizar perfil
+        await asyncio.to_thread(
+            lambda: supabase_admin.table('profiles').update({
+                'full_name': user_data.full_name,
+                'role': user_data.role,
+                'allowed_pages': user_data.allowed_pages
+            }).eq('id', user_id).execute()
+        )
+        
+        # Se for admin de grupo, atualizar grupos gerenciados
+        if user_data.role == "group_admin" and user_data.managed_groups:
+            # Verificar se já existe registro
+            existing_admin = await asyncio.to_thread(
+                supabase_admin.table('group_admins').select('*').eq('user_id', user_id).execute
+            )
+            
+            if existing_admin.data:
+                # Atualizar
+                await asyncio.to_thread(
+                    supabase_admin.table('group_admins').update({
+                        'group_ids': user_data.managed_groups
+                    }).eq('user_id', user_id).execute()
+                )
+            else:
+                # Criar novo
+                admin_record = {
+                    'user_id': user_id,
+                    'group_ids': user_data.managed_groups
+                }
+                await asyncio.to_thread(
+                    supabase_admin.table('group_admins').insert(admin_record).execute
+                )
+        elif user_data.role != "group_admin":
+            # Remover da tabela group_admins se não for mais admin de grupo
+            await asyncio.to_thread(
+                lambda: supabase_admin.table('group_admins').delete().eq('user_id', user_id).execute()
+            )
+        
+        return {"message": "Usuário atualizado com sucesso"}
+    except Exception as e:
+        logging.error(f"Erro ao atualizar usuário: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao atualizar usuário")
         
 @app.get("/api/users")
 async def list_users(admin_user: UserProfile = Depends(require_page_access('users'))):
@@ -447,13 +506,26 @@ async def list_users(admin_user: UserProfile = Depends(require_page_access('user
             except Exception as e:
                 logging.error(f"Erro ao buscar e-mail do usuário {profile['id']}: {e}")
 
+            # Buscar grupos gerenciados se for admin de grupo
+            managed_groups = []
+            if profile.get('role') == 'group_admin':
+                try:
+                    admin_response = await asyncio.to_thread(
+                        supabase_admin.table('group_admins').select('group_ids').eq('user_id', profile['id']).execute
+                    )
+                    if admin_response.data:
+                        managed_groups = admin_response.data[0].get('group_ids', [])
+                except Exception as e:
+                    logging.error(f"Erro ao buscar grupos gerenciados: {e}")
+
             users.append({
                 "id": profile["id"],
                 "full_name": profile.get("full_name"),
                 "role": profile.get("role"),
                 "allowed_pages": profile.get("allowed_pages"),
                 "avatar_url": profile.get("avatar_url"),
-                "email": email or "N/A"
+                "email": email or "N/A",
+                "managed_groups": managed_groups
             })
 
         return users
@@ -465,6 +537,12 @@ async def list_users(admin_user: UserProfile = Depends(require_page_access('user
 @app.delete("/api/users/{user_id}", status_code=204)
 async def delete_user(user_id: str, admin_user: UserProfile = Depends(require_page_access('users'))):
     try:
+        # Remover de group_admins se existir
+        await asyncio.to_thread(
+            lambda: supabase_admin.table('group_admins').delete().eq('user_id', user_id).execute()
+        )
+        
+        # Deletar usuário
         await asyncio.to_thread(
             lambda: supabase_admin.auth.admin.delete_user(user_id)
         )
@@ -1650,4 +1728,4 @@ app.mount("/", StaticFiles(directory="web", html=True), name="static")
 
 @app.get("/")
 def read_root():
-    return {"message": "Bem-vindo à API de Preços AL - Versão 3.3.0"}
+    return {"message": "Bem-vindo à API de Preços AL - Versão 3.4.0"}
