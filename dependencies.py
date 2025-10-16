@@ -4,7 +4,7 @@ import os
 from supabase import create_client, Client
 from fastapi import HTTPException, Header, Depends
 from typing import Optional, List
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 import logging
 from pydantic import BaseModel
 from postgrest.exceptions import APIError
@@ -30,7 +30,12 @@ class UserProfile(BaseModel):
     email: Optional[str] = None
     managed_groups: List[int] = []
 
-# --- Funções auxiliares ---
+# --- Constantes compartilhadas ---
+DEFAULT_ACCESS_DAYS = 30
+MAX_ACCESS_DAYS = 365
+MIN_ACCESS_DAYS = 1
+
+# --- Funções auxiliares básicas ---
 def calcular_data_expiracao(dias_acesso: int) -> date:
     """Calcula a data de expiração baseada nos dias de acesso"""
     return date.today() + timedelta(days=dias_acesso)
@@ -68,33 +73,9 @@ async def get_user_managed_groups(user_id: str) -> List[int]:
         logging.error(f"Erro ao buscar grupos gerenciados pelo usuário {user_id}: {e}")
         return []
 
-async def verify_group_admin_access(user_id: str, group_id: int) -> bool:
-    """Verifica se um usuário tem permissão de subadmin para um grupo específico"""
-    try:
-        managed_groups = await get_user_managed_groups(user_id)
-        return group_id in managed_groups
-    except Exception as e:
-        logging.error(f"Erro ao verificar acesso de subadmin: {e}")
-        return False
-
-async def get_group_admin_user(current_user: UserProfile = Depends(get_current_user)) -> UserProfile:
-    """Dependência para verificar se o usuário é subadmin"""
-    if current_user.role == 'admin':
-        return current_user
-    
-    managed_groups = await get_user_managed_groups(current_user.id)
-    if not managed_groups:
-        raise HTTPException(
-            status_code=403, 
-            detail="Acesso negado. Você não tem permissões de subadministrador."
-        )
-    
-    # Adiciona os grupos gerenciados ao perfil do usuário
-    current_user.managed_groups = managed_groups
-    return current_user
-
-# --- Funções de dependência compartilhadas ---
+# --- Funções de dependência principais ---
 async def get_current_user(authorization: str = Header(None)) -> UserProfile:
+    """Obtém o usuário atual com base no token JWT"""
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Token de autorização ausente ou mal formatado")
     
@@ -173,6 +154,7 @@ async def get_current_user(authorization: str = Header(None)) -> UserProfile:
         raise HTTPException(status_code=401, detail="Token inválido ou expirado")
 
 async def get_current_user_optional(authorization: str = Header(None)) -> Optional[UserProfile]:
+    """Versão opcional do get_current_user para endpoints públicos"""
     if not authorization or not authorization.startswith("Bearer "):
         return None
     
@@ -224,11 +206,76 @@ async def get_current_user_optional(authorization: str = Header(None)) -> Option
         return None
 
 def require_page_access(page_key: str):
+    """Dependência para verificar acesso a páginas específicas"""
     async def _verify_access(current_user: UserProfile = Depends(get_current_user)):
         if current_user.role != 'admin' and page_key not in current_user.allowed_pages:
             raise HTTPException(status_code=403, detail=f"Acesso negado à funcionalidade: {page_key}")
         return current_user
     return _verify_access
+
+# --- Funções específicas para administradores de grupo ---
+async def verify_group_admin_access(user_id: str, group_id: int) -> bool:
+    """Verifica se um usuário tem permissão de subadmin para um grupo específico"""
+    try:
+        managed_groups = await get_user_managed_groups(user_id)
+        return group_id in managed_groups
+    except Exception as e:
+        logging.error(f"Erro ao verificar acesso de subadmin: {e}")
+        return False
+
+async def get_group_admin_user(current_user: UserProfile = Depends(get_current_user)) -> UserProfile:
+    """Dependência para verificar se o usuário é subadministrador"""
+    if current_user.role == 'admin':
+        return current_user
+    
+    managed_groups = await get_user_managed_groups(current_user.id)
+    if not managed_groups:
+        raise HTTPException(
+            status_code=403, 
+            detail="Acesso negado. Você não tem permissões de subadministrador."
+        )
+    
+    # Adiciona os grupos gerenciados ao perfil do usuário
+    current_user.managed_groups = managed_groups
+    return current_user
+
+async def require_group_admin_access(group_id: int):
+    """Dependência para verificar acesso de subadmin a um grupo específico"""
+    async def _verify_group_access(current_user: UserProfile = Depends(get_group_admin_user)):
+        if current_user.role != 'admin' and not await verify_group_admin_access(current_user.id, group_id):
+            raise HTTPException(
+                status_code=403, 
+                detail="Acesso negado a este grupo."
+            )
+        return current_user
+    return _verify_group_access
+
+# --- Funções para verificação de hierarquia de permissões ---
+def can_manage_users(user: UserProfile) -> bool:
+    """Verifica se o usuário pode gerenciar outros usuários"""
+    return user.role == 'admin' or 'users' in user.allowed_pages
+
+def can_create_users(user: UserProfile) -> bool:
+    """Verifica se o usuário pode criar novos usuários"""
+    # Apenas admin geral pode criar usuários (subadmins não podem criar novos usuários)
+    return user.role == 'admin'
+
+def can_manage_group(user: UserProfile, group_id: int) -> bool:
+    """Verifica se o usuário pode gerenciar um grupo específico"""
+    if user.role == 'admin':
+        return True
+    return group_id in user.managed_groups
+
+def get_user_permissions_hierarchy(user: UserProfile) -> dict:
+    """Retorna a hierarquia de permissões do usuário"""
+    return {
+        'is_admin': user.role == 'admin',
+        'is_group_admin': len(user.managed_groups) > 0,
+        'can_create_users': can_create_users(user),
+        'can_manage_users': can_manage_users(user),
+        'managed_groups': user.managed_groups,
+        'allowed_pages': user.allowed_pages
+    }
 
 # --- Classes de exceção personalizadas ---
 class APIError(Exception):
@@ -238,6 +285,11 @@ class APIError(Exception):
         self.code = code
         self.details = details
         super().__init__(self.message)
+
+class PermissionDeniedError(APIError):
+    """Exceção para permissões negadas"""
+    def __init__(self, message: str = "Permissão negada"):
+        super().__init__(message, code="PERMISSION_DENIED")
 
 # --- Funções de utilidade para logging ---
 def setup_logging():
@@ -267,6 +319,20 @@ def log_user_activity(user_id: str, action: str, details: dict = None):
     except Exception as e:
         logging.error(f"Erro ao registrar atividade do usuário: {e}")
 
+def log_admin_activity(admin_user: UserProfile, action: str, target_user_id: str = None, details: dict = None):
+    """Registra atividade administrativa"""
+    log_details = {
+        "admin_id": admin_user.id,
+        "admin_role": admin_user.role,
+        "admin_managed_groups": admin_user.managed_groups,
+        **({"target_user_id": target_user_id} if target_user_id else {})
+    }
+    
+    if details:
+        log_details.update(details)
+    
+    log_user_activity(admin_user.id, f"admin_{action}", log_details)
+
 # --- Validações comuns ---
 def validate_email(email: str) -> bool:
     """Valida formato de email básico"""
@@ -278,10 +344,59 @@ def validate_password_strength(password: str) -> bool:
     """Valida força da senha (mínimo 8 caracteres)"""
     return len(password) >= 8
 
-# --- Constantes compartilhadas ---
-DEFAULT_ACCESS_DAYS = 30
-MAX_ACCESS_DAYS = 365
-MIN_ACCESS_DAYS = 1
+# --- Funções para controle de acesso baseado em grupos ---
+async def get_user_accessible_groups(user: UserProfile) -> List[int]:
+    """Retorna os grupos que o usuário pode acessar"""
+    if user.role == 'admin':
+        # Admin geral acessa todos os grupos
+        response = await asyncio.to_thread(
+            supabase.table('grupos').select('id').execute
+        )
+        return [group['id'] for group in response.data] if response.data else []
+    else:
+        # Subadmin acessa apenas seus grupos designados
+        return user.managed_groups
+
+async def get_group_users_count(group_id: int) -> int:
+    """Retorna a quantidade de usuários ativos em um grupo"""
+    try:
+        today = date.today().isoformat()
+        response = await asyncio.to_thread(
+            supabase.table('user_groups')
+            .select('user_id', count='exact')
+            .eq('group_id', group_id)
+            .gte('data_expiracao', today)
+            .execute
+        )
+        return response.count or 0
+    except Exception as e:
+        logging.error(f"Erro ao contar usuários do grupo {group_id}: {e}")
+        return 0
+
+async def get_user_groups_info(user_id: str) -> List[dict]:
+    """Retorna informações detalhadas sobre os grupos do usuário"""
+    try:
+        response = await asyncio.to_thread(
+            supabase.table('user_groups')
+            .select('group_id, data_expiracao, grupos(nome, dias_acesso)')
+            .eq('user_id', user_id)
+            .execute
+        )
+        
+        groups_info = []
+        for item in response.data:
+            group_data = item.get('grupos', {})
+            groups_info.append({
+                'group_id': item['group_id'],
+                'group_name': group_data.get('nome', 'N/A'),
+                'data_expiracao': item['data_expiracao'],
+                'dias_acesso': group_data.get('dias_acesso', 0)
+            })
+        
+        return groups_info
+    except Exception as e:
+        logging.error(f"Erro ao buscar grupos do usuário {user_id}: {e}")
+        return []
 
 # Inicializar logging
 setup_logging()
