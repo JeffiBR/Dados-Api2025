@@ -1469,41 +1469,71 @@ async def add_user_to_group(
     admin_user: UserProfile = Depends(require_page_access('users'))
 ):
     try:
+        logging.info(f"Tentando adicionar usuário {user_group.user_id} ao grupo {user_group.group_id}")
+        
+        # Verificar se o usuário existe
         user_resp = await asyncio.to_thread(
             supabase.table('profiles').select('id, full_name').eq('id', user_group.user_id).execute
         )
         if not user_resp.data:
             raise HTTPException(status_code=404, detail="Usuário não encontrado")
         
+        # Verificar se o grupo existe
         group_resp = await asyncio.to_thread(
             supabase.table('grupos').select('dias_acesso').eq('id', user_group.group_id).execute
         )
         if not group_resp.data:
             raise HTTPException(status_code=404, detail="Grupo não encontrado")
         
+        # Calcular data de expiração
         if user_group.data_expiracao:
             data_expiracao = user_group.data_expiracao
         else:
             dias_acesso = group_resp.data[0]['dias_acesso']
             data_expiracao = calcular_data_expiracao(dias_acesso)
         
-        user_group_data = {
-            'user_id': user_group.user_id,
-            'group_id': user_group.group_id,
-            'data_expiracao': data_expiracao.isoformat()
-        }
-        
-        resp = await asyncio.to_thread(
-            supabase.table('user_groups').insert(user_group_data).execute
+        # Verificar se a associação já existe
+        existing_assoc = await asyncio.to_thread(
+            supabase.table('user_groups')
+            .select('id')
+            .eq('user_id', user_group.user_id)
+            .eq('group_id', user_group.group_id)
+            .execute
         )
+        
+        if existing_assoc.data:
+            # Atualizar data de expiração se já existir
+            user_group_data = {
+                'data_expiracao': data_expiracao.isoformat()
+            }
+            
+            resp = await asyncio.to_thread(
+                supabase.table('user_groups')
+                .update(user_group_data)
+                .eq('user_id', user_group.user_id)
+                .eq('group_id', user_group.group_id)
+                .execute
+            )
+        else:
+            # Criar nova associação
+            user_group_data = {
+                'user_id': user_group.user_id,
+                'group_id': user_group.group_id,
+                'data_expiracao': data_expiracao.isoformat()
+            }
+            
+            resp = await asyncio.to_thread(
+                supabase.table('user_groups').insert(user_group_data).execute
+            )
+        
+        logging.info(f"Usuário {user_group.user_id} adicionado/atualizado no grupo {user_group.group_id}")
         return resp.data[0]
         
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Erro ao adicionar usuário ao grupo: {e}")
-        raise HTTPException(status_code=400, detail="Erro ao adicionar usuário ao grupo")
-
+        logging.error(f"Erro ao adicionar usuário ao grupo: {e}", exc_info=True)
+        raise HTTPException(status_code=400, detail=f"Erro ao adicionar usuário ao grupo: {str(e)}")
 @app.get("/api/user-groups", response_model=List[UserGroupWithDetails])
 async def list_user_groups(
     user_id: Optional[str] = Query(None),
@@ -1729,3 +1759,4 @@ app.mount("/", StaticFiles(directory="web", html=True), name="static")
 @app.get("/")
 def read_root():
     return {"message": "Bem-vindo à API de Preços AL - Versão 3.4.0"}
+
