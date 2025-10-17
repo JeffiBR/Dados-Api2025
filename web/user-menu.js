@@ -1,4 +1,4 @@
-// user-menu.js - VERSÃO FINAL
+// user-menu.js - VERSÃO FINAL ATUALIZADA
 
 document.addEventListener('DOMContentLoaded', function() {
     class UserMenu {
@@ -9,6 +9,11 @@ document.addEventListener('DOMContentLoaded', function() {
             this.userName = document.querySelector('.user-name');
             this.userRole = document.querySelector('.user-role');
             this.logoutBtn = document.getElementById('logoutBtn');
+            
+            // Novos elementos
+            this.updatesBtn = document.querySelector('a[href="/updates.html"]');
+            this.faqBtn = document.querySelector('a[href="/faq.html"]');
+            this.maintenanceBtn = document.querySelector('a[href="/maintenance.html"]');
             
             this.init();
         }
@@ -22,8 +27,6 @@ document.addEventListener('DOMContentLoaded', function() {
             try {
                 this.showLoadingState();
                 
-                // A função fetchUserProfile do auth.js já tem cache, então é seguro chamá-la.
-                // Após uma atualização, o cache terá sido limpo.
                 const userData = await fetchUserProfile();
                 
                 if (userData) {
@@ -54,13 +57,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     this.userAvatar.src = userData.avatar_url + timestamp;
                 } else {
                     const name = userData.full_name || userData.email || 'U';
-                    this.userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name )}&background=4f46e5&color=fff&bold=true`;
+                    this.userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=4f46e5&color=fff&bold=true`;
                 }
             }
             this.hideLoadingState();
         }
 
         setupEventListeners() {
+            // Event listener existente para abrir/fechar menu
             if (this.userMenuBtn) {
                 this.userMenuBtn.addEventListener('click', () => this.userDropdown.classList.toggle('active'));
                 document.addEventListener('click', (e) => {
@@ -68,6 +72,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
 
+            // Event listener existente para logout
             if (this.logoutBtn) {
                 this.logoutBtn.addEventListener('click', async (e) => {
                     e.preventDefault();
@@ -75,14 +80,53 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
 
-            // ==================================================================
-            // --- OUVE O EVENTO DE ATUALIZAÇÃO DE PERFIL ---
+            // NOVOS EVENT LISTENERS PARA AS OPÇÕES ADICIONAIS
+            if (this.updatesBtn) {
+                this.updatesBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.userDropdown.classList.remove('active');
+                    this.navigateToUpdates();
+                });
+            }
+
+            if (this.faqBtn) {
+                this.faqBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.userDropdown.classList.remove('active');
+                    this.navigateToFAQ();
+                });
+            }
+
+            if (this.maintenanceBtn) {
+                this.maintenanceBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.userDropdown.classList.remove('active');
+                    this.navigateToMaintenance();
+                });
+            }
+
+            // Ouvinte para evento de atualização de perfil
             console.log('👂 Configurando ouvinte para o evento [profileUpdated].');
             window.addEventListener('profileUpdated', () => {
                 console.log('🎉 Evento [profileUpdated] recebido! Recarregando informações do menu.');
                 this.loadUserInfo(); 
             });
-            // ==================================================================
+        }
+
+        // NOVOS MÉTODOS PARA NAVEGAÇÃO
+        navigateToUpdates() {
+            console.log('Navegando para página de atualizações');
+            window.location.href = '/updates.html';
+        }
+
+        navigateToFAQ() {
+            console.log('Navegando para página de FAQ');
+            window.location.href = '/faq.html';
+        }
+
+        navigateToMaintenance() {
+            console.log('Navegando para página de manutenção');
+            window.location.href = '/maintenance.html';
         }
 
         showLoadingState() {
@@ -100,7 +144,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         handleNoUserData() {
-            // Se não houver dados, o routeGuard no auth.js já deve ter redirecionado para o login.
             console.log('Nenhum dado de usuário, redirecionamento para login deve ocorrer.');
         }
     }
