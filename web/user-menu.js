@@ -1,4 +1,4 @@
-// user-menu.js - VERSÃO FINAL ATUALIZADA
+// user-menu.js - VERSÃO ATUALIZADA COM NOVAS PERMISSÕES E CARGOS
 
 document.addEventListener('DOMContentLoaded', function() {
     class UserMenu {
@@ -47,7 +47,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             if (this.userRole) {
-                const roleMap = { 'admin': 'Administrador', 'user': 'Usuário' };
+                // ATUALIZADO: Mapeamento completo de cargos incluindo group_admin
+                const roleMap = { 
+                    'admin': 'Administrador', 
+                    'group_admin': 'Subadministrador', 
+                    'user': 'Usuário' 
+                };
                 this.userRole.textContent = roleMap[userData.role] || 'Usuário';
             }
 
@@ -60,7 +65,26 @@ document.addEventListener('DOMContentLoaded', function() {
                     this.userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=4f46e5&color=fff&bold=true`;
                 }
             }
+            
+            // ATUALIZADO: Verificar permissões específicas para mostrar/ocultar itens do menu
+            this.checkPermissions(userData);
+            
             this.hideLoadingState();
+        }
+
+        // NOVO MÉTODO: Verificar permissões do usuário
+        checkPermissions(userData) {
+            // Se for admin ou group_admin, mostrar opções administrativas no menu lateral
+            // (isso é tratado no menu.js, mas podemos adicionar lógica aqui se necessário)
+            
+            // Exemplo: Se quisermos esconder algumas opções do dropdown baseado em permissões
+            // Por enquanto, todas as opções do dropdown são visíveis para todos os usuários logados
+            console.log(`👤 Usuário ${userData.email} com role: ${userData.role}`);
+            
+            // Log adicional para debugging de permissões
+            if (userData.allowed_pages && userData.allowed_pages.length > 0) {
+                console.log(`📋 Páginas permitidas: ${userData.allowed_pages.join(', ')}`);
+            }
         }
 
         setupEventListeners() {
@@ -105,11 +129,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
 
-            // Ouvinte para evento de atualização de perfil
+            // ==================================================================
+            // --- OUVE O EVENTO DE ATUALIZAÇÃO DE PERFIL ---
             console.log('👂 Configurando ouvinte para o evento [profileUpdated].');
             window.addEventListener('profileUpdated', () => {
                 console.log('🎉 Evento [profileUpdated] recebido! Recarregando informações do menu.');
                 this.loadUserInfo(); 
+            });
+
+            // NOVO: Ouvinte para evento de mudança de permissões
+            window.addEventListener('permissionsUpdated', () => {
+                console.log('🔄 Evento [permissionsUpdated] recebido! Recarregando informações do menu.');
+                this.loadUserInfo();
             });
         }
 
@@ -144,6 +175,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         handleNoUserData() {
+            // Se não houver dados, o routeGuard no auth.js já deve ter redirecionado para o login.
             console.log('Nenhum dado de usuário, redirecionamento para login deve ocorrer.');
         }
     }
