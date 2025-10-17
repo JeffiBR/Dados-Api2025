@@ -119,9 +119,15 @@
                     </div>
                     <p class="panel-description">Monitoramento do status do servidor e métricas do sistema.</p>
                     
+                    <!-- Alertas de autenticação -->
+                    <div id="authAlert" class="alert alert-warning" style="display: none;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span id="authAlertMessage">Problemas de autenticação detectados</span>
+                    </div>
+                    
                     <div class="status-card">
                         <div class="status-indicator" id="serverStatus">
-                            <div class="status-dot online"></div>
+                            <div class="status-dot loading"></div>
                             <div class="status-info">
                                 <div class="status-title">Servidor Principal</div>
                                 <div class="status-description">Verificando status...</div>
@@ -129,7 +135,7 @@
                         </div>
                         
                         <div class="status-indicator" id="databaseStatus">
-                            <div class="status-dot online"></div>
+                            <div class="status-dot loading"></div>
                             <div class="status-info">
                                 <div class="status-title">Banco de Dados</div>
                                 <div class="status-description">Verificando status...</div>
@@ -137,7 +143,7 @@
                         </div>
                         
                         <div class="status-indicator" id="apiStatus">
-                            <div class="status-dot online"></div>
+                            <div class="status-dot loading"></div>
                             <div class="status-info">
                                 <div class="status-title">API Externa</div>
                                 <div class="status-description">Verificando status...</div>
@@ -156,7 +162,7 @@
                             <div class="metric-value" id="totalProducts">-</div>
                             <div class="metric-trend up">
                                 <i class="fas fa-arrow-up"></i>
-                                <span id="productsUpdateTime">Atualizando...</span>
+                                <span id="productsUpdateTime">Verificando...</span>
                             </div>
                         </div>
                         
@@ -170,7 +176,7 @@
                             <div class="metric-value" id="activeMarkets">-</div>
                             <div class="metric-trend up">
                                 <i class="fas fa-check"></i>
-                                <span id="marketsUpdateTime">Atualizando...</span>
+                                <span id="marketsUpdateTime">Verificando...</span>
                             </div>
                         </div>
                         
@@ -184,7 +190,7 @@
                             <div class="metric-value" id="activeUsers">-</div>
                             <div class="metric-trend up">
                                 <i class="fas fa-arrow-up"></i>
-                                <span id="usersUpdateTime">Atualizando...</span>
+                                <span id="usersUpdateTime">Verificando...</span>
                             </div>
                         </div>
                         
@@ -198,7 +204,7 @@
                             <div class="metric-value" id="lastCollection">-</div>
                             <div class="metric-trend up">
                                 <i class="fas fa-clock"></i>
-                                <span id="collectionUpdateTime">Atualizando...</span>
+                                <span id="collectionUpdateTime">Verificando...</span>
                             </div>
                         </div>
                     </div>
