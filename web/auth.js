@@ -1,4 +1,4 @@
-// auth.js - VERSÃO OTIMIZADA E SEGURA - ATUALIZADA
+// auth.js - VERSÃO COMPLETA E CORRIGIDA
 
 const SUPABASE_URL = 'https://zhaetrzpkkgzfrwxfqdw.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpoYWV0cnpwa2tnemZyd3hmcWR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0MjM3MzksImV4cCI6MjA3Mjk5OTczOX0.UHoWWZahvp_lMDH8pK539YIAFTAUnQk9mBX5tdixwN0';
@@ -438,6 +438,9 @@ function clearAllCaches() {
     localStorage.removeItem('currentUser');
 }
 
+/**
+ * CORREÇÃO: Função com nome correto - estava como clearUserProfileCac
+ */
 function clearUserProfileCache() {
     authCache.profile = null;
     authCache.lastProfileFetch = 0;
@@ -570,8 +573,6 @@ async function signIn(email, password) {
     }
 }
 
-// NOVAS FUNÇÕES ADICIONADAS PARA COMPLETAR O CÓDIGO
-
 /**
  * Função para lidar com erros de autenticação
  */
@@ -659,6 +660,22 @@ async function isGroupAdmin() {
 }
 
 /**
+ * Verifica se o usuário atual tem acesso a uma página específica
+ */
+async function hasPageAccess(pageKey) {
+    const profile = await fetchUserProfile();
+    if (!profile) return false;
+    
+    if (profile.role === 'admin') return true;
+    if (profile.managed_groups && profile.managed_groups.length > 0) {
+        // Subadmins têm acesso às páginas de grupo por padrão
+        if (pageKey === 'group_admin_users' || pageKey === 'group_admin') return true;
+    }
+    
+    return profile.allowed_pages && profile.allowed_pages.includes(pageKey);
+}
+
+/**
  * Configuração de error handling global
  */
 function setupGlobalErrorHandling() {
@@ -712,7 +729,7 @@ window.getSession = getSession;
 window.signOut = signOut;
 window.routeGuard = routeGuard;
 window.checkAuth = checkAuth;
-window.clearUserProfileCache = clearUserProfileCache;
+window.clearUserProfileCache = clearUserProfileCache; // CORREÇÃO: Nome correto
 window.requireAuth = authMiddleware.requireAuth;
 window.getAuthToken = async () => (await getSession())?.access_token;
 window.hasPermission = hasPermission;
@@ -728,7 +745,9 @@ window.subscribeToAuthStateChange = subscribeToAuthStateChange;
 window.getCurrentUserProfile = getCurrentUserProfile;
 window.isAdmin = isAdmin;
 window.isGroupAdmin = isGroupAdmin;
+window.hasPageAccess = hasPageAccess;
 window.handleAuthError = handleAuthError;
 window.redirectToLogin = redirectToLogin;
+window.clearAllCaches = clearAllCaches;
 
-console.log('✅ auth.js carregado - Versão Otimizada e Segura - ATUALIZADA');
+console.log('✅ auth.js carregado - Versão Completa e Corrigida');
