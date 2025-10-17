@@ -1,4 +1,4 @@
-// group-admin.js - Gerenciamento de Subadministradores
+// group-admin.js - Gerenciamento de Subadministradores (CORRIGIDO)
 
 class GroupAdminManager {
     constructor() {
@@ -56,14 +56,18 @@ class GroupAdminManager {
     }
 
     updateUserInfo(userData) {
-        document.getElementById('userName').textContent = userData.full_name || 'Usuário';
-        document.getElementById('userRole').textContent = this.formatRole(userData.role);
+        const userNameElement = document.getElementById('userName');
+        const userRoleElement = document.getElementById('userRole');
+        const userAvatarElement = document.getElementById('userAvatar');
         
-        if (userData.avatar_url) {
-            document.getElementById('userAvatar').src = userData.avatar_url;
-        } else {
+        if (userNameElement) userNameElement.textContent = userData.full_name || 'Usuário';
+        if (userRoleElement) userRoleElement.textContent = this.formatRole(userData.role);
+        
+        if (userData.avatar_url && userAvatarElement) {
+            userAvatarElement.src = userData.avatar_url;
+        } else if (userAvatarElement) {
             const userName = userData.full_name || 'U';
-            document.getElementById('userAvatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=4f46e5&color=fff`;
+            userAvatarElement.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=4f46e5&color=fff`;
         }
     }
 
@@ -102,13 +106,11 @@ class GroupAdminManager {
                 this.allUsers = await response.json();
                 this.populateUserSelect();
             } else {
-                const errorText = await response.text();
-                console.error('Erro na resposta de usuários:', response.status, errorText);
                 throw new Error('Falha ao carregar usuários');
             }
         } catch (error) {
             console.error('Erro ao carregar usuários:', error);
-            this.showError('Erro ao carregar lista de usuários: ' + error.message);
+            this.showError('Erro ao carregar lista de usuários');
         }
     }
 
@@ -125,20 +127,19 @@ class GroupAdminManager {
                 this.allGroups = await response.json();
                 this.populateGroupsSelect();
             } else {
-                const errorText = await response.text();
-                console.error('Erro na resposta de grupos:', response.status, errorText);
                 throw new Error('Falha ao carregar grupos');
             }
         } catch (error) {
             console.error('Erro ao carregar grupos:', error);
-            this.showError('Erro ao carregar lista de grupos: ' + error.message);
+            this.showError('Erro ao carregar lista de grupos');
         }
     }
 
     async loadGroupAdmins() {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch('/api/group-admins', {
+            // CORREÇÃO: Usar a rota correta do backend
+            const response = await fetch('/api/group-admin', {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -148,18 +149,18 @@ class GroupAdminManager {
                 this.groupAdmins = await response.json();
                 this.renderGroupAdmins();
             } else {
-                const errorText = await response.text();
-                console.error('Erro na resposta de subadministradores:', response.status, errorText);
                 throw new Error('Falha ao carregar subadministradores');
             }
         } catch (error) {
             console.error('Erro ao carregar subadministradores:', error);
-            this.showError('Erro ao carregar lista de subadministradores: ' + error.message);
+            this.showError('Erro ao carregar lista de subadministradores');
         }
     }
 
     populateUserSelect() {
         const userSelect = document.getElementById('userSelect');
+        if (!userSelect) return;
+        
         userSelect.innerHTML = '<option value="">Selecione um usuário</option>';
         
         if (this.allUsers.length === 0) {
@@ -188,6 +189,8 @@ class GroupAdminManager {
 
     populateGroupsSelect(selectElement = null) {
         const targetSelect = selectElement || document.getElementById('groupsSelect');
+        if (!targetSelect) return;
+        
         targetSelect.innerHTML = '';
         
         if (this.allGroups.length === 0) {
@@ -208,16 +211,22 @@ class GroupAdminManager {
 
     setupEventListeners() {
         // Botão de adicionar subadmin
-        document.getElementById('addGroupAdminBtn').addEventListener('click', (e) => {
-            e.preventDefault();
-            this.addGroupAdmin();
-        });
+        const addBtn = document.getElementById('addGroupAdminBtn');
+        if (addBtn) {
+            addBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.addGroupAdmin();
+            });
+        }
 
         // Formulário de editar subadmin
-        document.getElementById('editGroupAdminForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.updateGroupAdmin();
-        });
+        const editForm = document.getElementById('editGroupAdminForm');
+        if (editForm) {
+            editForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.updateGroupAdmin();
+            });
+        }
 
         // Fechar modal
         document.querySelectorAll('.close-modal').forEach(button => {
@@ -227,22 +236,33 @@ class GroupAdminManager {
         });
 
         // Fechar modal ao clicar fora
-        document.getElementById('editGroupAdminModal').addEventListener('click', (e) => {
-            if (e.target.id === 'editGroupAdminModal') {
-                this.closeEditModal();
-            }
-        });
+        const modal = document.getElementById('editGroupAdminModal');
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target.id === 'editGroupAdminModal') {
+                    this.closeEditModal();
+                }
+            });
+        }
 
         // Logout
-        document.getElementById('logoutBtn').addEventListener('click', (e) => {
-            e.preventDefault();
-            this.logout();
-        });
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.logout();
+            });
+        }
     }
 
     async addGroupAdmin() {
         const userSelect = document.getElementById('userSelect');
         const groupsSelect = document.getElementById('groupsSelect');
+        
+        if (!userSelect || !groupsSelect) {
+            this.showError('Elementos do formulário não encontrados');
+            return;
+        }
         
         const userId = userSelect.value;
         const groupIds = Array.from(groupsSelect.selectedOptions).map(option => parseInt(option.value));
@@ -259,7 +279,8 @@ class GroupAdminManager {
 
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch('/api/group-admins', {
+            // CORREÇÃO: Usar a rota correta
+            const response = await fetch('/api/group-admin', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -312,8 +333,11 @@ class GroupAdminManager {
     }
 
     closeEditModal() {
-        document.getElementById('editGroupAdminModal').style.display = 'none';
-        document.getElementById('editGroupAdminForm').reset();
+        const modal = document.getElementById('editGroupAdminModal');
+        if (modal) modal.style.display = 'none';
+        
+        const form = document.getElementById('editGroupAdminForm');
+        if (form) form.reset();
     }
 
     async updateGroupAdmin() {
@@ -328,7 +352,8 @@ class GroupAdminManager {
 
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`/api/group-admins/${userId}`, {
+            // CORREÇÃO: Usar a rota correta
+            const response = await fetch(`/api/group-admin/${userId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -360,7 +385,8 @@ class GroupAdminManager {
 
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`/api/group-admins/${userId}`, {
+            // CORREÇÃO: Usar a rota correta
+            const response = await fetch(`/api/group-admin/${userId}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -479,6 +505,40 @@ class GroupAdminManager {
                 <span>${message}</span>
             </div>
         `;
+
+        // Adicionar estilos básicos se não existirem
+        if (!document.querySelector('.notification')) {
+            const style = document.createElement('style');
+            style.textContent = `
+                .notification {
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    padding: 12px 20px;
+                    border-radius: 8px;
+                    color: white;
+                    z-index: 10000;
+                    animation: slideInRight 0.3s ease;
+                }
+                .notification.success { background: #10b981; }
+                .notification.error { background: #ef4444; }
+                .notification.info { background: #3b82f6; }
+                .notification-content {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+                @keyframes slideInRight {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes slideOutRight {
+                    from { transform: translateX(0); opacity: 1; }
+                    to { transform: translateX(100%); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
 
         document.body.appendChild(notification);
 
