@@ -56,7 +56,7 @@ class UserRenewRequest(BaseModel):
     dias_adicionais: int = Field(..., ge=1, le=365)
 
 # --------------------------------------------------------------------------
-# --- FUNÇões AUXILIARES PARA SUBADMINISTRADORES ---
+# --- FUNÇÕES AUXILIARES PARA SUBADMINISTRADORES ---
 # --------------------------------------------------------------------------
 
 async def get_user_managed_groups(user_id: str) -> List[int]:
@@ -108,7 +108,7 @@ async def get_group_admin_user(current_user: UserProfile = Depends(get_current_u
 @group_admin_router.post("", response_model=GroupAdmin)
 async def create_group_admin(
     admin_data: GroupAdminCreate,
-    current_user: UserProfile = Depends(require_page_access('users'))
+    current_user: UserProfile = Depends(require_page_access('group_admin'))  # PERMISSÃO ALTERADA
 ):
     """Cria um novo subadministrador (apenas admin geral)"""
     if current_user.role != 'admin':
@@ -152,7 +152,7 @@ async def create_group_admin(
 
 @group_admin_router.get("", response_model=List[GroupAdminWithDetails])
 async def list_group_admins(
-    current_user: UserProfile = Depends(require_page_access('users'))
+    current_user: UserProfile = Depends(require_page_access('group_admin'))  # PERMISSÃO ALTERADA
 ):
     """Lista todos os subadministradores (apenas admin geral)"""
     if current_user.role != 'admin':
@@ -212,7 +212,7 @@ async def list_group_admins(
 async def update_group_admin(
     user_id: str,
     admin_data: GroupAdminUpdate,
-    current_user: UserProfile = Depends(require_page_access('users'))
+    current_user: UserProfile = Depends(require_page_access('group_admin'))  # PERMISSÃO ALTERADA
 ):
     """Atualiza um subadministrador (apenas admin geral)"""
     if current_user.role != 'admin':
@@ -257,7 +257,7 @@ async def update_group_admin(
 @group_admin_router.delete("/{user_id}", status_code=204)
 async def delete_group_admin(
     user_id: str,
-    current_user: UserProfile = Depends(require_page_access('users'))
+    current_user: UserProfile = Depends(require_page_access('group_admin'))  # PERMISSÃO ALTERADA
 ):
     """Remove um subadministrador (apenas admin geral)"""
     if current_user.role != 'admin':
