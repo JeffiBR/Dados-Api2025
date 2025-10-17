@@ -10,22 +10,28 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="designer.css">
     <link rel="stylesheet" href="group-admin.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="auth.js"></script>
-    <script src="menu.js"></script>
-    <script src="user-menu.js"></script>
-    <script src="theme.js"></script>
-    <script src="route-guard.js"></script>
 </head>
 <body class="theme-dark">
-   <script>
-    document.addEventListener('DOMContentLoaded', async function() {
-        if (!await requireAuth()) return;
-        if (!await routeGuard('group_admin')) return;
-        await initializeDynamicMenu();
-        await checkAccessExpiration();
-    });
-</script>
+    <!-- Script movido para depois do body estar definido -->
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Verificar se as funções existem antes de chamar
+            if (typeof requireAuth !== 'function' || typeof routeGuard !== 'function') {
+                console.error('Funções de autenticação não carregadas');
+                return;
+            }
+            
+            if (!await requireAuth()) return;
+            if (!await routeGuard('group_admin')) return;
+            
+            if (typeof initializeDynamicMenu === 'function') {
+                await initializeDynamicMenu();
+            }
+            if (typeof checkAccessExpiration === 'function') {
+                await checkAccessExpiration();
+            }
+        });
+    </script>
 
     <div class="app-container">
         <aside class="sidebar" id="sidebarMenu">
@@ -188,6 +194,13 @@
         </div>
     </div>
 
+    <!-- Scripts carregados no final do body -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth.js"></script>
+    <script src="menu.js"></script>
+    <script src="user-menu.js"></script>
+    <script src="theme.js"></script>
+    <script src="route-guard.js"></script>
     <script src="mobile-menu.js"></script>
     <script src="user-activity-monitor.js"></script>
     <script src="group-admin.js"></script>
