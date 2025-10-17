@@ -17,31 +17,14 @@
     <script src="theme.js"></script>
 </head>
 <body class="theme-dark">
-    <script>
-        document.addEventListener('DOMContentLoaded', async function() {
-            setTimeout(async () => {
-                try {
-                    const isAuthenticated = await checkAuth();
-                    if (!isAuthenticated) {
-                        window.location.href = 'login.html';
-                        return;
-                    }
-                    
-                    const userProfile = await fetchUserProfile();
-                    if (!userProfile) {
-                        window.location.href = 'login.html';
-                        return;
-                    }
-                    
-                    await initializeDynamicMenu();
-                    await checkAccessExpiration();
-                } catch (error) {
-                    console.error('Erro na inicialização:', error);
-                    window.location.href = 'login.html';
-                }
-            }, 1000);
-        });
-    </script>
+   <script>
+    document.addEventListener('DOMContentLoaded', async function() {
+        if (!await requireAuth()) return;
+        await initializeDynamicMenu();
+        await checkAccessExpiration();
+        routeGuard('group_admin_users'); // <- Adicione esta linha
+    });
+</script>
 
     <div class="app-container">
         <aside class="sidebar" id="sidebarMenu">
