@@ -1,10 +1,10 @@
 // group-admin.js - Gerenciamento de Subadministradores (CORRIGIDO)
-
 class GroupAdminManager {
     constructor() {
         this.groupAdmins = [];
         this.allUsers = [];
         this.allGroups = [];
+        this.currentUser = null;
         this.init();
     }
 
@@ -34,10 +34,18 @@ class GroupAdminManager {
             });
 
             if (!response.ok) {
+                if (response.status === 403) {
+                    this.showError('Acesso negado. Você não tem permissão para acessar esta página.');
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 3000);
+                    return;
+                }
                 throw new Error('Não autenticado');
             }
 
             const userData = await response.json();
+            this.currentUser = userData;
             
             // Verificar se é admin
             if (userData.role !== 'admin') {
@@ -75,7 +83,7 @@ class GroupAdminManager {
         const roles = {
             'admin': 'Administrador',
             'user': 'Usuário',
-            'subadmin': 'Subadministrador'
+            'group_admin': 'Subadministrador'
         };
         return roles[role] || role;
     }
@@ -138,7 +146,6 @@ class GroupAdminManager {
     async loadGroupAdmins() {
         try {
             const token = localStorage.getItem('token');
-            // CORREÇÃO: Usar a rota correta do backend
             const response = await fetch('/api/group-admin', {
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -148,6 +155,11 @@ class GroupAdminManager {
             if (response.ok) {
                 this.groupAdmins = await response.json();
                 this.renderGroupAdmins();
+            } else if (response.status === 403) {
+                this.showError('Você não tem permissão para gerenciar subadministradores.');
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 3000);
             } else {
                 throw new Error('Falha ao carregar subadministradores');
             }
@@ -253,6 +265,13 @@ class GroupAdminManager {
                 this.logout();
             });
         }
+
+        // ESC para fechar modal
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.closeEditModal();
+            }
+        });
     }
 
     async addGroupAdmin() {
@@ -279,7 +298,6 @@ class GroupAdminManager {
 
         try {
             const token = localStorage.getItem('token');
-            // CORREÇÃO: Usar a rota correta
             const response = await fetch('/api/group-admin', {
                 method: 'POST',
                 headers: {
@@ -296,7 +314,7 @@ class GroupAdminManager {
                 this.showSuccess('Subadministrador designado com sucesso!');
                 // Limpar seleções
                 userSelect.value = '';
-                groupsSelect.selectedIndex = -1;
+                Array.from(groupsSelect.options).forEach(option => option.selected = false);
                 await this.loadData();
             } else {
                 const errorData = await response.json();
@@ -352,7 +370,6 @@ class GroupAdminManager {
 
         try {
             const token = localStorage.getItem('token');
-            // CORREÇÃO: Usar a rota correta
             const response = await fetch(`/api/group-admin/${userId}`, {
                 method: 'PUT',
                 headers: {
@@ -385,7 +402,6 @@ class GroupAdminManager {
 
         try {
             const token = localStorage.getItem('token');
-            // CORREÇÃO: Usar a rota correta
             const response = await fetch(`/api/group-admin/${userId}`, {
                 method: 'DELETE',
                 headers: {
@@ -499,35 +515,31 @@ class GroupAdminManager {
         // Criar elemento de notificação
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 16px 20px;
+            background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+            color: white;
+            border-radius: 8px;
+            z-index: 10000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            animation: slideInRight 0.3s ease;
+        `;
+        
         notification.innerHTML = `
-            <div class="notification-content">
+            <div style="display: flex; align-items: center; gap: 8px;">
                 <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
                 <span>${message}</span>
             </div>
         `;
 
         // Adicionar estilos básicos se não existirem
-        if (!document.querySelector('.notification')) {
+        if (!document.querySelector('#notificationStyles')) {
             const style = document.createElement('style');
+            style.id = 'notificationStyles';
             style.textContent = `
-                .notification {
-                    position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    padding: 12px 20px;
-                    border-radius: 8px;
-                    color: white;
-                    z-index: 10000;
-                    animation: slideInRight 0.3s ease;
-                }
-                .notification.success { background: #10b981; }
-                .notification.error { background: #ef4444; }
-                .notification.info { background: #3b82f6; }
-                .notification-content {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                }
                 @keyframes slideInRight {
                     from { transform: translateX(100%); opacity: 0; }
                     to { transform: translateX(0); opacity: 1; }
