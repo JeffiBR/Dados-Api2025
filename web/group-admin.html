@@ -17,14 +17,14 @@
     <script src="theme.js"></script>
 </head>
 <body class="theme-dark">
-    <script>
-        document.addEventListener('DOMContentLoaded', async function() {
-            if (!await requireAuth()) return;
-            await initializeDynamicMenu();
-            await checkAccessExpiration();
-            routeGuard('users');
-        });
-    </script>
+   <script>
+    document.addEventListener('DOMContentLoaded', async function() {
+        if (!await requireAuth()) return;
+        await initializeDynamicMenu();
+        await checkAccessExpiration();
+        routeGuard('group_admin'); // <- Adicione esta linha
+    });
+</script>
 
     <div class="app-container">
         <aside class="sidebar" id="sidebarMenu">
