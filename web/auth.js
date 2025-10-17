@@ -1,4 +1,4 @@
-// auth.js - VERSÃO COMPLETA E CORRIGIDA
+// auth.js - VERSÃO COMPLETA E ATUALIZADA COM NOVAS PERMISSÕES
 
 const SUPABASE_URL = 'https://zhaetrzpkkgzfrwxfqdw.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpoYWV0cnpwa2tnemZyd3hmcWR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0MjM3MzksImV4cCI6MjA3Mjk5OTczOX0.UHoWWZahvp_lMDH8pK539YIAFTAUnQk9mBX5tdixwN0';
@@ -40,13 +40,13 @@ async function authenticatedFetch(url, options = {}) {
 
     try {
         const response = await fetch(url, finalOptions);
-        
+
         // Tratar erros de autenticação
         if (response.status === 401) {
             await handleAuthError();
             throw new Error("Sessão expirada. Por favor, faça login novamente.");
         }
-        
+
         // Tratar acesso expirado (403)
         if (response.status === 403) {
             const errorText = await response.text();
@@ -68,7 +68,7 @@ async function authenticatedFetch(url, options = {}) {
                 throw new Error(errorDetail);
             }
         }
-        
+
         return response;
     } catch (error) {
         if (error.message === 'ACCESS_EXPIRED') {
@@ -106,7 +106,7 @@ async function fetchUserProfile(forceRefresh = false) {
     if (currentUserProfile && !forceRefresh) {
         return currentUserProfile;
     }
-    
+
     try {
         const session = await getSession();
         if (!session) {
@@ -122,13 +122,13 @@ async function fetchUserProfile(forceRefresh = false) {
             }
             throw new Error(`Falha ao buscar perfil: ${response.status}`);
         }
-        
+
         currentUserProfile = await response.json();
         notifyAuthStateChange();
         return currentUserProfile;
     } catch (error) {
         console.error("Erro em fetchUserProfile:", error);
-        
+
         // Se for erro de sessão, redireciona para login
         if (error.code === 'NO_SESSION' || error.message.includes('Sessão expirada') || error.message.includes('Token de autenticação inválido')) {
             redirectToLogin();
@@ -149,7 +149,7 @@ async function getSession() {
             await supabase.auth.signOut();
             return null;
         }
-        
+
         // Validar se a sessão e o token são válidos
         if (session && session.access_token) {
             const tokenParts = session.access_token.split('.');
@@ -159,7 +159,7 @@ async function getSession() {
                 return null;
             }
         }
-        
+
         return session;
     } catch (error) {
         console.error('Erro ao obter sessão:', error);
@@ -174,11 +174,11 @@ async function signOut() {
     try {
         const { error } = await supabase.auth.signOut();
         if (error) throw error;
-        
+
         clearUserProfileCache();
         localStorage.removeItem('currentUser');
         notifyAuthStateChange();
-        
+
         window.location.href = '/login.html';
     } catch (error) {
         console.error('Erro ao fazer logout:', error);
@@ -195,30 +195,38 @@ async function routeGuard(requiredPermission = null) {
         redirectToLogin();
         return false;
     }
-    
+
     // Verifica se o acesso está expirado
     const isExpired = await checkAccessExpiration();
     if (isExpired) {
         return false;
     }
-    
+
     if (requiredPermission) {
         const profile = await fetchUserProfile();
         if (!profile) {
             redirectToLogin();
             return false;
         }
-        
-        const hasAccess = profile.role === 'admin' || 
-                         (profile.allowed_pages && profile.allowed_pages.includes(requiredPermission));
-        
+
+        // Verificação de permissões aprimorada para subadministradores
+        let hasAccess = profile.role === 'admin' || 
+                       (profile.allowed_pages && profile.allowed_pages.includes(requiredPermission));
+
+        // Verificar se é subadmin para as páginas de grupo
+        if (!hasAccess && (requiredPermission === 'group_admin_users' || requiredPermission === 'group_admin')) {
+            if (profile.managed_groups && profile.managed_groups.length > 0) {
+                hasAccess = true;
+            }
+        }
+
         if (!hasAccess) {
             alert('Você não tem permissão para acessar esta página.');
             window.location.href = '/search.html';
             return false;
         }
     }
-    
+
     return true;
 }
 
@@ -229,14 +237,14 @@ async function checkAuth() {
     try {
         const session = await getSession();
         if (!session) return false;
-        
+
         // Verificação adicional do token
         const token = session.access_token;
         if (!token || token.split('.').length !== 3) {
             console.error('Token inválido em checkAuth');
             return false;
         }
-        
+
         return true;
     } catch (error) {
         console.error('Erro ao verificar autenticação:', error);
@@ -277,9 +285,15 @@ async function getAuthToken() {
 async function hasPermission(permission) {
     const profile = await fetchUserProfile();
     if (!profile) return false;
-    
+
     if (profile.role === 'admin') return true;
-    
+
+    // Verificação especial para subadministradores
+    if ((permission === 'group_admin_users' || permission === 'group_admin') && 
+        profile.managed_groups && profile.managed_groups.length > 0) {
+        return true;
+    }
+
     return profile.allowed_pages && profile.allowed_pages.includes(permission);
 }
 
@@ -290,34 +304,34 @@ async function initAuth() {
     try {
         // Verifica sessão atual ao inicializar
         await checkAndUpdateAuthState();
-        
+
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             console.log('Evento de autenticação:', event);
-            
+
             switch (event) {
                 case 'SIGNED_IN':
                     console.log('Usuário fez login');
                     clearUserProfileCache();
                     await fetchUserProfile(true);
                     break;
-                    
+
                 case 'SIGNED_OUT':
                     console.log('Usuário fez logout');
                     clearUserProfileCache();
                     currentUserProfile = null;
                     notifyAuthStateChange();
                     break;
-                    
+
                 case 'TOKEN_REFRESHED':
                     console.log('Token atualizado');
                     break;
-                    
+
                 case 'USER_UPDATED':
                     console.log('Usuário atualizado');
                     clearUserProfileCache();
                     await fetchUserProfile(true);
                     break;
-                    
+
                 case 'USER_DELETED':
                     console.log('Usuário deletado');
                     clearUserProfileCache();
@@ -388,13 +402,13 @@ async function checkAndUpdateAuthState() {
     try {
         const isAuthenticated = await checkAuth();
         let user = null;
-        
+
         if (isAuthenticated) {
             user = await fetchUserProfile();
         } else {
             clearUserProfileCache();
         }
-        
+
         notifyAuthStateChange(isAuthenticated, user);
         return isAuthenticated;
     } catch (error) {
@@ -440,7 +454,7 @@ function notifyAuthStateChange(isAuthenticated = null, user = null) {
  */
 function onAuthStateChange(callback) {
     authStateChangeSubscribers.push(callback);
-    
+
     // Retorna função para remover o listener
     return () => {
         const index = authStateChangeSubscribers.indexOf(callback);
@@ -468,20 +482,30 @@ async function checkAccessExpiration() {
         // Para admins, não verifica expiração
         if (profile.role === 'admin') return false;
 
-        const response = await authenticatedFetch('/api/my-groups');
+        // Para subadministradores com grupos ativos, não verifica expiração
+        if (profile.managed_groups && profile.managed_groups.length > 0) {
+            return false;
+        }
+
+        // Para usuários comuns, verifica expiração
+        const response = await authenticatedFetch('/api/my-groups-detailed');
         const userGroups = await response.json();
-        
+
         const today = new Date().toISOString().split('T')[0];
-        const hasActiveAccess = userGroups.some(group => group.data_expiracao >= today);
-        
+        const hasActiveAccess = userGroups.some(group => {
+            // Verifica se há alguma data de expiração futura
+            return group.data_expiracao && group.data_expiracao >= today;
+        });
+
         if (!hasActiveAccess) {
             showAccessExpiredMessage();
             return true;
         }
-        
+
         return false;
     } catch (error) {
         console.error('Erro ao verificar expiração de acesso:', error);
+        // Em caso de erro, não bloqueia o acesso
         return false;
     }
 }
@@ -526,6 +550,64 @@ function showAccessExpiredMessage() {
 }
 
 /**
+ * Verifica se o usuário pode acessar funcionalidades de grupo
+ */
+async function canAccessGroupFeatures() {
+    const profile = await fetchUserProfile();
+    if (!profile) return false;
+
+    return profile.role === 'admin' || 
+           (profile.allowed_pages && profile.allowed_pages.includes('group_admin_users')) ||
+           (profile.managed_groups && profile.managed_groups.length > 0);
+}
+
+/**
+ * Verifica se o usuário pode acessar funcionalidades de subadministrador
+ */
+async function canAccessSubadminFeatures() {
+    const profile = await fetchUserProfile();
+    if (!profile) return false;
+
+    return profile.role === 'admin' || 
+           (profile.allowed_pages && profile.allowed_pages.includes('group_admin')) ||
+           (profile.managed_groups && profile.managed_groups.length > 0);
+}
+
+/**
+ * Obtém os grupos que o usuário pode gerenciar
+ */
+async function getManagedGroups() {
+    try {
+        const profile = await fetchUserProfile();
+        if (!profile) return [];
+
+        if (profile.role === 'admin') {
+            // Admin geral pode gerenciar todos os grupos
+            const response = await authenticatedFetch('/api/groups');
+            return await response.json();
+        } else {
+            // Subadmin pode gerenciar apenas seus grupos designados
+            return profile.managed_groups || [];
+        }
+    } catch (error) {
+        console.error('Erro ao obter grupos gerenciados:', error);
+        return [];
+    }
+}
+
+/**
+ * Verifica se o usuário pode gerenciar um grupo específico
+ */
+async function canManageGroup(groupId) {
+    const profile = await fetchUserProfile();
+    if (!profile) return false;
+
+    if (profile.role === 'admin') return true;
+
+    return profile.managed_groups && profile.managed_groups.includes(parseInt(groupId));
+}
+
+/**
  * Configura tratamento global de erros de autenticação
  */
 function setupGlobalErrorHandling() {
@@ -534,7 +616,7 @@ function setupGlobalErrorHandling() {
     window.fetch = async function(...args) {
         try {
             const response = await originalFetch(...args);
-            
+
             if (response.status === 403) {
                 const errorData = await response.json().catch(() => ({}));
                 if (errorData.detail && errorData.detail.includes('acesso expirou')) {
@@ -542,7 +624,7 @@ function setupGlobalErrorHandling() {
                     throw new Error('ACCESS_EXPIRED');
                 }
             }
-            
+
             return response;
         } catch (error) {
             if (error.message === 'ACCESS_EXPIRED') {
@@ -580,16 +662,4 @@ window.getSession = getSession;
 window.signOut = signOut;
 window.routeGuard = routeGuard;
 window.checkAuth = checkAuth;
-window.clearUserProfileCache = clearUserProfileCache;
-window.requireAuth = requireAuth;
-window.getAuthToken = getAuthToken;
-window.hasPermission = hasPermission;
-window.initAuth = initAuth;
-window.signIn = signIn;
-window.signUp = signUp;
-window.checkAndUpdateAuthState = checkAndUpdateAuthState;
-window.onAuthStateChange = onAuthStateChange;
-window.checkAccessExpiration = checkAccessExpiration;
-window.showAccessExpiredMessage = showAccessExpiredMessage;
-
-console.log('✅ auth.js carregado com sucesso - Versão Corrigida');
+window.clearUserProfileCache = clearUserProfileCac
