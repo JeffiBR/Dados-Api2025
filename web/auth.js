@@ -1,4 +1,4 @@
-// auth.js - VERSÃO OTIMIZADA E SEGURA
+// auth.js - VERSÃO OTIMIZADA E SEGURA - ATUALIZADA
 
 const SUPABASE_URL = 'https://zhaetrzpkkgzfrwxfqdw.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpoYWV0cnpwa2tnemZyd3hmcWR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0MjM3MzksImV4cCI6MjA3Mjk5OTczOX0.UHoWWZahvp_lMDH8pK539YIAFTAUnQk9mBX5tdixwN0';
@@ -570,8 +570,93 @@ async function signIn(email, password) {
     }
 }
 
-// Restante das funções permanecem similares, mas usando o novo sistema de cache...
-// [Manter as outras funções como showAccessExpiredMessage, redirectToLogin, etc...]
+// NOVAS FUNÇÕES ADICIONADAS PARA COMPLETAR O CÓDIGO
+
+/**
+ * Função para lidar com erros de autenticação
+ */
+async function handleAuthError() {
+    clearAllCaches();
+    await supabase.auth.signOut();
+    redirectToLogin();
+}
+
+/**
+ * Redireciona para a página de login
+ */
+function redirectToLogin() {
+    window.location.href = '/login.html';
+}
+
+/**
+ * Mostra mensagem de acesso expirado
+ */
+function showAccessExpiredMessage() {
+    alert('Seu acesso à plataforma expirou. Entre em contato com o suporte para renovação.');
+}
+
+/**
+ * Notifica os subscribers sobre mudanças no estado de autenticação
+ */
+function notifyAuthStateChange() {
+    authStateChangeSubscribers.forEach(callback => {
+        try {
+            callback();
+        } catch (error) {
+            console.error('Erro ao notificar mudança de estado de autenticação:', error);
+        }
+    });
+}
+
+/**
+ * Verifica e atualiza o estado de autenticação
+ */
+async function checkAndUpdateAuthState() {
+    const session = await getSession();
+    if (session) {
+        await fetchUserProfile();
+    }
+}
+
+/**
+ * Sistema de subscribe para mudanças de estado de autenticação
+ */
+function subscribeToAuthStateChange(callback) {
+    if (typeof callback === 'function') {
+        authStateChangeSubscribers.push(callback);
+        
+        // Retorna função para unsubscribe
+        return () => {
+            const index = authStateChangeSubscribers.indexOf(callback);
+            if (index > -1) {
+                authStateChangeSubscribers.splice(index, 1);
+            }
+        };
+    }
+}
+
+/**
+ * Obtém o perfil do usuário atual (com cache)
+ */
+async function getCurrentUserProfile() {
+    return await fetchUserProfile();
+}
+
+/**
+ * Verifica se o usuário atual é administrador
+ */
+async function isAdmin() {
+    const profile = await fetchUserProfile();
+    return profile && profile.role === 'admin';
+}
+
+/**
+ * Verifica se o usuário atual é subadministrador
+ */
+async function isGroupAdmin() {
+    const profile = await fetchUserProfile();
+    return profile && profile.managed_groups && profile.managed_groups.length > 0;
+}
 
 /**
  * Configuração de error handling global
@@ -638,4 +723,12 @@ window.showAccessExpiredMessage = showAccessExpiredMessage;
 window.canManageGroup = canManageGroup;
 window.authMiddleware = authMiddleware;
 
-console.log('✅ auth.js carregado - Versão Otimizada e Segura');
+// NOVAS FUNÇÕES EXPORTADAS
+window.subscribeToAuthStateChange = subscribeToAuthStateChange;
+window.getCurrentUserProfile = getCurrentUserProfile;
+window.isAdmin = isAdmin;
+window.isGroupAdmin = isGroupAdmin;
+window.handleAuthError = handleAuthError;
+window.redirectToLogin = redirectToLogin;
+
+console.log('✅ auth.js carregado - Versão Otimizada e Segura - ATUALIZADA');
