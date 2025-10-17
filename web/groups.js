@@ -191,94 +191,131 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const loadUserGroups = async () => {
-        try {
-            const response = await authenticatedFetch('/api/user-groups');
-            
-            if (!response.ok) {
-                throw new Error('Erro ao carregar associações');
-            }
-            
-            const userGroups = await response.json();
-            
-            userGroupsTableBody.innerHTML = '';
-            userGroups.forEach(userGroup => {
-                const isExpired = new Date(userGroup.data_expiracao) < new Date();
-                const statusClass = isExpired ? 'status-expired' : 'status-active';
-                const statusText = isExpired ? 'Expirado' : 'Ativo';
-
-                const row = document.createElement('tr');
-                row.dataset.userGroup = JSON.stringify(userGroup);
-
-                row.innerHTML = `
-                    <td>${userGroup.user_name || 'N/A'}</td>
-                    <td>${userGroup.user_email || 'N/A'}</td>
-                    <td>${userGroup.grupo_nome}</td>
-                    <td>${new Date(userGroup.data_expiracao).toLocaleDateString('pt-BR')}</td>
-                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
-                    <td class="actions">
-                        <button class="btn-icon renew-user-btn" title="Renovar Acesso"><i class="fas fa-sync-alt"></i></button>
-                        <button class="btn-icon remove-user-btn" title="Remover do Grupo"><i class="fas fa-user-minus"></i></button>
-                    </td>
-                `;
-                userGroupsTableBody.appendChild(row);
-            });
-        } catch (error) {
-            console.error('Erro ao carregar associações usuário-grupo:', error);
-            alert('Não foi possível carregar as associações usuário-grupo.');
+    try {
+        const response = await authenticatedFetch('/api/user-groups');
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Erro na resposta:', response.status, errorText);
+            throw new Error(`Erro ${response.status}: ${response.statusText}`);
         }
-    };
-
-    const addUserToGroup = async () => {
-        const userId = userSelect.value;
-        const groupId = parseInt(groupSelect.value);
-        const expirationDate = expirationDateInput.value;
-
-        if (!userId || !groupId) {
-            alert('Usuário e Grupo são obrigatórios.');
+        
+        const userGroups = await response.json();
+        console.log('Dados carregados:', userGroups);
+        
+        userGroupsTableBody.innerHTML = '';
+        
+        if (!userGroups || userGroups.length === 0) {
+            userGroupsTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Nenhuma associação encontrada</td></tr>';
             return;
         }
+        
+        userGroups.forEach(userGroup => {
+            const isExpired = new Date(userGroup.data_expiracao) < new Date();
+            const statusClass = isExpired ? 'status-expired' : 'status-active';
+            const statusText = isExpired ? 'Expirado' : 'Ativo';
 
-        const bodyData = {
-            user_id: userId,
-            group_id: groupId
-        };
+            const row = document.createElement('tr');
+            row.dataset.userGroup = JSON.stringify(userGroup);
 
-        if (expirationDate) {
-            bodyData.data_expiracao = expirationDate;
-        }
+            row.innerHTML = `
+                <td>${userGroup.user_name || 'N/A'}</td>
+                <td>${userGroup.user_email || 'N/A'}</td>
+                <td>${userGroup.grupo_nome}</td>
+                <td>${new Date(userGroup.data_expiracao).toLocaleDateString('pt-BR')}</td>
+                <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                <td class="actions">
+                    <button class="btn-icon renew-user-btn" title="Renovar Acesso"><i class="fas fa-sync-alt"></i></button>
+                    <button class="btn-icon remove-user-btn" title="Remover do Grupo"><i class="fas fa-user-minus"></i></button>
+                </td>
+            `;
+            userGroupsTableBody.appendChild(row);
+        });
+    } catch (error) {
+        console.error('Erro ao carregar associações usuário-grupo:', error);
+        userGroupsTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--error-color);">Erro ao carregar associações</td></tr>';
+    }
+};
+   const addUserToGroup = async () => {
+    const userId = userSelect.value;
+    const groupId = groupSelect.value;
+    const expirationDate = expirationDateInput.value;
 
-        const originalButtonText = addUserToGroupBtn.innerHTML;
-        addUserToGroupBtn.disabled = true;
-        addUserToGroupBtn.innerHTML = 'Adicionando...';
+    if (!userId || !groupId) {
+        alert('Usuário e Grupo são obrigatórios.');
+        return;
+    }
 
-        try {
-            const response = await authenticatedFetch('/api/user-groups', {
-                method: 'POST',
-                body: JSON.stringify(bodyData)
-            });
-            
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || 'Erro ao adicionar usuário ao grupo');
-            }
-            
-            alert('Usuário adicionado ao grupo com sucesso!');
-            
-            // Limpar formulário
-            userSelect.value = '';
-            groupSelect.value = '';
-            expirationDateInput.value = '';
-            
-            // Recarregar dados
-            loadUserGroups();
-        } catch (error) {
-            console.error('Erro ao adicionar usuário ao grupo:', error);
-            alert(`Erro: ${error.message}`);
-        } finally {
-            addUserToGroupBtn.disabled = false;
-            addUserToGroupBtn.innerHTML = originalButtonText;
-        }
+    // Validar e converter groupId para número
+    const groupIdNum = parseInt(groupId);
+    if (isNaN(groupIdNum)) {
+        alert('ID do grupo inválido.');
+        return;
+    }
+
+    const bodyData = {
+        user_id: userId,
+        group_id: groupIdNum
     };
+
+    // Adicionar data de expiração apenas se fornecida
+    if (expirationDate) {
+        // Validar formato da data
+        const dateObj = new Date(expirationDate);
+        if (isNaN(dateObj.getTime())) {
+            alert('Data de expiração inválida. Use o formato YYYY-MM-DD.');
+            return;
+        }
+        bodyData.data_expiracao = expirationDate;
+    }
+
+    console.log('Enviando dados para API:', bodyData);
+
+    const originalButtonText = addUserToGroupBtn.innerHTML;
+    addUserToGroupBtn.disabled = true;
+    addUserToGroupBtn.innerHTML = 'Adicionando...';
+
+    try {
+        const response = await authenticatedFetch('/api/user-groups', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(bodyData)
+        });
+        
+        if (!response.ok) {
+            let errorMessage = 'Erro ao adicionar usuário ao grupo';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.detail || errorMessage;
+            } catch (e) {
+                errorMessage = `Erro ${response.status}: ${response.statusText}`;
+            }
+            throw new Error(errorMessage);
+        }
+        
+        const result = await response.json();
+        console.log('Resposta da API:', result);
+        
+        alert('Usuário adicionado ao grupo com sucesso!');
+        
+        // Limpar formulário
+        userSelect.value = '';
+        groupSelect.value = '';
+        expirationDateInput.value = '';
+        
+        // Recarregar dados
+        await loadUserGroups();
+        
+    } catch (error) {
+        console.error('Erro completo ao adicionar usuário ao grupo:', error);
+        alert(`Erro: ${error.message}`);
+    } finally {
+        addUserToGroupBtn.disabled = false;
+        addUserToGroupBtn.innerHTML = originalButtonText;
+    }
+};
 
     const renewUserAccess = async (userGroupId, userId, days = 30) => {
         try {
