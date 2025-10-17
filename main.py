@@ -441,83 +441,89 @@ async def create_user(user_data: UserCreate, admin_user: UserProfile = Depends(r
 @app.put("/api/users/{user_id}")
 async def update_user(user_id: str, user_data: UserUpdate, admin_user: UserProfile = Depends(require_page_access('users'))):
     try:
-        print(f"DEBUG: Atualizando usuário {user_id} com dados: {user_data}")  # Debug
+        print(f"DEBUG: Atualizando usuário {user_id} com dados: {user_data}")
         
-        # CORREÇÃO: Verificar se o usuário existe de forma mais robusta
-        user_resp = await asyncio.to_thread(
-            supabase.table('profiles').select('id, role, allowed_pages, full_name').eq('id', user_id).execute
-        )
+        # Verificar se o usuário existe
+        user_resp = supabase.table('profiles').select('id, role, allowed_pages, full_name').eq('id', user_id).execute()
         if not user_resp.data:
             raise HTTPException(status_code=404, detail="Usuário não encontrado")
         
-        print(f"DEBUG: Usuário encontrado: {user_resp.data[0]}")  # Debug
+        print(f"DEBUG: Usuário encontrado: {user_resp.data[0]}")
         
-        # CORREÇÃO: Atualizar perfil corretamente
+        # Atualizar perfil - FORMA CORRETA de verificar erro
         profile_update_data = {
             'full_name': user_data.full_name,
             'role': user_data.role,
             'allowed_pages': user_data.allowed_pages
         }
         
-        print(f"DEBUG: Dados de atualização do perfil: {profile_update_data}")  # Debug
+        print(f"DEBUG: Dados de atualização do perfil: {profile_update_data}")
         
-        profile_response = await asyncio.to_thread(
-            supabase.table('profiles')
-            .update(profile_update_data)
-            .eq('id', user_id)
-            .execute
-        )
+        # CORREÇÃO: Usar supabase_admin para operações de atualização
+        profile_response = supabase_admin.table('profiles').update(profile_update_data).eq('id', user_id).execute()
         
-        # CORREÇÃO: Verificar se a atualização foi bem-sucedida de forma diferente
-        if profile_response.error:
-            print(f"DEBUG: Erro ao atualizar perfil: {profile_response.error}")  # Debug
-            raise HTTPException(status_code=400, detail=f"Erro ao atualizar perfil: {profile_response.error.message}")
+        # CORREÇÃO: Verificar erro da forma correta para a biblioteca Supabase
+        if hasattr(profile_response, 'error') and profile_response.error:
+            error_msg = getattr(profile_response.error, 'message', str(profile_response.error))
+            print(f"DEBUG: Erro ao atualizar perfil: {error_msg}")
+            raise HTTPException(status_code=400, detail=f"Erro ao atualizar perfil: {error_msg}")
         
-        print(f"DEBUG: Perfil atualizado com sucesso")  # Debug
+        print(f"DEBUG: Perfil atualizado com sucesso: {profile_response.data}")
         
-        # CORREÇÃO: Gerenciar grupos de admin de forma mais robusta
+        # Gerenciar grupos de admin
         if user_data.role == "group_admin" and user_data.managed_groups:
-            print(f"DEBUG: Configurando admin de grupo com grupos: {user_data.managed_groups}")  # Debug
+            print(f"DEBUG: Configurando admin de grupo com grupos: {user_data.managed_groups}")
+            
+            # Verificar se todos os grupos existem
+            groups_response = supabase.table('grupos').select('id').in_('id', user_data.managed_groups).execute()
+            existing_group_ids = [group['id'] for group in groups_response.data]
+            invalid_groups = set(user_data.managed_groups) - set(existing_group_ids)
+            
+            if invalid_groups:
+                raise HTTPException(status_code=404, detail=f"Grupos não encontrados: {invalid_groups}")
             
             # Verificar se já existe registro
-            existing_admin = await asyncio.to_thread(
-                supabase.table('group_admins').select('*').eq('user_id', user_id).execute
-            )
+            existing_admin = supabase.table('group_admins').select('*').eq('user_id', user_id).execute()
+            
+            admin_record = {
+                'user_id': user_id,
+                'group_ids': user_data.managed_groups,
+                'updated_at': datetime.now().isoformat()
+            }
             
             if existing_admin.data:
                 # Atualizar
-                update_result = await asyncio.to_thread(
-                    supabase.table('group_admins').update({
-                        'group_ids': user_data.managed_groups,
-                        'updated_at': datetime.now().isoformat()
-                    }).eq('user_id', user_id).execute
-                )
-                print(f"DEBUG: Group admin atualizado: {update_result.data}")  # Debug
+                update_result = supabase.table('group_admins').update(admin_record).eq('user_id', user_id).execute()
+                if hasattr(update_result, 'error') and update_result.error:
+                    error_msg = getattr(update_result.error, 'message', str(update_result.error))
+                    print(f"DEBUG: Erro ao atualizar group_admins: {error_msg}")
+                else:
+                    print(f"DEBUG: Group admin atualizado: {update_result.data}")
             else:
                 # Criar novo
-                admin_record = {
-                    'user_id': user_id,
-                    'group_ids': user_data.managed_groups
-                }
-                insert_result = await asyncio.to_thread(
-                    supabase.table('group_admins').insert(admin_record).execute
-                )
-                print(f"DEBUG: Group admin criado: {insert_result.data}")  # Debug
+                insert_result = supabase.table('group_admins').insert(admin_record).execute()
+                if hasattr(insert_result, 'error') and insert_result.error:
+                    error_msg = getattr(insert_result.error, 'message', str(insert_result.error))
+                    print(f"DEBUG: Erro ao criar group_admins: {error_msg}")
+                else:
+                    print(f"DEBUG: Group admin criado: {insert_result.data}")
         elif user_data.role != "group_admin":
-            print("DEBUG: Removendo de group_admins (não é mais admin de grupo)")  # Debug
+            print("DEBUG: Removendo de group_admins (não é mais admin de grupo)")
             # Remover da tabela group_admins se não for mais admin de grupo
-            delete_result = await asyncio.to_thread(
-                supabase.table('group_admins').delete().eq('user_id', user_id).execute
-            )
-            print(f"DEBUG: Group admin removido: {delete_result.data}")  # Debug
+            delete_result = supabase.table('group_admins').delete().eq('user_id', user_id).execute()
+            if hasattr(delete_result, 'error') and delete_result.error:
+                error_msg = getattr(delete_result.error, 'message', str(delete_result.error))
+                print(f"DEBUG: Erro ao remover group_admins: {error_msg}")
+            else:
+                print(f"DEBUG: Group admin removido: {delete_result.data}")
         
-        print("DEBUG: Usuário atualizado com sucesso")  # Debug
+        print("DEBUG: Usuário atualizado com sucesso")
         return {"message": "Usuário atualizado com sucesso"}
         
     except HTTPException:
         raise
     except Exception as e:
-        print(f"DEBUG: Erro detalhado ao atualizar usuário: {str(e)}")  # Debug
+        print(f"DEBUG: Erro detalhado ao atualizar usuário: {str(e)}")
         logging.error(f"Erro ao atualizar usuário: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Erro ao atualizar usuário: {str(e)}")
         
