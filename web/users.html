@@ -49,8 +49,9 @@
                     <li class="nav-header">CONFIGURAÇÃO</li>
                     <li data-required-permission="markets"><a href="/markets.html"><i class="fas fa-store"></i> Gerenciar Mercados</a></li>
                     <li data-required-permission="users"><a href="/users.html"><i class="fas fa-users"></i> Gerenciar Usuários</a></li>
-                    <li data-required-permission="users"><a href="/group-admin-users.html"><i class="fas fa-layer-group"></i> Gerenciar Grupos</a></li>
-                    <li data-required-permission="users"><a href="/group-admin.html"><i class="fas fa-user-shield"></i> Subadministradores</a></li>
+                    <!-- MUDANÇAS AQUI: Alterar para as novas permissões -->
+                    <li data-required-permission="group_admin_users"><a href="/group-admin-users.html"><i class="fas fa-layer-group"></i> Gerenciar Grupos</a></li>
+                    <li data-required-permission="group_admin"><a href="/group-admin.html"><i class="fas fa-user-shield"></i> Subadministradores</a></li>
                 </ul>
             </nav>
             <div class="theme-switcher">
@@ -217,6 +218,27 @@
                                     <div class="permission-name">Gerenciar Usuários</div>
                                 </div>
                                 <div class="permission-description">Criar, editar e gerenciar usuários e suas permissões no sistema.</div>
+                                <span class="category-indicator configuracao">Configuração</span>
+                                <div class="permission-checkbox"></div>
+                            </div>
+
+                            <!-- NOVAS PERMISSÕES ADICIONADAS -->
+                            <div class="permission-card" data-permission="group_admin_users">
+                                <div class="permission-header">
+                                    <div class="permission-icon"><i class="fas fa-layer-group"></i></div>
+                                    <div class="permission-name">Gerenciar Grupos</div>
+                                </div>
+                                <div class="permission-description">Permite gerenciar grupos de acesso de usuários.</div>
+                                <span class="category-indicator configuracao">Configuração</span>
+                                <div class="permission-checkbox"></div>
+                            </div>
+                            
+                            <div class="permission-card" data-permission="group_admin">
+                                <div class="permission-header">
+                                    <div class="permission-icon"><i class="fas fa-user-shield"></i></div>
+                                    <div class="permission-name">Subadministradores</div>
+                                </div>
+                                <div class="permission-description">Permite gerenciar subadministradores e seus grupos.</div>
                                 <span class="category-indicator configuracao">Configuração</span>
                                 <div class="permission-checkbox"></div>
                             </div>
