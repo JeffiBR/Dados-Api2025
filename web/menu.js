@@ -102,8 +102,8 @@ function showAccessExpiredMessage() {
                 <p>Seu acesso à plataforma expirou. Para continuar utilizando os serviços, entre em contato com nosso suporte.</p>
                 <div class="access-expired-contact">
                     <p><strong>Contato do Suporte:</strong></p>
-                    <p>📧 Email: suporte@precosarapiraca.com</p>
-                    <p>📞 Telefone: (82) 99999-9999</p>
+                    <p>📧 Email: djaxelf22@gmail.com</p>
+                    <p>📞 Telefone: (82) 99915-8412</p>
                     <p>🕒 Horário: Segunda a Sexta, 8h às 18h</p>
                 </div>
                 <div class="access-expired-actions">
