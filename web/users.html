@@ -73,181 +73,184 @@
                     <div class="page-title"><h1><i class="fas fa-users-cog"></i>Gerenciar Usuários</h1><p>Crie, edite e defina permissões para os usuários do sistema.</p></div>
                 </div>
 
+                <!-- CORREÇÃO: Adicionado formulário para resolver aviso do DOM -->
                 <div class="card form-container">
                     <h3 id="formTitle">Adicionar Novo Usuário</h3>
-                    <input type="hidden" id="userId">
-                    <div class="form-group">
-                        <label for="fullName">Nome Completo</label>
-                        <input type="text" id="fullName" placeholder="Digite o nome completo">
-                    </div>
-                    <div class="form-group">
-                        <label for="email">Email</label>
-                        <input type="email" id="email" placeholder="Digite o email">
-                    </div>
-                    <div class="form-group">
-                        <label for="password">Senha</label>
-                        <input type="password" id="password" placeholder="Obrigatório para novos usuários">
-                    </div>
-                    <div class="form-group">
-                        <label for="role">Nível de Acesso</label>
-                        <select id="role">
-                            <option value="user">Usuário</option>
-                            <option value="admin">Admin Geral</option>
-                            <option value="group_admin">Admin de Grupo</option>
-                        </select>
-                    </div>
-
-                    <!-- Container para Grupos Gerenciados -->
-                    <div class="form-group full-width" id="managedGroupsContainer" style="display: none;">
-                        <label>Grupos Gerenciados (para nível 'Admin de Grupo')</label>
-                        <div id="managedGroups" class="permissions-grid">
-                            <!-- Os grupos serão carregados dinamicamente aqui -->
+                    <form id="userForm" onsubmit="event.preventDefault(); saveUser();">
+                        <input type="hidden" id="userId">
+                        <div class="form-group">
+                            <label for="fullName">Nome Completo</label>
+                            <input type="text" id="fullName" placeholder="Digite o nome completo" required>
                         </div>
-                    </div>
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" placeholder="Digite o email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Senha</label>
+                            <input type="password" id="password" placeholder="Obrigatório para novos usuários" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="role">Nível de Acesso</label>
+                            <select id="role">
+                                <option value="user">Usuário</option>
+                                <option value="admin">Admin Geral</option>
+                                <option value="group_admin">Admin de Grupo</option>
+                            </select>
+                        </div>
 
-                    <div class="form-group full-width">
-                        <label>Permissões de Página (para nível 'Usuário')</label>
-                        <div id="permissions-container" class="permissions-grid">
-                            <div class="permission-card" data-permission="search">
-                                <div class="permission-header">
-                                    <div class="permission-icon"><i class="fas fa-search"></i></div>
-                                    <div class="permission-name">Busca</div>
-                                </div>
-                                <div class="permission-description">Permite pesquisar produtos e comparar preços entre diferentes mercados.</div>
-                                <span class="category-indicator analise">Análise</span>
-                                <div class="permission-checkbox"></div>
-                            </div>
-                            
-                            <div class="permission-card" data-permission="compare">
-                                <div class="permission-header">
-                                    <div class="permission-icon"><i class="fas fa-chart-bar"></i></div>
-                                    <div class="permission-name">Comparador</div>
-                                </div>
-                                <div class="permission-description">Acesso à ferramenta de comparação de preços e histórico de variações.</div>
-                                <span class="category-indicator analise">Análise</span>
-                                <div class="permission-checkbox"></div>
-                            </div>
-                            
-                            <div class="permission-card" data-permission="dashboard">
-                                <div class="permission-header">
-                                    <div class="permission-icon"><i class="fas fa-chart-line"></i></div>
-                                    <div class="permission-name">Dashboard</div>
-                                </div>
-                                <div class="permission-description">Visualização de métricas e relatórios analíticos do sistema.</div>
-                                <span class="category-indicator analise">Análise</span>
-                                <div class="permission-checkbox"></div>
-                            </div>
-                            
-                            <div class="permission-card" data-permission="coleta">
-                                <div class="permission-header">
-                                    <div class="permission-icon"><i class="fas fa-database"></i></div>
-                                    <div class="permission-name">Coleta</div>
-                                </div>
-                                <div class="permission-description">Executar e gerenciar processos de coleta de dados dos mercados.</div>
-                                <span class="category-indicator administracao">Administração</span>
-                                <div class="permission-checkbox"></div>
-                            </div>
-                            
-                            <div class="permission-card" data-permission="markets">
-                                <div class="permission-header">
-                                    <div class="permission-icon"><i class="fas fa-store"></i></div>
-                                    <div class="permission-name">Mercados</div>
-                                </div>
-                                <div class="permission-description">Gerenciar mercados cadastrados e suas configurações.</div>
-                                <span class="category-indicator configuracao">Configuração</span>
-                                <div class="permission-checkbox"></div>
-                            </div>
-                            
-                            <div class="permission-card" data-permission="collections">
-                                <div class="permission-header">
-                                    <div class="permission-icon"><i class="fas fa-history"></i></div>
-                                    <div class="permission-name">Histórico</div>
-                                </div>
-                                <div class="permission-description">Acesso ao histórico de coletas e dados armazenados no sistema.</div>
-                                <span class="category-indicator administracao">Administração</span>
-                                <div class="permission-checkbox"></div>
-                            </div>
-                            
-                            <div class="permission-card" data-permission="prune">
-                                <div class="permission-header">
-                                    <div class="permission-icon"><i class="fas fa-broom"></i></div>
-                                    <div class="permission-name">Limpeza</div>
-                                </div>
-                                <div class="permission-description">Executar limpeza e manutenção dos dados do sistema.</div>
-                                <span class="category-indicator administracao">Administração</span>
-                                <div class="permission-checkbox"></div>
-                            </div>
-                            
-                            <div class="permission-card" data-permission="baskets">
-                                <div class="permission-header">
-                                    <div class="permission-icon"><i class="fas fa-shopping-basket"></i></div>
-                                    <div class="permission-name">Cesta Básica</div>
-                                </div>
-                                <div class="permission-description">
-                                    Acesso à funcionalidade de montar e gerenciar a cesta básica de produtos.
-                                </div>
-                                <span class="category-indicator analise">Análise</span>
-                                <div class="permission-checkbox"></div>
-                            </div>
-                            
-                            <div class="permission-card" data-permission="product_log">
-                                <div class="permission-header">
-                                    <div class="permission-icon"><i class="fas fa-clipboard-list"></i></div>
-                                    <div class="permission-name">Log de Produtos</div>
-                                </div>
-                                <div class="permission-description">Visualizar logs e alterações realizadas nos produtos do sistema.</div>
-                                <span class="category-indicator administracao">Administração</span>
-                                <div class="permission-checkbox"></div>
-                            </div>
-
-                            <div class="permission-card" data-permission="user_logs">
-                                <div class="permission-header">
-                                    <div class="permission-icon"><i class="fas fa-user-clock"></i></div>
-                                    <div class="permission-name">Logs de Usuários</div>
-                                </div>
-                                <div class="permission-description">
-                                    Permite visualizar atividades e registros de ações realizadas pelos usuários do sistema.
-                                </div>
-                                <span class="category-indicator administracao">Administração</span>
-                                <div class="permission-checkbox"></div>
-                            </div>
-                            
-                            <div class="permission-card" data-permission="users">
-                                <div class="permission-header">
-                                    <div class="permission-icon"><i class="fas fa-users-cog"></i></div>
-                                    <div class="permission-name">Gerenciar Usuários</div>
-                                </div>
-                                <div class="permission-description">Criar, editar e gerenciar usuários e suas permissões no sistema.</div>
-                                <span class="category-indicator configuracao">Configuração</span>
-                                <div class="permission-checkbox"></div>
-                            </div>
-
-                            <!-- NOVAS PERMISSÕES ADICIONADAS -->
-                            <div class="permission-card" data-permission="group_admin_users">
-                                <div class="permission-header">
-                                    <div class="permission-icon"><i class="fas fa-layer-group"></i></div>
-                                    <div class="permission-name">Gerenciar Grupos</div>
-                                </div>
-                                <div class="permission-description">Permite gerenciar grupos de acesso de usuários.</div>
-                                <span class="category-indicator configuracao">Configuração</span>
-                                <div class="permission-checkbox"></div>
-                            </div>
-                            
-                            <div class="permission-card" data-permission="group_admin">
-                                <div class="permission-header">
-                                    <div class="permission-icon"><i class="fas fa-user-shield"></i></div>
-                                    <div class="permission-name">Subadministradores</div>
-                                </div>
-                                <div class="permission-description">Permite gerenciar subadministradores e seus grupos.</div>
-                                <span class="category-indicator configuracao">Configuração</span>
-                                <div class="permission-checkbox"></div>
+                        <!-- Container para Grupos Gerenciados -->
+                        <div class="form-group full-width" id="managedGroupsContainer" style="display: none;">
+                            <label>Grupos Gerenciados (para nível 'Admin de Grupo')</label>
+                            <div id="managedGroups" class="permissions-grid">
+                                <!-- Os grupos serão carregados dinamicamente aqui -->
                             </div>
                         </div>
-                    </div>
-                    <div class="form-actions">
-                        <button id="saveUserBtn" class="btn btn-primary"><i class="fas fa-save"></i>Salvar</button>
-                        <button id="cancelButton" class="btn btn-secondary" style="display:none;">Cancelar Edição</button>
-                    </div>
+
+                        <div class="form-group full-width">
+                            <label>Permissões de Página (para nível 'Usuário')</label>
+                            <div id="permissions-container" class="permissions-grid">
+                                <div class="permission-card" data-permission="search">
+                                    <div class="permission-header">
+                                        <div class="permission-icon"><i class="fas fa-search"></i></div>
+                                        <div class="permission-name">Busca</div>
+                                    </div>
+                                    <div class="permission-description">Permite pesquisar produtos e comparar preços entre diferentes mercados.</div>
+                                    <span class="category-indicator analise">Análise</span>
+                                    <div class="permission-checkbox"></div>
+                                </div>
+                                
+                                <div class="permission-card" data-permission="compare">
+                                    <div class="permission-header">
+                                        <div class="permission-icon"><i class="fas fa-chart-bar"></i></div>
+                                        <div class="permission-name">Comparador</div>
+                                    </div>
+                                    <div class="permission-description">Acesso à ferramenta de comparação de preços e histórico de variações.</div>
+                                    <span class="category-indicator analise">Análise</span>
+                                    <div class="permission-checkbox"></div>
+                                </div>
+                                
+                                <div class="permission-card" data-permission="dashboard">
+                                    <div class="permission-header">
+                                        <div class="permission-icon"><i class="fas fa-chart-line"></i></div>
+                                        <div class="permission-name">Dashboard</div>
+                                    </div>
+                                    <div class="permission-description">Visualização de métricas e relatórios analíticos do sistema.</div>
+                                    <span class="category-indicator analise">Análise</span>
+                                    <div class="permission-checkbox"></div>
+                                </div>
+                                
+                                <div class="permission-card" data-permission="coleta">
+                                    <div class="permission-header">
+                                        <div class="permission-icon"><i class="fas fa-database"></i></div>
+                                        <div class="permission-name">Coleta</div>
+                                    </div>
+                                    <div class="permission-description">Executar e gerenciar processos de coleta de dados dos mercados.</div>
+                                    <span class="category-indicator administracao">Administração</span>
+                                    <div class="permission-checkbox"></div>
+                                </div>
+                                
+                                <div class="permission-card" data-permission="markets">
+                                    <div class="permission-header">
+                                        <div class="permission-icon"><i class="fas fa-store"></i></div>
+                                        <div class="permission-name">Mercados</div>
+                                    </div>
+                                    <div class="permission-description">Gerenciar mercados cadastrados e suas configurações.</div>
+                                    <span class="category-indicator configuracao">Configuração</span>
+                                    <div class="permission-checkbox"></div>
+                                </div>
+                                
+                                <div class="permission-card" data-permission="collections">
+                                    <div class="permission-header">
+                                        <div class="permission-icon"><i class="fas fa-history"></i></div>
+                                        <div class="permission-name">Histórico</div>
+                                    </div>
+                                    <div class="permission-description">Acesso ao histórico de coletas e dados armazenados no sistema.</div>
+                                    <span class="category-indicator administracao">Administração</span>
+                                    <div class="permission-checkbox"></div>
+                                </div>
+                                
+                                <div class="permission-card" data-permission="prune">
+                                    <div class="permission-header">
+                                        <div class="permission-icon"><i class="fas fa-broom"></i></div>
+                                        <div class="permission-name">Limpeza</div>
+                                    </div>
+                                    <div class="permission-description">Executar limpeza e manutenção dos dados do sistema.</div>
+                                    <span class="category-indicator administracao">Administração</span>
+                                    <div class="permission-checkbox"></div>
+                                </div>
+                                
+                                <div class="permission-card" data-permission="baskets">
+                                    <div class="permission-header">
+                                        <div class="permission-icon"><i class="fas fa-shopping-basket"></i></div>
+                                        <div class="permission-name">Cesta Básica</div>
+                                    </div>
+                                    <div class="permission-description">
+                                        Acesso à funcionalidade de montar e gerenciar a cesta básica de produtos.
+                                    </div>
+                                    <span class="category-indicator analise">Análise</span>
+                                    <div class="permission-checkbox"></div>
+                                </div>
+                                
+                                <div class="permission-card" data-permission="product_log">
+                                    <div class="permission-header">
+                                        <div class="permission-icon"><i class="fas fa-clipboard-list"></i></div>
+                                        <div class="permission-name">Log de Produtos</div>
+                                    </div>
+                                    <div class="permission-description">Visualizar logs e alterações realizadas nos produtos do sistema.</div>
+                                    <span class="category-indicator administracao">Administração</span>
+                                    <div class="permission-checkbox"></div>
+                                </div>
+
+                                <div class="permission-card" data-permission="user_logs">
+                                    <div class="permission-header">
+                                        <div class="permission-icon"><i class="fas fa-user-clock"></i></div>
+                                        <div class="permission-name">Logs de Usuários</div>
+                                    </div>
+                                    <div class="permission-description">
+                                        Permite visualizar atividades e registros de ações realizadas pelos usuários do sistema.
+                                    </div>
+                                    <span class="category-indicator administracao">Administração</span>
+                                    <div class="permission-checkbox"></div>
+                                </div>
+                                
+                                <div class="permission-card" data-permission="users">
+                                    <div class="permission-header">
+                                        <div class="permission-icon"><i class="fas fa-users-cog"></i></div>
+                                        <div class="permission-name">Gerenciar Usuários</div>
+                                    </div>
+                                    <div class="permission-description">Criar, editar e gerenciar usuários e suas permissões no sistema.</div>
+                                    <span class="category-indicator configuracao">Configuração</span>
+                                    <div class="permission-checkbox"></div>
+                                </div>
+
+                                <!-- NOVAS PERMISSÕES ADICIONADAS -->
+                                <div class="permission-card" data-permission="group_admin_users">
+                                    <div class="permission-header">
+                                        <div class="permission-icon"><i class="fas fa-layer-group"></i></div>
+                                        <div class="permission-name">Gerenciar Grupos</div>
+                                    </div>
+                                    <div class="permission-description">Permite gerenciar grupos de acesso de usuários.</div>
+                                    <span class="category-indicator configuracao">Configuração</span>
+                                    <div class="permission-checkbox"></div>
+                                </div>
+                                
+                                <div class="permission-card" data-permission="group_admin">
+                                    <div class="permission-header">
+                                        <div class="permission-icon"><i class="fas fa-user-shield"></i></div>
+                                        <div class="permission-name">Subadministradores</div>
+                                    </div>
+                                    <div class="permission-description">Permite gerenciar subadministradores e seus grupos.</div>
+                                    <span class="category-indicator configuracao">Configuração</span>
+                                    <div class="permission-checkbox"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" id="saveUserBtn" class="btn btn-primary"><i class="fas fa-save"></i>Salvar</button>
+                            <button type="button" id="cancelButton" class="btn btn-secondary" style="display:none;">Cancelar Edição</button>
+                        </div>
+                    </form>
                 </div>
                 
                 <div class="card table-container" style="margin-top: 2rem;">
@@ -275,25 +278,28 @@
                         <h3>Gerenciar Grupos de Acesso</h3>
                     </div>
                     <div class="card-content">
+                        <!-- CORREÇÃO: Adicionado formulário para grupos -->
                         <div class="form-container" style="margin-bottom: 2rem;">
                             <h4 id="groupFormTitle">Criar Novo Grupo</h4>
-                            <input type="hidden" id="groupId">
-                            <div class="form-group">
-                                <label for="groupName">Nome do Grupo</label>
-                                <input type="text" id="groupName" placeholder="Digite o nome do grupo">
-                            </div>
-                            <div class="form-group">
-                                <label for="accessDays">Dias de Acesso</label>
-                                <input type="number" id="accessDays" placeholder="30" min="1" max="365">
-                            </div>
-                            <div class="form-group">
-                                <label for="groupDescription">Descrição</label>
-                                <textarea id="groupDescription" placeholder="Descrição opcional do grupo" rows="3"></textarea>
-                            </div>
-                            <div class="form-actions">
-                                <button id="saveGroupBtn" class="btn btn-primary"><i class="fas fa-save"></i> Salvar Grupo</button>
-                                <button id="cancelGroupButton" class="btn btn-secondary" style="display:none;">Cancelar</button>
-                            </div>
+                            <form id="groupForm" onsubmit="event.preventDefault(); saveGroup();">
+                                <input type="hidden" id="groupId">
+                                <div class="form-group">
+                                    <label for="groupName">Nome do Grupo</label>
+                                    <input type="text" id="groupName" placeholder="Digite o nome do grupo" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="accessDays">Dias de Acesso</label>
+                                    <input type="number" id="accessDays" placeholder="30" min="1" max="365" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="groupDescription">Descrição</label>
+                                    <textarea id="groupDescription" placeholder="Descrição opcional do grupo" rows="3"></textarea>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="submit" id="saveGroupBtn" class="btn btn-primary"><i class="fas fa-save"></i> Salvar Grupo</button>
+                                    <button type="button" id="cancelGroupButton" class="btn btn-secondary" style="display:none;">Cancelar</button>
+                                </div>
+                            </form>
                         </div>
 
                         <table>
@@ -317,28 +323,31 @@
                         <h3>Associações Usuário-Grupo</h3>
                     </div>
                     <div class="card-content">
+                        <!-- CORREÇÃO: Adicionado formulário para associações -->
                         <div class="form-container" style="margin-bottom: 2rem;">
                             <h4>Adicionar Usuário ao Grupo</h4>
-                            <div class="form-group">
-                                <label for="userSelect">Usuário</label>
-                                <select id="userSelect">
-                                    <option value="">Selecione um usuário</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="groupSelect">Grupo</label>
-                                <select id="groupSelect">
-                                    <option value="">Selecione um grupo</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="expirationDate">Data de Expiração (opcional)</label>
-                                <input type="date" id="expirationDate">
-                                <small>Se não informado, será calculada automaticamente baseada nos dias de acesso do grupo</small>
-                            </div>
-                            <div class="form-actions">
-                                <button id="addUserToGroupBtn" class="btn btn-primary"><i class="fas fa-user-plus"></i> Adicionar ao Grupo</button>
-                            </div>
+                            <form id="userGroupForm" onsubmit="event.preventDefault(); addUserToGroup();">
+                                <div class="form-group">
+                                    <label for="userSelect">Usuário</label>
+                                    <select id="userSelect" required>
+                                        <option value="">Selecione um usuário</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="groupSelect">Grupo</label>
+                                    <select id="groupSelect" required>
+                                        <option value="">Selecione um grupo</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="expirationDate">Data de Expiração (opcional)</label>
+                                    <input type="date" id="expirationDate">
+                                    <small>Se não informado, será calculada automaticamente baseada nos dias de acesso do grupo</small>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="submit" id="addUserToGroupBtn" class="btn btn-primary"><i class="fas fa-user-plus"></i> Adicionar ao Grupo</button>
+                                </div>
+                            </form>
                         </div>
 
                         <table>
@@ -365,5 +374,31 @@
     <script src="user-menu.js"></script>
     <script src="user-activity-monitor.js"></script>
     <script src="mobile-menu.js"></script>
+
+    <script>
+        // CORREÇÃO: Adicionar função saveUser global para o formulário
+        window.saveUser = function() {
+            const saveButton = document.getElementById('saveUserBtn');
+            if (saveButton) {
+                saveButton.click();
+            }
+        };
+
+        // CORREÇÃO: Adicionar função saveGroup global para o formulário de grupos
+        window.saveGroup = function() {
+            const saveGroupBtn = document.getElementById('saveGroupBtn');
+            if (saveGroupBtn) {
+                saveGroupBtn.click();
+            }
+        };
+
+        // CORREÇÃO: Adicionar função addUserToGroup global para o formulário de associações
+        window.addUserToGroup = function() {
+            const addUserToGroupBtn = document.getElementById('addUserToGroupBtn');
+            if (addUserToGroupBtn) {
+                addUserToGroupBtn.click();
+            }
+        };
+    </script>
 </body>
 </html>
