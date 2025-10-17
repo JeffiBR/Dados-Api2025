@@ -53,7 +53,7 @@ function isValidToken(token) {
  */
 async function authenticatedFetch(url, options = {}) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos
+    const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 segundos
 
     try {
         const session = await getSession();
