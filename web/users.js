@@ -246,12 +246,15 @@ document.addEventListener('DOMContentLoaded', () => {
         
         let body;
         if (isUpdating) {
+            // CORREÇÃO: Montar objeto corretamente para atualização
             body = JSON.stringify({ 
                 full_name, 
                 role, 
                 allowed_pages, 
                 managed_groups 
             });
+            
+            console.log('Enviando atualização:', body); // Debug
         } else {
             body = JSON.stringify({ 
                 email, 
@@ -268,18 +271,31 @@ document.addEventListener('DOMContentLoaded', () => {
         saveButton.innerHTML = isUpdating ? 'Atualizando...' : 'Criando...';
 
         try {
-            const response = await authenticatedFetch(url, { method, body });
+            const response = await authenticatedFetch(url, { 
+                method, 
+                body,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
             
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || 'Erro ao salvar usuário');
+                let errorMessage = 'Erro ao salvar usuário';
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.detail || errorMessage;
+                    console.error('Detalhes do erro:', errorData); // Debug
+                } catch (e) {
+                    errorMessage = `Erro ${response.status}: ${response.statusText}`;
+                }
+                throw new Error(errorMessage);
             }
             
             alert(`Usuário ${isUpdating ? 'atualizado' : 'criado'} com sucesso!`);
             resetForm();
             loadUsers();
         } catch (error) {
-            console.error('Erro ao salvar usuário:', error);
+            console.error('Erro completo ao salvar usuário:', error);
             alert(`Erro: ${error.message}`);
         } finally {
             saveButton.disabled = false;
