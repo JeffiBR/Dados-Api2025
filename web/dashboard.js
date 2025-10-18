@@ -17,6 +17,7 @@ class Dashboard {
             bar: null
         };
         this.marketsData = [];
+        this.currentChartType = 'line'; // 'line' or 'bar'
         
         this.init();
     }
@@ -38,6 +39,12 @@ class Dashboard {
             
             if (e.target.value === 'custom') {
                 customRange.style.display = 'flex';
+                // Set default dates for custom range
+                const endDate = new Date();
+                const startDate = new Date();
+                startDate.setDate(startDate.getDate() - 30);
+                document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
+                document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
             } else {
                 customRange.style.display = 'none';
                 this.updateDateRange();
@@ -84,7 +91,7 @@ class Dashboard {
         try {
             const { data: markets, error } = await supabase
                 .from('supermercados')
-                .select('cnpj, nome')
+                .select('cnpj, nome, endereco')
                 .order('nome');
 
             if (error) throw error;
@@ -92,6 +99,8 @@ class Dashboard {
             this.marketsData = markets;
 
             const marketFilter = document.getElementById('marketFilter');
+            marketFilter.innerHTML = '<option value="all">Todos os mercados</option>';
+            
             markets.forEach(market => {
                 const option = document.createElement('option');
                 option.value = market.cnpj;
@@ -156,37 +165,93 @@ class Dashboard {
     }
 
     async fetchSummary() {
-        const response = await fetch(`/api/dashboard/summary?start_date=${this.filters.startDate}&end_date=${this.filters.endDate}`);
+        const params = new URLSearchParams({
+            start_date: this.filters.startDate,
+            end_date: this.filters.endDate
+        });
+        
+        if (this.filters.market !== 'all') {
+            params.append('cnpjs', this.filters.market);
+        }
+
+        const response = await fetch(`/api/dashboard/summary?${params}`);
         if (!response.ok) throw new Error('Erro ao buscar resumo');
         return await response.json();
     }
 
     async fetchPriceTrends() {
-        const response = await fetch(`/api/dashboard/price-trends?start_date=${this.filters.startDate}&end_date=${this.filters.endDate}`);
+        const params = new URLSearchParams({
+            start_date: this.filters.startDate,
+            end_date: this.filters.endDate
+        });
+        
+        if (this.filters.market !== 'all') {
+            params.append('cnpjs', this.filters.market);
+        }
+
+        const response = await fetch(`/api/dashboard/price-trends?${params}`);
         if (!response.ok) throw new Error('Erro ao buscar tendências');
         return await response.json();
     }
 
     async fetchTopProducts() {
-        const response = await fetch(`/api/dashboard/top-products?start_date=${this.filters.startDate}&end_date=${this.filters.endDate}&limit=10`);
+        const params = new URLSearchParams({
+            start_date: this.filters.startDate,
+            end_date: this.filters.endDate,
+            limit: '10'
+        });
+        
+        if (this.filters.market !== 'all') {
+            params.append('cnpjs', this.filters.market);
+        }
+
+        const response = await fetch(`/api/dashboard/top-products?${params}`);
         if (!response.ok) throw new Error('Erro ao buscar top produtos');
         return await response.json();
     }
 
     async fetchCategoryStats() {
-        const response = await fetch(`/api/dashboard/category-stats?start_date=${this.filters.startDate}&end_date=${this.filters.endDate}`);
+        const params = new URLSearchParams({
+            start_date: this.filters.startDate,
+            end_date: this.filters.endDate
+        });
+        
+        if (this.filters.market !== 'all') {
+            params.append('cnpjs', this.filters.market);
+        }
+
+        const response = await fetch(`/api/dashboard/category-stats?${params}`);
         if (!response.ok) throw new Error('Erro ao buscar estatísticas por categoria');
         return await response.json();
     }
 
     async fetchBargains() {
-        const response = await fetch(`/api/dashboard/bargains?start_date=${this.filters.startDate}&end_date=${this.filters.endDate}&limit=10`);
+        const params = new URLSearchParams({
+            start_date: this.filters.startDate,
+            end_date: this.filters.endDate,
+            limit: '10'
+        });
+        
+        if (this.filters.market !== 'all') {
+            params.append('cnpjs', this.filters.market);
+        }
+
+        const response = await fetch(`/api/dashboard/bargains?${params}`);
         if (!response.ok) throw new Error('Erro ao buscar ofertas');
         return await response.json();
     }
 
     async fetchMarketComparison() {
-        const response = await fetch(`/api/dashboard/market-comparison?start_date=${this.filters.startDate}&end_date=${this.filters.endDate}`);
+        const params = new URLSearchParams({
+            start_date: this.filters.startDate,
+            end_date: this.filters.endDate
+        });
+        
+        if (this.filters.market !== 'all') {
+            params.append('cnpjs', this.filters.market);
+        }
+
+        const response = await fetch(`/api/dashboard/market-comparison?${params}`);
         if (!response.ok) throw new Error('Erro ao buscar comparação de mercados');
         return await response.json();
     }
@@ -240,9 +305,14 @@ class Dashboard {
                     data: [],
                     borderColor: '#6366f1',
                     backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                    borderWidth: 2,
+                    borderWidth: 3,
                     fill: true,
-                    tension: 0.4
+                    tension: 0.4,
+                    pointBackgroundColor: '#6366f1',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
                 }]
             },
             options: {
@@ -255,6 +325,11 @@ class Dashboard {
                     tooltip: {
                         mode: 'index',
                         intersect: false,
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleColor: '#ffffff',
+                        bodyColor: '#ffffff',
+                        borderColor: '#6366f1',
+                        borderWidth: 1,
                         callbacks: {
                             label: (context) => `R$ ${context.parsed.y.toFixed(2)}`
                         }
@@ -267,13 +342,27 @@ class Dashboard {
                             color: 'rgba(255, 255, 255, 0.1)'
                         },
                         ticks: {
-                            callback: (value) => `R$ ${value.toFixed(2)}`
+                            callback: (value) => `R$ ${value.toFixed(2)}`,
+                            color: 'var(--text-muted)'
                         }
                     },
                     x: {
                         grid: {
                             color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: 'var(--text-muted)'
                         }
+                    }
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
+                animations: {
+                    tension: {
+                        duration: 1000,
+                        easing: 'linear'
                     }
                 }
             }
@@ -291,7 +380,9 @@ class Dashboard {
                     data: [],
                     backgroundColor: 'rgba(16, 185, 129, 0.8)',
                     borderColor: 'rgba(16, 185, 129, 1)',
-                    borderWidth: 1
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    borderSkipped: false,
                 }]
             },
             options: {
@@ -308,11 +399,17 @@ class Dashboard {
                         beginAtZero: true,
                         grid: {
                             color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: 'var(--text-muted)'
                         }
                     },
                     y: {
                         grid: {
                             display: false
+                        },
+                        ticks: {
+                            color: 'var(--text-muted)'
                         }
                     }
                 }
@@ -333,7 +430,8 @@ class Dashboard {
                         '#06b6d4', '#84cc16', '#f97316', '#64748b', '#ec4899'
                     ],
                     borderWidth: 2,
-                    borderColor: 'var(--card-bg)'
+                    borderColor: 'var(--card-bg)',
+                    hoverOffset: 15
                 }]
             },
             options: {
@@ -344,9 +442,15 @@ class Dashboard {
                         position: 'right',
                         labels: {
                             color: 'var(--text-color)',
-                            usePointStyle: true
+                            usePointStyle: true,
+                            padding: 15
                         }
                     }
+                },
+                cutout: '60%',
+                animation: {
+                    animateScale: true,
+                    animateRotate: true
                 }
             }
         });
@@ -372,12 +476,30 @@ class Dashboard {
                             color: 'rgba(255, 255, 255, 0.1)'
                         },
                         pointLabels: {
-                            color: 'var(--text-color)'
+                            color: 'var(--text-color)',
+                            font: {
+                                size: 11
+                            }
                         },
                         ticks: {
                             display: false,
                             beginAtZero: true
+                        },
+                        suggestedMin: 0,
+                        suggestedMax: 100
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            color: 'var(--text-color)'
                         }
+                    }
+                },
+                elements: {
+                    line: {
+                        borderWidth: 2
                     }
                 }
             }
@@ -401,7 +523,7 @@ class Dashboard {
         });
         
         chart.data.datasets[0].data = trends.map(t => t.preco_medio);
-        chart.update();
+        chart.update('active');
     }
 
     updateTopProductsChart() {
@@ -417,7 +539,7 @@ class Dashboard {
         });
         
         chart.data.datasets[0].data = displayProducts.map(p => p.frequencia);
-        chart.update();
+        chart.update('active');
     }
 
     updateCategoryChart() {
@@ -426,7 +548,7 @@ class Dashboard {
         
         chart.data.labels = categories.map(c => c.categoria);
         chart.data.datasets[0].data = categories.map(c => c.total_produtos);
-        chart.update();
+        chart.update('active');
     }
 
     updateMarketComparisonChart() {
@@ -450,10 +572,13 @@ class Dashboard {
             backgroundColor: `${colors[index]}20`,
             borderColor: colors[index],
             borderWidth: 2,
-            pointBackgroundColor: colors[index]
+            pointBackgroundColor: colors[index],
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2,
+            pointRadius: 4
         }));
         
-        chart.update();
+        chart.update('active');
     }
 
     updateBargains() {
@@ -569,7 +694,17 @@ class Dashboard {
 
     async exportData() {
         try {
-            const response = await fetch(`/api/dashboard/export-data?start_date=${this.filters.startDate}&end_date=${this.filters.endDate}&export_type=csv`);
+            const params = new URLSearchParams({
+                start_date: this.filters.startDate,
+                end_date: this.filters.endDate,
+                export_type: 'csv'
+            });
+            
+            if (this.filters.market !== 'all') {
+                params.append('cnpjs', this.filters.market);
+            }
+
+            const response = await fetch(`/api/dashboard/export-data?${params}`);
             
             if (!response.ok) throw new Error('Erro ao exportar dados');
             
@@ -617,52 +752,40 @@ class Dashboard {
     }
 
     showNotification(message, type = 'info') {
-        // Implementação básica de notificação
+        // Remover notificações existentes
+        document.querySelectorAll('.notification').forEach(n => n.remove());
+        
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 1rem 1.5rem;
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: var(--border-radius);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            z-index: 1001;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            transform: translateX(100%);
-            transition: transform 0.3s ease;
-        `;
         
         const icon = type === 'success' ? 'check-circle' : 
                     type === 'error' ? 'exclamation-circle' : 
                     type === 'warning' ? 'exclamation-triangle' : 'info-circle';
         
         notification.innerHTML = `
-            <i class="fas fa-${icon}" style="color: ${type === 'success' ? 'var(--success-color)' : 
-                                            type === 'error' ? 'var(--error-color)' : 
-                                            type === 'warning' ? 'var(--warning-color)' : 'var(--info-color)'}"></i>
+            <i class="fas fa-${icon}"></i>
             <span>${message}</span>
         `;
         
         document.body.appendChild(notification);
         
+        // Trigger animation
         setTimeout(() => {
-            notification.style.transform = 'translateX(0)';
+            notification.classList.add('show');
         }, 100);
         
+        // Auto remove after 5 seconds
         setTimeout(() => {
-            notification.style.transform = 'translateX(100%)';
+            notification.classList.remove('show');
             setTimeout(() => {
-                document.body.removeChild(notification);
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
             }, 300);
-        }, 3000);
+        }, 5000);
     }
 
-    // ===== NOVOS MÉTODOS PARA ANÁLISE DE PRODUTOS =====
+    // ===== MÉTODOS PARA ANÁLISE DE PRODUTOS =====
 
     setupProductAnalysis() {
         this.setupBarcodeInputs();
@@ -755,411 +878,46 @@ class Dashboard {
     }
 
     async loadAnalysisMarkets() {
-        const marketCheckboxes = document.getElementById('marketCheckboxes');
-        marketCheckboxes.innerHTML = '';
+        try {
+            const response = await fetch('/api/dashboard/markets', {
+                headers: {
+                    'Authorization': `Bearer ${await this.getSupabaseToken()}`
+                }
+            });
+            
+            if (!response.ok) throw new Error('Erro ao carregar mercados');
+            
+            const markets = await response.json();
+            this.marketsData = markets;
 
-        this.marketsData.forEach(market => {
-            const checkboxDiv = document.createElement('div');
-            checkboxDiv.className = 'market-checkbox';
-            checkboxDiv.innerHTML = `
-                <input type="checkbox" id="market_${market.cnpj}" value="${market.cnpj}">
-                <label for="market_${market.cnpj}">${market.nome}</label>
-            `;
-            marketCheckboxes.appendChild(checkboxDiv);
-        });
+            const marketCheckboxes = document.getElementById('marketCheckboxes');
+            marketCheckboxes.innerHTML = '';
 
-        // Event listener para checkboxes
-        marketCheckboxes.addEventListener('change', (e) => {
-            if (e.target.type === 'checkbox') {
-                this.updateSelectedMarkets();
-            }
-        });
+            markets.forEach(market => {
+                const checkboxDiv = document.createElement('div');
+                checkboxDiv.className = 'market-checkbox';
+                checkboxDiv.innerHTML = `
+                    <input type="checkbox" id="market_${market.cnpj}" value="${market.cnpj}">
+                    <label for="market_${market.cnpj}">
+                        <strong>${market.nome}</strong>
+                        ${market.endereco ? `<br><small>${market.endereco}</small>` : ''}
+                    </label>
+                `;
+                marketCheckboxes.appendChild(checkboxDiv);
+            });
+
+            // Event listener para checkboxes
+            marketCheckboxes.addEventListener('change', (e) => {
+                if (e.target.type === 'checkbox') {
+                    this.updateSelectedMarkets();
+                }
+            });
+
+        } catch (error) {
+            console.error('Erro ao carregar mercados para análise:', error);
+            this.showNotification('Erro ao carregar lista de mercados', 'error');
+        }
     }
 
     updateSelectedMarkets() {
-        const checkboxes = document.querySelectorAll('.market-checkbox input[type="checkbox"]:checked');
-        this.selectedMarkets = Array.from(checkboxes).map(cb => cb.value);
-        
-        // Atualizar contador
-        document.getElementById('selectedMarketsCount').textContent = this.selectedMarkets.length;
-        
-        // Limitar a 10 mercados
-        if (this.selectedMarkets.length > 10) {
-            this.showNotification('Máximo de 10 mercados permitidos', 'warning');
-            // Desmarcar o último
-            checkboxes[checkboxes.length - 1].checked = false;
-            this.updateSelectedMarkets();
-        }
-    }
-
-    updateDateRangeInfo() {
-        const period = document.getElementById('analysisPeriod').value;
-        const days = parseInt(period);
-        const endDate = new Date();
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - days);
-        
-        const dateInfo = document.getElementById('dateRangeInfo');
-        dateInfo.textContent = `Período: ${startDate.toLocaleDateString('pt-BR')} à ${endDate.toLocaleDateString('pt-BR')}`;
-    }
-
-    async runProductAnalysis() {
-        // Validar entradas
-        const validBarcodes = this.productBarcodes.filter(barcode => barcode.trim() !== '');
-        if (validBarcodes.length === 0) {
-            this.showNotification('Adicione pelo menos um código de barras', 'warning');
-            return;
-        }
-
-        if (this.selectedMarkets.length === 0) {
-            this.showNotification('Selecione pelo menos um mercado', 'warning');
-            return;
-        }
-
-        this.showLoading(true);
-
-        try {
-            const period = document.getElementById('analysisPeriod').value;
-            const days = parseInt(period);
-            const endDate = new Date();
-            const startDate = new Date();
-            startDate.setDate(startDate.getDate() - days);
-
-            const requestData = {
-                start_date: startDate.toISOString().split('T')[0],
-                end_date: endDate.toISOString().split('T')[0],
-                product_barcodes: validBarcodes,
-                markets_cnpj: this.selectedMarkets
-            };
-
-            const response = await fetch('/api/dashboard/product-barcode-analysis', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${await this.getSupabaseToken()}`
-                },
-                body: JSON.stringify(requestData)
-            });
-
-            if (!response.ok) throw new Error('Erro na análise');
-
-            const analysisData = await response.json();
-
-            if (analysisData.message) {
-                this.showNotification(analysisData.message, 'info');
-                return;
-            }
-
-            this.displayAnalysisResults(analysisData);
-
-        } catch (error) {
-            console.error('Erro na análise de produtos:', error);
-            this.showNotification('Erro ao executar análise', 'error');
-        } finally {
-            this.showLoading(false);
-        }
-    }
-
-    displayAnalysisResults(data) {
-        const resultsSection = document.getElementById('analysisResults');
-        resultsSection.style.display = 'block';
-        resultsSection.classList.add('fade-in');
-
-        // Renderizar gráficos
-        this.renderLineChart(data);
-        this.renderBarChart(data);
-        
-        // Renderizar tabela
-        this.renderAnalysisTable(data);
-    }
-
-    renderLineChart(data) {
-        const ctx = document.getElementById('lineAnalysisChart').getContext('2d');
-        
-        // Destruir gráfico anterior se existir
-        if (this.analysisCharts.line) {
-            this.analysisCharts.line.destroy();
-        }
-
-        const datasets = this.createChartDatasets(data, 'line');
-        
-        this.analysisCharts.line = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: data.dates.map(date => new Date(date).toLocaleDateString('pt-BR')),
-                datasets: datasets
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false
-                },
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: (context) => {
-                                return `${context.dataset.label}: R$ ${context.parsed.y.toFixed(2)}`;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: false,
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
-                        },
-                        ticks: {
-                            callback: (value) => `R$ ${value.toFixed(2)}`
-                        }
-                    },
-                    x: {
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    renderBarChart(data) {
-        const ctx = document.getElementById('barAnalysisChart').getContext('2d');
-        
-        if (this.analysisCharts.bar) {
-            this.analysisCharts.bar.destroy();
-        }
-
-        const datasets = this.createChartDatasets(data, 'bar');
-        
-        this.analysisCharts.bar = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: data.dates.map(date => new Date(date).toLocaleDateString('pt-BR')),
-                datasets: datasets
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: (context) => {
-                                return `${context.dataset.label}: R$ ${context.parsed.y.toFixed(2)}`;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: false,
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
-                        },
-                        ticks: {
-                            callback: (value) => `R$ ${value.toFixed(2)}`
-                        }
-                    },
-                    x: {
-                        grid: {
-                            display: false
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    createChartDatasets(data, type) {
-        const colors = [
-            '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
-            '#06b6d4', '#84cc16', '#f97316', '#64748b', '#ec4899'
-        ];
-
-        const datasets = [];
-        let colorIndex = 0;
-
-        Object.entries(data.products).forEach(([barcode, productName]) => {
-            data.markets.forEach(market => {
-                const key = `${barcode}_${market}`;
-                const priceData = data.price_matrix[key];
-                
-                if (priceData) {
-                    const marketName = this.getMarketName(market);
-                    const dataPoints = data.dates.map(date => {
-                        return priceData[date] || null;
-                    });
-
-                    datasets.push({
-                        label: `${productName} - ${marketName}`,
-                        data: dataPoints,
-                        borderColor: colors[colorIndex % colors.length],
-                        backgroundColor: type === 'bar' ? 
-                            colors[colorIndex % colors.length] + '80' : 
-                            colors[colorIndex % colors.length] + '20',
-                        borderWidth: type === 'line' ? 2 : 1,
-                        fill: type === 'line',
-                        tension: 0.4
-                    });
-
-                    colorIndex++;
-                }
-            });
-        });
-
-        return datasets;
-    }
-
-    getMarketName(marketCnpj) {
-        const market = this.marketsData.find(m => m.cnpj === marketCnpj);
-        return market ? market.nome : `Mercado ${marketCnpj.substring(0, 8)}`;
-    }
-
-    renderAnalysisTable(data) {
-        const table = document.getElementById('analysisDataTable');
-        const thead = table.querySelector('thead');
-        const tbody = table.querySelector('tbody');
-        
-        // Limpar tabela
-        thead.innerHTML = '';
-        tbody.innerHTML = '';
-        
-        // Criar cabeçalho
-        const headerRow = document.createElement('tr');
-        headerRow.innerHTML = '<th>Data</th>';
-        
-        Object.entries(data.products).forEach(([barcode, productName]) => {
-            data.markets.forEach(market => {
-                const marketName = this.getMarketName(market);
-                headerRow.innerHTML += `<th>${productName}<br><small>${marketName}</small></th>`;
-            });
-        });
-        
-        thead.appendChild(headerRow);
-        
-        // Criar linhas de dados
-        data.dates.forEach(date => {
-            const row = document.createElement('tr');
-            const dateFormatted = new Date(date).toLocaleDateString('pt-BR');
-            row.innerHTML = `<td>${dateFormatted}</td>`;
-            
-            Object.entries(data.products).forEach(([barcode, productName]) => {
-                data.markets.forEach(market => {
-                    const key = `${barcode}_${market}`;
-                    const priceData = data.price_matrix[key];
-                    const price = priceData ? priceData[date] : null;
-                    
-                    if (price) {
-                        // Encontrar preço mínimo e máximo para destacar
-                        const allPrices = this.getAllPricesForDate(data, date);
-                        const minPrice = Math.min(...allPrices);
-                        const maxPrice = Math.max(...allPrices);
-                        
-                        const cellClass = price === minPrice ? 'low' : price === maxPrice ? 'high' : '';
-                        
-                        row.innerHTML += `<td class="price-cell ${cellClass}">R$ ${price.toFixed(2)}</td>`;
-                    } else {
-                        row.innerHTML += '<td class="price-cell">-</td>';
-                    }
-                });
-            });
-            
-            tbody.appendChild(row);
-        });
-    }
-
-    getAllPricesForDate(data, date) {
-        const prices = [];
-        
-        Object.entries(data.products).forEach(([barcode, productName]) => {
-            data.markets.forEach(market => {
-                const key = `${barcode}_${market}`;
-                const priceData = data.price_matrix[key];
-                if (priceData && priceData[date]) {
-                    prices.push(priceData[date]);
-                }
-            });
-        });
-        
-        return prices.length > 0 ? prices : [0];
-    }
-
-    clearProductAnalysis() {
-        this.productBarcodes = [''];
-        this.selectedMarkets = [];
-        this.updateBarcodeInputs();
-        this.updateSelectedMarkets();
-        
-        // Limpar checkboxes
-        document.querySelectorAll('.market-checkbox input[type="checkbox"]').forEach(cb => {
-            cb.checked = false;
-        });
-        
-        // Esconder resultados
-        document.getElementById('analysisResults').style.display = 'none';
-        
-        // Destruir gráficos
-        if (this.analysisCharts.line) {
-            this.analysisCharts.line.destroy();
-            this.analysisCharts.line = null;
-        }
-        if (this.analysisCharts.bar) {
-            this.analysisCharts.bar.destroy();
-            this.analysisCharts.bar = null;
-        }
-        
-        this.showNotification('Análise limpa com sucesso', 'success');
-    }
-
-    toggleChartType() {
-        // Alternar entre gráficos de linha e barras
-        const lineChart = document.getElementById('lineAnalysisChart').closest('.chart-wrapper');
-        const barChart = document.getElementById('barAnalysisChart').closest('.chart-wrapper');
-        
-        const lineDisplay = lineChart.style.display;
-        lineChart.style.display = lineDisplay === 'none' ? 'block' : 'none';
-        barChart.style.display = lineDisplay === 'none' ? 'none' : 'block';
-        
-        this.showNotification('Tipo de gráfico alternado', 'info');
-    }
-
-    exportAnalysisData() {
-        // Implementar exportação de dados da análise
-        this.showNotification('Funcionalidade de exportação em desenvolvimento', 'info');
-    }
-
-    async getSupabaseToken() {
-        const { data: { session } } = await supabase.auth.getSession();
-        return session?.access_token;
-    }
-
-    async logPageAccess() {
-        try {
-            await fetch('/api/log-page-access', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${await this.getSupabaseToken()}`
-                },
-                body: JSON.stringify({
-                    page_key: 'dashboard'
-                })
-            });
-        } catch (error) {
-            console.error('Erro ao registrar acesso:', error);
-        }
-    }
-}
-
-// Inicializar dashboard quando o DOM estiver carregado
-document.addEventListener('DOMContentLoaded', () => {
-    new Dashboard();
-});
+        const checkboxes = document.querySelector
