@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional
 import pandas as pd
 import collector_service
+from dashboard_routes import dashboard_router
 
 # Importar dependências compartilhadas e rotas de subadministradores
 from dependencies import get_current_user, get_current_user_optional, require_page_access, UserProfile, supabase, supabase_admin
