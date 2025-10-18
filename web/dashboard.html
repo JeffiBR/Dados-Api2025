@@ -3,209 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Preços AL</title>
+    <title>Dashboard - Thunder Theme</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-   <link rel="stylesheet" href="designer.css">
-    <link rel="stylesheet" href="componentes.css">
+    <link rel="stylesheet" href="designer.css">
+    <link rel="stylesheet" href="menu.css">
+    <link rel="stylesheet" href="dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth.js"></script>
     <script src="menu.js"></script>
     <script src="theme.js"></script>
-    <style>
-        /* ====== INDICADOR DE PÁGINA EM DESENVOLVIMENTO ====== */
-        .dev-notice {
-            background: linear-gradient(135deg, 
-                rgba(79, 70, 229, 0.08) 0%, 
-                rgba(124, 58, 237, 0.05) 50%, 
-                rgba(79, 70, 229, 0.08) 100%);
-            border-radius: 20px;
-            padding: 3rem 2rem;
-            margin: 2rem 0;
-            border: 2px dashed rgba(79, 70, 229, 0.3);
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-        }
-
-        body.light-mode .dev-notice {
-            background: linear-gradient(135deg, 
-                rgba(79, 70, 229, 0.05) 0%, 
-                rgba(124, 58, 237, 0.03) 50%, 
-                rgba(79, 70, 229, 0.05) 100%);
-            border: 2px dashed rgba(79, 70, 229, 0.2);
-        }
-
-        .dev-notice::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: url('data:image/svg+xml,<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><g fill="%234f46e5" fill-opacity="0.03"><path d="M30 0l8.66 15-8.66 15-8.66 15zM60 30l-8.66-15-8.66 15 8.66 15zM30 60l-8.66-15 8.66-15 8.66 15zM0 30l8.66-15 8.66 15-8.66 15z"/></g></g></svg>');
-            animation: floatBackground 20s linear infinite;
-        }
-
-        @keyframes floatBackground {
-            0% { transform: translate(0, 0) rotate(0deg); }
-            100% { transform: translate(-30px, -30px) rotate(360deg); }
-        }
-
-        .dev-content {
-            position: relative;
-            z-index: 2;
-        }
-
-        .dev-content i {
-            font-size: 4rem;
-            color: var(--primary);
-            margin-bottom: 1.5rem;
-            display: block;
-            text-shadow: 0 0 20px rgba(79, 70, 229, 0.3);
-        }
-
-        .dev-content h3 {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--text-dark);
-            margin-bottom: 1rem;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        body.light-mode .dev-content h3 {
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .dev-content p {
-            font-size: 1.2rem;
-            color: var(--muted-dark);
-            margin-bottom: 2rem;
-            max-width: 500px;
-            margin-left: auto;
-            margin-right: auto;
-            line-height: 1.6;
-        }
-
-        body.light-mode .dev-content p {
-            color: var(--muted-light);
-        }
-
-        .dev-features {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-
-        .dev-badge {
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border-radius: 50px;
-            font-weight: 600;
-            font-size: 0.9rem;
-            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            transition: all 0.3s ease;
-        }
-
-        .dev-badge:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
-        }
-
-        /* Animação da engrenagem */
-        .fa-spin {
-            animation: fa-spin 2s infinite linear;
-        }
-
-        @keyframes fa-spin {
-            0% {
-                transform: rotate(0deg);
-            }
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        /* Efeito de pulso adicional */
-        @keyframes pulse-glow {
-            0%, 100% {
-                filter: drop-shadow(0 0 10px rgba(79, 70, 229, 0.3));
-            }
-            50% {
-                filter: drop-shadow(0 0 20px rgba(79, 70, 229, 0.6));
-            }
-        }
-
-        .dev-content i {
-            animation: fa-spin 3s infinite linear, pulse-glow 2s ease-in-out infinite;
-        }
-
-        /* Responsividade */
-        @media (max-width: 768px) {
-            .dev-notice {
-                padding: 2rem 1.5rem;
-                margin: 1.5rem 0;
-            }
-            
-            .dev-content i {
-                font-size: 3rem;
-            }
-            
-            .dev-content h3 {
-                font-size: 1.5rem;
-            }
-            
-            .dev-content p {
-                font-size: 1.1rem;
-            }
-            
-            .dev-badge {
-                padding: 0.6rem 1.2rem;
-                font-size: 0.85rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .dev-notice {
-                padding: 1.5rem 1rem;
-            }
-            
-            .dev-content i {
-                font-size: 2.5rem;
-            }
-            
-            .dev-content h3 {
-                font-size: 1.3rem;
-            }
-            
-            .dev-content p {
-                font-size: 1rem;
-            }
-            
-            .dev-features {
-                flex-direction: column;
-                align-items: center;
-            }
-            
-            .dev-badge {
-                width: 100%;
-                max-width: 200px;
-                justify-content: center;
-            }
-        }
-    </style>
 </head>
 <body class="theme-dark">
     <script>
@@ -213,7 +23,6 @@
             if (!await requireAuth()) return;
             await initializeDynamicMenu();
             await checkAccessExpiration();
-            routeGuard('dashboard');
         });
     </script>
 
@@ -228,7 +37,7 @@
                    <li class="nav-header">ANÁLISE</li>
                     <li><a href="/search.html"><i class="fas fa-search"></i> Busca</a></li>
                     <li data-required-permission="compare"><a href="/compare.html"><i class="fas fa-chart-bar"></i> Comparador</a></li>
-                    <li data-required-permission="dashboard"><a href="/dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+                    <li data-required-permission="dashboard"><a href="/dashboard.html" class="active"><i class="fas fa-chart-line"></i> Dashboard</a></li>
                     <li data-required-permission="baskets"><a href="/cesta.html"><i class="fas fa-shopping-basket"></i> Minhas Cestas</a></li>
                     
                     <li class="nav-header">ADMINISTRAÇÃO</li>
@@ -279,6 +88,18 @@
                                 <i class="fas fa-user"></i>
                                 <span>Meu Perfil</span>
                             </a>
+                            <a href="/updates.html" class="dropdown-item">
+                                <i class="fas fa-sync-alt"></i>
+                                <span>Atualizações</span>
+                            </a>
+                            <a href="/faq.html" class="dropdown-item">
+                                <i class="fas fa-question-circle"></i>
+                                <span>FAQ</span>
+                            </a>
+                            <a href="/maintenance.html" class="dropdown-item">
+                                <i class="fas fa-tools"></i>
+                                <span>Manutenção</span>
+                            </a>
                             <div class="dropdown-divider"></div>
                             <a href="#" class="dropdown-item logout-btn" id="logoutBtn">
                                 <i class="fas fa-sign-out-alt"></i>
@@ -295,29 +116,323 @@
                         <i class="fas fa-chart-line"></i>
                         <h2>Dashboard Analítico</h2>
                     </div>
-                    <p class="panel-description">Visualize métricas, estatísticas e insights sobre os dados de preços coletados.</p>
+                    <p class="panel-description">Visão completa do mercado com métricas e estatísticas em tempo real.</p>
+                    
+                    <!-- Filtros do Dashboard -->
+                    <div class="dashboard-controls">
+                        <div class="filter-group">
+                            <label for="dateRange">Período:</label>
+                            <select id="dateRange">
+                                <option value="7">Últimos 7 dias</option>
+                                <option value="15">Últimos 15 dias</option>
+                                <option value="30" selected>Últimos 30 dias</option>
+                                <option value="90">Últimos 3 meses</option>
+                                <option value="custom">Personalizado</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filter-group custom-date-range" id="customDateRange" style="display: none;">
+                            <label for="startDate">De:</label>
+                            <input type="date" id="startDate">
+                            <label for="endDate">Até:</label>
+                            <input type="date" id="endDate">
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="marketFilter">Mercado:</label>
+                            <select id="marketFilter">
+                                <option value="all">Todos os mercados</option>
+                            </select>
+                        </div>
+                        
+                        <button id="applyFilters" class="btn primary">
+                            <i class="fas fa-sync-alt"></i> Aplicar Filtros
+                        </button>
+                        
+                        <button id="exportData" class="btn outline">
+                            <i class="fas fa-download"></i> Exportar
+                        </button>
+                    </div>
 
-                    <!-- Indicador de Desenvolvimento -->
-                    <div class="dev-notice">
-                        <div class="dev-content">
-                            <i class="fas fa-cog fa-spin"></i>
-                            <h3>Dashboard em Desenvolvimento</h3>
-                            <p>Estamos trabalhando para tracer análises avançadas e visualizações interativas dos dados de preços.</p>
-                            <div class="dev-features">
-                                <span class="dev-badge">📊 Gráficos Interativos</span>
-                                <span class="dev-badge">📈 Tendências</span>
-                                <span class="dev-badge">🔍 Insights</span>
+                    <!-- Cards de Métricas -->
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-icon primary">
+                                <i class="fas fa-store"></i>
                             </div>
+                            <div class="metric-info">
+                                <h3 id="totalMarkets">0</h3>
+                                <p>Mercados Ativos</p>
+                            </div>
+                            <div class="metric-trend positive">
+                                <i class="fas fa-arrow-up"></i>
+                                <span>+12%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-icon success">
+                                <i class="fas fa-shopping-basket"></i>
+                            </div>
+                            <div class="metric-info">
+                                <h3 id="totalProducts">0</h3>
+                                <p>Produtos Coletados</p>
+                            </div>
+                            <div class="metric-trend positive">
+                                <i class="fas fa-arrow-up"></i>
+                                <span>+8%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-icon warning">
+                                <i class="fas fa-database"></i>
+                            </div>
+                            <div class="metric-info">
+                                <h3 id="totalCollections">0</h3>
+                                <p>Coletas Realizadas</p>
+                            </div>
+                            <div class="metric-trend negative">
+                                <i class="fas fa-arrow-down"></i>
+                                <span>-3%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-icon info">
+                                <i class="fas fa-money-bill-wave"></i>
+                            </div>
+                            <div class="metric-info">
+                                <h3 id="avgPrice">R$ 0,00</h3>
+                                <p>Preço Médio</p>
+                            </div>
+                            <div class="metric-trend neutral">
+                                <i class="fas fa-minus"></i>
+                                <span>0%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NOVA SEÇÃO: Análise de Produtos por Código de Barras -->
+                    <div class="admin-panel product-analysis-panel">
+                        <div class="panel-header">
+                            <i class="fas fa-barcode"></i>
+                            <h3>Análise Detalhada por Código de Barras</h3>
+                        </div>
+                        <p class="panel-description">Compare a evolução de preços de produtos específicos em múltiplos mercados.</p>
+                        
+                        <div class="analysis-controls">
+                            <div class="control-group">
+                                <label for="productBarcodes">Códigos de Barras (até 5):</label>
+                                <div class="barcode-inputs" id="barcodeInputs">
+                                    <div class="barcode-input-group">
+                                        <input type="text" class="barcode-input" placeholder="Digite o código de barras" data-index="0">
+                                        <button type="button" class="btn small outline remove-barcode" style="display: none;">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn small outline" id="addBarcode">
+                                    <i class="fas fa-plus"></i> Adicionar Produto
+                                </button>
+                            </div>
+                            
+                            <div class="control-group">
+                                <label for="analysisMarkets">Mercados (até 10):</label>
+                                <div class="markets-selection">
+                                    <div class="market-checkboxes" id="marketCheckboxes">
+                                        <!-- Checkboxes serão carregados via JavaScript -->
+                                    </div>
+                                    <div class="selection-info">
+                                        <span id="selectedMarketsCount">0</span> mercados selecionados
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="control-group">
+                                <label for="analysisPeriod">Período da Análise:</label>
+                                <select id="analysisPeriod">
+                                    <option value="7">Últimos 7 dias</option>
+                                    <option value="15">Últimos 15 dias</option>
+                                    <option value="30" selected>Últimos 30 dias</option>
+                                    <option value="60">Últimos 60 dias</option>
+                                    <option value="90">Últimos 90 dias</option>
+                                </select>
+                                <div class="date-info" id="dateRangeInfo">
+                                    Período: Carregando...
+                                </div>
+                            </div>
+                            
+                            <div class="control-actions">
+                                <button id="runAnalysis" class="btn primary">
+                                    <i class="fas fa-chart-line"></i> Executar Análise
+                                </button>
+                                <button id="clearAnalysis" class="btn outline">
+                                    <i class="fas fa-eraser"></i> Limpar
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="analysisResults" class="analysis-results" style="display: none;">
+                            <div class="results-header">
+                                <h4>Resultados da Análise</h4>
+                                <div class="results-actions">
+                                    <button id="toggleChartType" class="btn small outline">
+                                        <i class="fas fa-exchange-alt"></i> Alternar Gráfico
+                                    </button>
+                                    <button id="exportAnalysis" class="btn small outline">
+                                        <i class="fas fa-download"></i> Exportar Dados
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="charts-container">
+                                <div class="chart-wrapper">
+                                    <div class="chart-header">
+                                        <h5>Evolução de Preços - Gráfico de Linha</h5>
+                                    </div>
+                                    <div class="chart-container">
+                                        <canvas id="lineAnalysisChart"></canvas>
+                                    </div>
+                                </div>
+                                
+                                <div class="chart-wrapper">
+                                    <div class="chart-header">
+                                        <h5>Comparação de Preços - Gráfico de Barras</h5>
+                                    </div>
+                                    <div class="chart-container">
+                                        <canvas id="barAnalysisChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="analysis-table-container">
+                                <div class="table-header">
+                                    <h5>Dados Detalhados</h5>
+                                </div>
+                                <div class="table-container">
+                                    <table id="analysisDataTable">
+                                        <thead>
+                                            <tr>
+                                                <th>Data</th>
+                                                <!-- Colunas dinâmicas serão adicionadas via JavaScript -->
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Dados serão carregados via JavaScript -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gráficos e Análises Gerais -->
+                    <div class="charts-grid">
+                        <!-- Tendência de Preços -->
+                        <div class="chart-card full-width">
+                            <div class="chart-header">
+                                <h3><i class="fas fa-chart-line"></i> Tendência de Preços</h3>
+                                <div class="chart-actions">
+                                    <button class="btn small outline" data-chart="priceTrend">
+                                        <i class="fas fa-expand"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="priceTrendChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Top Produtos -->
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3><i class="fas fa-star"></i> Top Produtos</h3>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="topProductsChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Distribuição por Categoria -->
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3><i class="fas fa-chart-pie"></i> Por Categoria</h3>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="categoryChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Comparação de Mercados -->
+                        <div class="chart-card full-width">
+                            <div class="chart-header">
+                                <h3><i class="fas fa-balance-scale"></i> Comparação de Mercados</h3>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="marketComparisonChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Melhores Ofertas -->
+                        <div class="chart-card full-width">
+                            <div class="chart-header">
+                                <h3><i class="fas fa-percentage"></i> Melhores Ofertas</h3>
+                                <button class="btn small" id="refreshBargains">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                            <div class="bargains-container">
+                                <div id="bargainsList" class="bargains-list">
+                                    <!-- Lista de ofertas será carregada aqui -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabela de Atividade Recente -->
+                    <div class="admin-panel">
+                        <div class="panel-header">
+                            <i class="fas fa-history"></i>
+                            <h3>Atividade Recente</h3>
+                        </div>
+                        <div class="table-container">
+                            <table id="recentActivityTable">
+                                <thead>
+                                    <tr>
+                                        <th>Tipo</th>
+                                        <th>Descrição</th>
+                                        <th>Mercado</th>
+                                        <th>Data</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Dados serão carregados via JavaScript -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </main>
             </div>
         </div>
     </div>
-    
-    <script src="mobile-menu.js"></script>
+
+    <!-- Modal para gráficos expandidos -->
+    <div id="chartModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Gráfico Expandido</h3>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <canvas id="expandedChart"></canvas>
+            </div>
+        </div>
+    </div>
+
     <script src="user-menu.js"></script>
+    <script src="dashboard.js"></script>
+    <script src="user-activity-monitor.js"></script>
 </body>
 </html>
-
-
