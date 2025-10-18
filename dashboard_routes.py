@@ -1,12 +1,13 @@
 # dashboard_routes.py - Sistema completo de relatórios e estatísticas para o dashboard
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from typing import List, Optional, Dict, Any
 from datetime import date, datetime, timedelta
 from pydantic import BaseModel, Field
 import logging
 import asyncio
 import pandas as pd
+import json
 
 # Importar dependências compartilhadas
 from dependencies import get_current_user, UserProfile, require_page_access, supabase, supabase_admin
@@ -70,6 +71,17 @@ class TimeRangeRequest(BaseModel):
     end_date: date
     cnpjs: Optional[List[str]] = None
     category: Optional[str] = None
+
+class ProductBarcodeAnalysisRequest(BaseModel):
+    start_date: date
+    end_date: date
+    product_barcodes: List[str] = Field(..., max_items=5)
+    markets_cnpj: List[str] = Field(..., max_items=10)
+
+class MarketInfo(BaseModel):
+    cnpj: str
+    nome: str
+    endereco: Optional[str]
 
 # --------------------------------------------------------------------------
 # --- FUNÇÕES AUXILIARES PARA ANÁLISE DE DADOS ---
@@ -139,6 +151,29 @@ async def categorize_products(products: List[Dict]) -> Dict[str, List[Dict]]:
     
     return categorized
 
+async def get_available_dates() -> List[date]:
+    """Obtém as datas disponíveis para análise baseado nas coletas"""
+    try:
+        response = await asyncio.to_thread(
+            supabase.table('produtos')
+            .select('data_coleta')
+            .order('data_coleta', desc=True)
+            .execute
+        )
+        
+        if not response.data:
+            return []
+        
+        # Extrair datas únicas
+        dates = list(set([item['data_coleta'] for item in response.data]))
+        # Converter para objetos date e ordenar
+        date_objects = [datetime.fromisoformat(date_str).date() for date_str in dates]
+        return sorted(date_objects, reverse=True)
+        
+    except Exception as e:
+        logging.error(f"Erro ao buscar datas disponíveis: {e}")
+        return []
+
 # --------------------------------------------------------------------------
 # --- ENDPOINTS PRINCIPAIS DO DASHBOARD ---
 # --------------------------------------------------------------------------
@@ -162,9 +197,11 @@ async def get_dashboard_summary(
         previous_data = await get_date_range_data(previous_start, previous_end, cnpjs)
         
         # Mercados ativos
-        markets_response = await asyncio.to_thread(
-            supabase.table('supermercados').select('id', count='exact').execute
-        )
+        markets_query = supabase.table('supermercados').select('id', count='exact')
+        if cnpjs:
+            markets_query = markets_query.in_('cnpj', cnpjs)
+        
+        markets_response = await asyncio.to_thread(markets_query.execute)
         
         # Coletas no período
         collections_response = await asyncio.to_thread(
@@ -539,7 +576,166 @@ async def get_recent_activity(
         raise HTTPException(status_code=500, detail="Erro ao buscar atividade recente")
 
 # --------------------------------------------------------------------------
-# --- ENDPOINTS DE RELATÓRIOS AVANÇADOS ---
+# --- ENDPOINTS PARA ANÁLISE DE PRODUTOS POR CÓDIGO DE BARRAS ---
+# --------------------------------------------------------------------------
+
+@dashboard_router.get("/markets", response_model=List[MarketInfo])
+async def get_markets_for_analysis(
+    user: UserProfile = Depends(require_page_access('dashboard'))
+):
+    """Retorna lista de mercados com nome e endereço para seleção"""
+    try:
+        response = await asyncio.to_thread(
+            supabase.table('supermercados')
+            .select('cnpj, nome, endereco')
+            .order('nome')
+            .execute
+        )
+        
+        markets = []
+        for market in response.data:
+            markets.append(MarketInfo(
+                cnpj=market['cnpj'],
+                nome=market['nome'],
+                endereco=market.get('endereco')
+            ))
+        
+        return markets
+        
+    except Exception as e:
+        logging.error(f"Erro ao buscar mercados: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao buscar lista de mercados")
+
+@dashboard_router.get("/available-dates")
+async def get_available_dates_endpoint(
+    user: UserProfile = Depends(require_page_access('dashboard'))
+):
+    """Retorna as datas disponíveis para análise baseado nas coletas"""
+    try:
+        dates = await get_available_dates()
+        return {
+            "dates": [date.isoformat() for date in dates],
+            "min_date": dates[-1].isoformat() if dates else None,
+            "max_date": dates[0].isoformat() if dates else None
+        }
+    except Exception as e:
+        logging.error(f"Erro ao buscar datas disponíveis: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao buscar datas disponíveis")
+
+@dashboard_router.post("/product-barcode-analysis")
+async def get_product_barcode_analysis(
+    request: ProductBarcodeAnalysisRequest,
+    user: UserProfile = Depends(require_page_access('dashboard'))
+):
+    """Análise detalhada de produtos por código de barras em múltiplos mercados"""
+    try:
+        # Buscar dados históricos
+        query = supabase.table('produtos').select('*')
+        query = query.in_('codigo_barras', request.product_barcodes)
+        query = query.in_('cnpj_supermercado', request.markets_cnpj)
+        query = query.gte('data_coleta', str(request.start_date))
+        query = query.lte('data_coleta', str(request.end_date))
+        query = query.order('data_coleta')
+        
+        response = await asyncio.to_thread(query.execute)
+        data = response.data
+
+        if not data:
+            return {"message": "Nenhum dado encontrado para os critérios especificados"}
+
+        # Processar dados para análise
+        df = pd.DataFrame(data)
+        df['data_coleta'] = pd.to_datetime(df['data_coleta']).dt.date
+        df['preco_produto'] = pd.to_numeric(df['preco_produto'], errors='coerce')
+        df = df.dropna(subset=['preco_produto'])
+
+        # Buscar informações dos mercados
+        markets_response = await asyncio.to_thread(
+            supabase.table('supermercados')
+            .select('cnpj, nome, endereco')
+            .in_('cnpj', request.markets_cnpj)
+            .execute
+        )
+        
+        markets_map = {market['cnpj']: market for market in markets_response.data}
+
+        # Criar estrutura de dados para o frontend
+        analysis_data = {
+            'products': {},
+            'markets': [],
+            'dates': sorted(df['data_coleta'].unique()),
+            'price_matrix': {},
+            'market_info': {}
+        }
+
+        # Organizar dados por produto e mercado
+        for barcode in request.product_barcodes:
+            product_data = df[df['codigo_barras'] == barcode]
+            if not product_data.empty:
+                product_name = product_data.iloc[0]['nome_produto']
+                analysis_data['products'][barcode] = product_name
+                
+                for market_cnpj in request.markets_cnpj:
+                    market_data = product_data[product_data['cnpj_supermercado'] == market_cnpj]
+                    if not market_data.empty:
+                        # Adicionar informações do mercado
+                        if market_cnpj not in analysis_data['markets']:
+                            analysis_data['markets'].append(market_cnpj)
+                        
+                        if market_cnpj not in analysis_data['market_info']:
+                            market_info = markets_map.get(market_cnpj, {})
+                            analysis_data['market_info'][market_cnpj] = {
+                                'nome': market_info.get('nome', 'N/A'),
+                                'endereco': market_info.get('endereco')
+                            }
+                        
+                        # Preços por data
+                        key = f"{barcode}_{market_cnpj}"
+                        analysis_data['price_matrix'][key] = {}
+                        
+                        for date in analysis_data['dates']:
+                            daily_data = market_data[market_data['data_coleta'] == date]
+                            if not daily_data.empty:
+                                price = daily_data.iloc[0]['preco_produto']
+                                analysis_data['price_matrix'][key][date.isoformat()] = float(price)
+
+        return analysis_data
+
+    except Exception as e:
+        logging.error(f"Erro na análise de produtos por código de barras: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao gerar análise de produtos")
+
+@dashboard_router.get("/product-info/{barcode}")
+async def get_product_info(
+    barcode: str,
+    user: UserProfile = Depends(require_page_access('dashboard'))
+):
+    """Busca informações básicas de um produto pelo código de barras"""
+    try:
+        response = await asyncio.to_thread(
+            supabase.table('produtos')
+            .select('nome_produto, tipo_unidade, nome_produto_normalizado')
+            .eq('codigo_barras', barcode)
+            .limit(1)
+            .execute
+        )
+        
+        if not response.data:
+            return {"message": "Produto não encontrado"}
+        
+        product_data = response.data[0]
+        return {
+            "nome_produto": product_data['nome_produto'],
+            "tipo_unidade": product_data.get('tipo_unidade', 'UN'),
+            "nome_normalizado": product_data.get('nome_produto_normalizado')
+        }
+        
+    except Exception as e:
+        logging.error(f"Erro ao buscar informações do produto: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao buscar informações do produto")
+
+# --------------------------------------------------------------------------
+# --- ENDPOINTS DE RELATÓRIOS AVANÇADOS E EXPORTAÇÃO ---
 # --------------------------------------------------------------------------
 
 @dashboard_router.post("/custom-report")
@@ -601,7 +797,7 @@ async def generate_custom_report(
                 'mais_baratos': produtos_mais_baratos
             },
             'distribuicao_precos': price_ranges,
-            'categorias': (await get_category_stats(request.start_date, request.end_date, request.cnpjs, user))
+            'categorias': await get_category_stats(request.start_date, request.end_date, request.cnpjs, user)
         }
         
         return report
@@ -657,3 +853,145 @@ async def export_dashboard_data(
     except Exception as e:
         logging.error(f"Erro ao exportar dados: {e}")
         raise HTTPException(status_code=500, detail="Erro ao exportar dados")
+
+@dashboard_router.post("/export-analysis")
+async def export_analysis_data(
+    request: ProductBarcodeAnalysisRequest,
+    user: UserProfile = Depends(require_page_access('dashboard'))
+):
+    """Exporta dados da análise de produtos por código de barras"""
+    try:
+        from fastapi.responses import Response
+        import io
+        
+        # Buscar os dados da análise
+        analysis_data = await get_product_barcode_analysis(request, user)
+        
+        if 'message' in analysis_data:
+            raise HTTPException(status_code=404, detail=analysis_data['message'])
+        
+        # Criar DataFrame para exportação
+        rows = []
+        for barcode, product_name in analysis_data['products'].items():
+            for market_cnpj in analysis_data['markets']:
+                key = f"{barcode}_{market_cnpj}"
+                price_data = analysis_data['price_matrix'].get(key, {})
+                market_info = analysis_data['market_info'].get(market_cnpj, {})
+                
+                for date_str, price in price_data.items():
+                    rows.append({
+                        'codigo_barras': barcode,
+                        'nome_produto': product_name,
+                        'cnpj_mercado': market_cnpj,
+                        'nome_mercado': market_info.get('nome', 'N/A'),
+                        'endereco_mercado': market_info.get('endereco', 'N/A'),
+                        'data': date_str,
+                        'preco': price
+                    })
+        
+        df = pd.DataFrame(rows)
+        
+        output = io.StringIO()
+        df.to_csv(output, index=False)
+        content = output.getvalue()
+        output.close()
+        
+        return Response(
+            content=content,
+            media_type='text/csv',
+            headers={'Content-Disposition': f'attachment; filename=analise_produtos_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'}
+        )
+            
+    except Exception as e:
+        logging.error(f"Erro ao exportar análise: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao exportar análise")
+
+# --------------------------------------------------------------------------
+# --- ENDPOINTS PARA DADOS AUXILIARES ---
+# --------------------------------------------------------------------------
+
+@dashboard_router.get("/product-suggestions")
+async def get_product_suggestions(
+    query: str = Query(..., min_length=2),
+    limit: int = Query(10, ge=1, le=20),
+    user: UserProfile = Depends(require_page_access('dashboard'))
+):
+    """Retorna sugestões de produtos baseado no termo de busca"""
+    try:
+        response = await asyncio.to_thread(
+            supabase.table('produtos')
+            .select('nome_produto, codigo_barras')
+            .ilike('nome_produto', f"%{query}%")
+            .limit(limit)
+            .execute
+        )
+        
+        suggestions = []
+        seen_products = set()
+        
+        for product in response.data:
+            product_name = product['nome_produto']
+            if product_name not in seen_products:
+                suggestions.append({
+                    'nome_produto': product_name,
+                    'codigo_barras': product.get('codigo_barras')
+                })
+                seen_products.add(product_name)
+        
+        return suggestions[:limit]
+        
+    except Exception as e:
+        logging.error(f"Erro ao buscar sugestões de produtos: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao buscar sugestões")
+
+@dashboard_router.get("/market-suggestions")
+async def get_market_suggestions(
+    query: str = Query(..., min_length=2),
+    limit: int = Query(10, ge=1, le=20),
+    user: UserProfile = Depends(require_page_access('dashboard'))
+):
+    """Retorna sugestões de mercados baseado no termo de busca"""
+    try:
+        response = await asyncio.to_thread(
+            supabase.table('supermercados')
+            .select('cnpj, nome, endereco')
+            .or_(f"nome.ilike.%{query}%,endereco.ilike.%{query}%")
+            .limit(limit)
+            .execute
+        )
+        
+        suggestions = []
+        for market in response.data:
+            suggestions.append({
+                'cnpj': market['cnpj'],
+                'nome': market['nome'],
+                'endereco': market.get('endereco')
+            })
+        
+        return suggestions
+        
+    except Exception as e:
+        logging.error(f"Erro ao buscar sugestões de mercados: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao buscar sugestões")
+
+# --------------------------------------------------------------------------
+# --- HEALTH CHECK ---
+# --------------------------------------------------------------------------
+
+@dashboard_router.get("/health")
+async def health_check():
+    """Endpoint de health check para o dashboard"""
+    try:
+        # Verificar conexão com o banco
+        await asyncio.to_thread(
+            supabase.table('produtos').select('id_registro', count='exact').limit(1).execute
+        )
+        
+        return {
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
+            "database": "connected"
+        }
+    except Exception as e:
+        logging.error(f"Health check failed: {e}")
+        raise HTTPException(status_code=503, detail="Service unavailable")
