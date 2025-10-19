@@ -1649,6 +1649,56 @@ async def get_user_groups(
     except Exception as e:
         logging.error(f"Erro ao buscar grupos do usuário: {e}")
         raise HTTPException(status_code=500, detail="Erro ao buscar grupos do usuário")
+# Adicione este endpoint no main.py, na seção de endpoints para grupos:
+
+@app.post("/api/user-groups/{user_group_id}/renew")
+async def renew_user_group_access(
+    user_group_id: int,
+    renew_data: UserRenewRequest,
+    user: UserProfile = Depends(require_page_access('group_admin_users'))
+):
+    """Endpoint alternativo para renovar acesso via user_group_id"""
+    try:
+        # Buscar a associação
+        user_group_response = await asyncio.to_thread(
+            supabase.table('user_groups')
+            .select('*')
+            .eq('id', user_group_id)
+            .single()
+            .execute
+        )
+        
+        if not user_group_response.data:
+            raise HTTPException(status_code=404, detail="Associação não encontrada")
+        
+        user_group = user_group_response.data
+        
+        # Calcular nova data
+        data_atual = date.today()
+        dias_adicionais = renew_data.dias_adicionais
+        
+        data_expiracao = user_group['data_expiracao']
+        if isinstance(data_expiracao, str):
+            data_expiracao = datetime.fromisoformat(data_expiracao).date()
+        
+        if data_expiracao < data_atual:
+            nova_data = data_atual + timedelta(days=dias_adicionais)
+        else:
+            nova_data = data_expiracao + timedelta(days=dias_adicionais)
+        
+        # Atualizar
+        await asyncio.to_thread(
+            lambda: supabase.table('user_groups')
+            .update({'data_expiracao': nova_data.isoformat()})
+            .eq('id', user_group_id)
+            .execute()
+        )
+        
+        return {"message": f"Acesso renovado por {dias_adicionais} dias"}
+        
+    except Exception as e:
+        logging.error(f"Erro ao renovar acesso: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao renovar acesso: {str(e)}")
 
 # NOVO ENDPOINT CORRIGIDO PARA COMPATIBILIDADE COM FRONTEND
 @app.get("/api/my-groups-detailed", response_model=List[dict])
