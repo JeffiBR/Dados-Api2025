@@ -12,7 +12,6 @@
     <link rel="stylesheet" href="group-admin.css">
 </head>
 <body class="theme-dark">
-    <!-- Script movido para depois do body estar definido -->
     <script>
         document.addEventListener('DOMContentLoaded', async function() {
             // Verificar se as funções existem antes de chamar
@@ -22,7 +21,12 @@
             }
             
             if (!await requireAuth()) return;
-            if (!await routeGuard('group_admin')) return;
+            
+            // CORREÇÃO: Usar a permissão correta
+            if (!await routeGuard('group_admin_users')) {
+                console.error('Usuário não tem permissão para acessar esta página');
+                return;
+            }
             
             if (typeof initializeDynamicMenu === 'function') {
                 await initializeDynamicMenu();
@@ -58,7 +62,9 @@
                     <li data-required-permission="markets"><a href="/markets.html"><i class="fas fa-store"></i> Gerenciar Mercados</a></li>
                     <li data-required-permission="users"><a href="/users.html"><i class="fas fa-users"></i> Gerenciar Usuários</a></li>
                     <li data-required-permission="group_admin_users"><a href="/group-admin-users.html"><i class="fas fa-layer-group"></i> Gerenciar Grupos</a></li>
-                    <li data-required-permission="group_admin"><a href="/group-admin.html"><i class="fas fa-user-shield"></i> Subadministradores</a></li>
+                    
+                    <!-- CORREÇÃO: Mudar de group_admin para group_admin_users -->
+                    <li data-required-permission="group_admin_users"><a href="/group-admin.html"><i class="fas fa-user-shield"></i> Subadministradores</a></li>
                 </ul>
             </nav>
             <div class="theme-switcher">
@@ -83,8 +89,8 @@
                                 <img src="https://ui-avatars.com/api/?name=U" alt="User" id="userAvatar">
                             </div>
                             <div class="user-info">
-                                <span class="user-name">Usuário</span>
-                                <span class="user-role">...</span>
+                                <span class="user-name" id="userName">Usuário</span>
+                                <span class="user-role" id="userRole">...</span>
                             </div>
                             <i class="fas fa-chevron-down"></i>
                         </button>
