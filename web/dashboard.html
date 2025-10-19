@@ -138,11 +138,8 @@
                             <input type="date" id="endDate">
                         </div>
                         
-                        <div class="filter-group">
-                            <label for="marketFilter">Mercado:</label>
-                            <select id="marketFilter">
-                                <option value="all">Todos os mercados</option>
-                            </select>
+                        <div class="filter-group" id="marketSelectorContainer">
+                            <!-- O seletor de mercados será injetado aqui -->
                         </div>
                         
                         <button id="applyFilters" class="btn primary">
@@ -162,7 +159,7 @@
                             </div>
                             <div class="metric-info">
                                 <h3 id="totalMarkets">0</h3>
-                                <p>Mercados Ativos</p>
+                                <p>Mercados Cadastrados</p>
                             </div>
                             <div class="metric-trend positive">
                                 <i class="fas fa-arrow-up"></i>
@@ -176,7 +173,7 @@
                             </div>
                             <div class="metric-info">
                                 <h3 id="totalProducts">0</h3>
-                                <p>Produtos Coletados</p>
+                                <p>Produtos na Base</p>
                             </div>
                             <div class="metric-trend positive">
                                 <i class="fas fa-arrow-up"></i>
@@ -200,16 +197,13 @@
                         
                         <div class="metric-card">
                             <div class="metric-icon info">
-                                <i class="fas fa-money-bill-wave"></i>
+                                <i class="fas fa-clock"></i>
                             </div>
                             <div class="metric-info">
-                                <h3 id="avgPrice">R$ 0,00</h3>
-                                <p>Preço Médio</p>
+                                <h3 id="lastCollection">--:--</h3>
+                                <p>Última Coleta</p>
                             </div>
-                            <div class="metric-trend neutral">
-                                <i class="fas fa-minus"></i>
-                                <span>0%</span>
-                            </div>
+                            <div class="metric-badge status-recent">AGORA</div>
                         </div>
                     </div>
 
@@ -221,22 +215,11 @@
                         </div>
                         <p class="panel-description">Compare a evolução de preços de produtos específicos em múltiplos mercados.</p>
                         
+                        <div id="barcodeInputContainer">
+                            <!-- O componente de entrada de códigos de barras será injetado aqui -->
+                        </div>
+
                         <div class="analysis-controls">
-                            <div class="control-group">
-                                <label for="productBarcodes">Códigos de Barras (até 5):</label>
-                                <div class="barcode-inputs" id="barcodeInputs">
-                                    <div class="barcode-input-group">
-                                        <input type="text" class="barcode-input" placeholder="Digite o código de barras" data-index="0">
-                                        <button type="button" class="btn small outline remove-barcode" style="display: none;">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <button type="button" class="btn small outline" id="addBarcode">
-                                    <i class="fas fa-plus"></i> Adicionar Produto
-                                </button>
-                            </div>
-                            
                             <div class="control-group">
                                 <label for="analysisMarkets">Mercados (até 10):</label>
                                 <div class="markets-selection">
@@ -330,7 +313,7 @@
                     <!-- Gráficos e Análises Gerais -->
                     <div class="charts-grid">
                         <!-- Tendência de Preços -->
-                        <div class="chart-card full-width">
+                        <div class="chart-card full-width" id="priceTrendChartContainer">
                             <div class="chart-header">
                                 <h3><i class="fas fa-chart-line"></i> Tendência de Preços</h3>
                                 <div class="chart-actions">
@@ -432,8 +415,9 @@
     </div>
 
     <script src="user-menu.js"></script>
+    <script src="dashboard-data.js"></script>
+    <script src="dashboard-ui.js"></script>
     <script src="dashboard.js"></script>
     <script src="user-activity-monitor.js"></script>
 </body>
 </html>
-
