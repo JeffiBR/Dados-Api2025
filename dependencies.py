@@ -1,4 +1,4 @@
-# dependencies.py - Funções e variáveis compartilhadas para evitar importação circular
+# dependencies.py - Funções e variáveis compartilhadas para evitar importação circular (VERSÃO CORRIGIDA)
 
 import os
 from supabase import create_client, Client
@@ -75,13 +75,20 @@ async def get_user_managed_groups(user_id: str) -> List[int]:
 
 # --- Funções de dependência principais ---
 async def get_current_user(authorization: str = Header(None)) -> UserProfile:
-    """Obtém o usuário atual com base no token JWT"""
+    """Obtém o usuário atual com base no token JWT - VERSÃO CORRIGIDA"""
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Token de autorização ausente ou mal formatado")
     
     jwt = authorization.split(" ")[1]
     try:
-        user_response = supabase.auth.get_user(jwt)
+        # CORREÇÃO: Usar await para chamadas assíncronas
+        user_response = await asyncio.to_thread(
+            lambda: supabase.auth.get_user(jwt)
+        )
+        
+        if not user_response.user:
+            raise HTTPException(status_code=401, detail="Token inválido ou expirado")
+            
         user = user_response.user
         user_id = user.id
         
@@ -148,19 +155,24 @@ async def get_current_user(authorization: str = Header(None)) -> UserProfile:
     except HTTPException:
         raise
     except Exception as e:
-        if isinstance(e, APIError): 
-            raise e
         logging.error(f"Erro de validação de token: {e}")
         raise HTTPException(status_code=401, detail="Token inválido ou expirado")
 
 async def get_current_user_optional(authorization: str = Header(None)) -> Optional[UserProfile]:
-    """Versão opcional do get_current_user para endpoints públicos"""
+    """Versão opcional do get_current_user para endpoints públicos - VERSÃO CORRIGIDA"""
     if not authorization or not authorization.startswith("Bearer "):
         return None
     
     jwt = authorization.split(" ")[1]
     try:
-        user_response = supabase.auth.get_user(jwt)
+        # CORREÇÃO: Usar await para chamadas assíncronas
+        user_response = await asyncio.to_thread(
+            lambda: supabase.auth.get_user(jwt)
+        )
+        
+        if not user_response.user:
+            return None
+            
         user = user_response.user
         user_id = user.id
         
@@ -203,6 +215,7 @@ async def get_current_user_optional(authorization: str = Header(None)) -> Option
             managed_groups=managed_groups
         )
     except Exception as e:
+        logging.debug(f"Erro na validação opcional de token: {e}")
         return None
 
 def require_page_access(page_key: str):
@@ -398,5 +411,180 @@ async def get_user_groups_info(user_id: str) -> List[dict]:
         logging.error(f"Erro ao buscar grupos do usuário {user_id}: {e}")
         return []
 
+# --- Funções auxiliares para dashboard ---
+async def get_dashboard_data(start_date: date, end_date: date, cnpjs: Optional[List[str]] = None) -> List[Dict]:
+    """Função auxiliar para obter dados do dashboard de forma segura"""
+    try:
+        query = supabase.table('produtos').select('*')
+        
+        # Aplicar filtros de forma segura
+        try:
+            query = query.gte('data_coleta', str(start_date)).lte('data_coleta', str(end_date))
+        except Exception as e:
+            logging.warning(f"Filtro de data não aplicado: {e}")
+        
+        if cnpjs:
+            try:
+                query = query.in_('cnpj_supermercado', cnpjs)
+            except Exception as e:
+                logging.warning(f"Filtro de CNPJ não aplicado: {e}")
+                
+        response = await asyncio.to_thread(query.execute)
+        return response.data or []
+    except Exception as e:
+        logging.error(f"Erro ao buscar dados do dashboard: {e}")
+        return []
+
+async def check_database_health() -> Dict[str, Any]:
+    """Verifica a saúde do banco de dados para o dashboard"""
+    try:
+        # Verificar tabelas essenciais
+        tables_to_check = ['produtos', 'supermercados', 'coletas', 'profiles']
+        health_status = {}
+        
+        for table in tables_to_check:
+            try:
+                response = await asyncio.to_thread(
+                    supabase.table(table).select('id', count='exact').limit(1).execute
+                )
+                health_status[table] = {
+                    'status': 'healthy',
+                    'count': response.count or 0
+                }
+            except Exception as e:
+                health_status[table] = {
+                    'status': 'unhealthy',
+                    'error': str(e)
+                }
+        
+        return {
+            "status": "healthy" if all([v['status'] == 'healthy' for v in health_status.values()]) else "degraded",
+            "timestamp": datetime.now().isoformat(),
+            "tables": health_status
+        }
+        
+    except Exception as e:
+        logging.error(f"Erro no health check do banco: {e}")
+        return {
+            "status": "unhealthy",
+            "timestamp": datetime.now().isoformat(),
+            "error": str(e)
+        }
+
+# --- Funções de cache e performance ---
+class DataCache:
+    """Cache simples para melhorar performance"""
+    def __init__(self, ttl_seconds: int = 300):
+        self.cache = {}
+        self.ttl = ttl_seconds
+    
+    async def get(self, key: str, fetch_func=None, *args, **kwargs):
+        """Obtém dados do cache ou executa função para buscar dados"""
+        now = datetime.now()
+        
+        if key in self.cache:
+            data, timestamp = self.cache[key]
+            if (now - timestamp).total_seconds() < self.ttl:
+                return data
+        
+        if fetch_func:
+            data = await fetch_func(*args, **kwargs)
+            self.cache[key] = (data, now)
+            return data
+        
+        return None
+    
+    def invalidate(self, key: str):
+        """Remove item do cache"""
+        if key in self.cache:
+            del self.cache[key]
+
+# Instância global do cache
+dashboard_cache = DataCache(ttl_seconds=300)  # 5 minutos
+
+# --- Funções de validação de permissões para dashboard ---
+async def validate_dashboard_access(user: UserProfile) -> bool:
+    """Valida se o usuário tem acesso ao dashboard"""
+    if user.role == 'admin':
+        return True
+    
+    if 'dashboard' in user.allowed_pages:
+        return True
+    
+    # Subadmins com grupos ativos também podem acessar
+    if user.managed_groups:
+        return True
+    
+    return False
+
+async def get_user_dashboard_data(user: UserProfile, start_date: date, end_date: date, cnpjs: Optional[List[str]] = None) -> Dict[str, Any]:
+    """Obtém dados do dashboard filtrados pelas permissões do usuário"""
+    try:
+        # Para admins, retorna todos os dados
+        if user.role == 'admin':
+            return await get_dashboard_data(start_date, end_date, cnpjs)
+        
+        # Para subadmins, filtra pelos grupos gerenciados
+        if user.managed_groups:
+            # Obter CNPJs dos mercados dos grupos gerenciados
+            groups_response = await asyncio.to_thread(
+                supabase.table('grupos')
+                .select('id, mercados_associados')
+                .in_('id', user.managed_groups)
+                .execute
+            )
+            
+            allowed_cnpjs = set()
+            for group in groups_response.data:
+                mercados = group.get('mercados_associados', [])
+                if mercados:
+                    allowed_cnpjs.update(mercados)
+            
+            # Se CNPJs específicos foram solicitados, filtrar pelos permitidos
+            if cnpjs:
+                filtered_cnpjs = [cnpj for cnpj in cnpjs if cnpj in allowed_cnpjs]
+            else:
+                filtered_cnpjs = list(allowed_cnpjs)
+            
+            return await get_dashboard_data(start_date, end_date, filtered_cnpjs)
+        
+        # Para usuários normais, retorna dados vazios
+        return []
+        
+    except Exception as e:
+        logging.error(f"Erro ao obter dados do dashboard para usuário {user.id}: {e}")
+        return []
+
+# --- Middleware de segurança adicional ---
+async def security_middleware(user: UserProfile) -> Dict[str, Any]:
+    """Middleware para adicionar verificações de segurança adicionais"""
+    security_info = {
+        'user_id': user.id,
+        'role': user.role,
+        'allowed_pages': user.allowed_pages,
+        'managed_groups': user.managed_groups,
+        'timestamp': datetime.now().isoformat(),
+        'security_level': 'high' if user.role == 'admin' else 'medium'
+    }
+    
+    # Verificar se o usuário está ativo
+    try:
+        auth_user = await asyncio.to_thread(
+            lambda: supabase_admin.auth.admin.get_user_by_id(user.id)
+        )
+        if auth_user.user:
+            security_info['user_active'] = True
+            security_info['last_sign_in'] = getattr(auth_user.user, 'last_sign_in_at', None)
+        else:
+            security_info['user_active'] = False
+    except Exception as e:
+        logging.warning(f"Erro ao verificar status do usuário {user.id}: {e}")
+        security_info['user_active'] = True  # Assume ativo por padrão
+    
+    return security_info
+
 # Inicializar logging
 setup_logging()
+
+# Log de inicialização
+logging.info("✅ Dependencies.py carregado com sucesso - Versão Corrigida")
