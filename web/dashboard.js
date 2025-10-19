@@ -1,4 +1,4 @@
-// Dashboard JavaScript - Thunder Theme
+// Dashboard JavaScript - Thunder Theme (COMPLETO E CORRIGIDO)
 
 class Dashboard {
     constructor() {
@@ -170,6 +170,7 @@ class Dashboard {
     }
 
     async fetchSummary() {
+        const token = await this.getSupabaseToken();
         const params = new URLSearchParams({
             start_date: this.filters.startDate,
             end_date: this.filters.endDate
@@ -179,12 +180,17 @@ class Dashboard {
             params.append('cnpjs', this.filters.market);
         }
 
-        const response = await fetch(`/api/dashboard/summary?${params}`);
+        const response = await fetch(`/api/dashboard/summary?${params}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         if (!response.ok) throw new Error('Erro ao buscar resumo');
         return await response.json();
     }
 
     async fetchPriceTrends() {
+        const token = await this.getSupabaseToken();
         const params = new URLSearchParams({
             start_date: this.filters.startDate,
             end_date: this.filters.endDate
@@ -194,12 +200,17 @@ class Dashboard {
             params.append('cnpjs', this.filters.market);
         }
 
-        const response = await fetch(`/api/dashboard/price-trends?${params}`);
+        const response = await fetch(`/api/dashboard/price-trends?${params}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         if (!response.ok) throw new Error('Erro ao buscar tendências');
         return await response.json();
     }
 
     async fetchTopProducts() {
+        const token = await this.getSupabaseToken();
         const params = new URLSearchParams({
             start_date: this.filters.startDate,
             end_date: this.filters.endDate,
@@ -210,12 +221,17 @@ class Dashboard {
             params.append('cnpjs', this.filters.market);
         }
 
-        const response = await fetch(`/api/dashboard/top-products?${params}`);
+        const response = await fetch(`/api/dashboard/top-products?${params}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         if (!response.ok) throw new Error('Erro ao buscar top produtos');
         return await response.json();
     }
 
     async fetchCategoryStats() {
+        const token = await this.getSupabaseToken();
         const params = new URLSearchParams({
             start_date: this.filters.startDate,
             end_date: this.filters.endDate
@@ -225,12 +241,17 @@ class Dashboard {
             params.append('cnpjs', this.filters.market);
         }
 
-        const response = await fetch(`/api/dashboard/category-stats?${params}`);
+        const response = await fetch(`/api/dashboard/category-stats?${params}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         if (!response.ok) throw new Error('Erro ao buscar estatísticas por categoria');
         return await response.json();
     }
 
     async fetchBargains() {
+        const token = await this.getSupabaseToken();
         const params = new URLSearchParams({
             start_date: this.filters.startDate,
             end_date: this.filters.endDate,
@@ -241,12 +262,17 @@ class Dashboard {
             params.append('cnpjs', this.filters.market);
         }
 
-        const response = await fetch(`/api/dashboard/bargains?${params}`);
+        const response = await fetch(`/api/dashboard/bargains?${params}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         if (!response.ok) throw new Error('Erro ao buscar ofertas');
         return await response.json();
     }
 
     async fetchMarketComparison() {
+        const token = await this.getSupabaseToken();
         const params = new URLSearchParams({
             start_date: this.filters.startDate,
             end_date: this.filters.endDate
@@ -256,13 +282,22 @@ class Dashboard {
             params.append('cnpjs', this.filters.market);
         }
 
-        const response = await fetch(`/api/dashboard/market-comparison?${params}`);
+        const response = await fetch(`/api/dashboard/market-comparison?${params}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         if (!response.ok) throw new Error('Erro ao buscar comparação de mercados');
         return await response.json();
     }
 
     async fetchRecentActivity() {
-        const response = await fetch('/api/dashboard/recent-activity?limit=10');
+        const token = await this.getSupabaseToken();
+        const response = await fetch('/api/dashboard/recent-activity?limit=10', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         if (!response.ok) throw new Error('Erro ao buscar atividade recente');
         return await response.json();
     }
@@ -699,6 +734,7 @@ class Dashboard {
 
     async exportData() {
         try {
+            const token = await this.getSupabaseToken();
             const params = new URLSearchParams({
                 start_date: this.filters.startDate,
                 end_date: this.filters.endDate,
@@ -709,7 +745,11 @@ class Dashboard {
                 params.append('cnpjs', this.filters.market);
             }
 
-            const response = await fetch(`/api/dashboard/export-data?${params}`);
+            const response = await fetch(`/api/dashboard/export-data?${params}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
             
             if (!response.ok) throw new Error('Erro ao exportar dados');
             
@@ -1105,8 +1145,34 @@ class Dashboard {
 
     async exportAnalysisData() {
         try {
-            // Implementar exportação dos dados de análise
-            this.showNotification('Exportação em desenvolvimento', 'info');
+            const token = await this.getSupabaseToken();
+            const response = await fetch('/api/dashboard/export-analysis', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    start_date: this.filters.startDate,
+                    end_date: this.filters.endDate,
+                    product_barcodes: this.productBarcodes.filter(b => b.trim() !== ''),
+                    markets_cnpj: this.selectedMarkets
+                })
+            });
+            
+            if (!response.ok) throw new Error('Erro ao exportar análise');
+            
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `analise_produtos_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            this.showNotification('Análise exportada com sucesso', 'success');
         } catch (error) {
             console.error('Erro ao exportar análise:', error);
             this.showNotification('Erro ao exportar dados', 'error');
