@@ -1,9 +1,8 @@
 # dependencies.py - Funções e variáveis compartilhadas para evitar importação circular (VERSÃO CORRIGIDA)
-
 import os
 from supabase import create_client, Client
 from fastapi import HTTPException, Header, Depends
-from typing import Optional, List
+from typing import Optional, List, Dict, Any  # ADICIONAR Dict e Any aqui
 from datetime import date, timedelta, datetime
 import logging
 from pydantic import BaseModel
