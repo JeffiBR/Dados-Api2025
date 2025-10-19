@@ -50,9 +50,9 @@ class GroupAdminManager {
         try {
             const token = localStorage.getItem('token');
             if (!token) {
-                console.log('Nenhum token encontrado, redirecionando para login');
-                window.location.href = 'login.html';
-                return;
+    console.log('Nenhum token encontrado');
+    console.warn('🚫 Redirecionamento bloqueado para debug');
+    return;
             }
 
             // Usar a função do auth.js se disponível
@@ -79,12 +79,10 @@ class GroupAdminManager {
             }
 
             if (!response.ok) {
-                if (response.status === 403) {
-                    this.showError('Acesso negado. Você não tem permissão para acessar esta página.');
-                    setTimeout(() => {
-                        window.location.href = 'dashboard.html';
-                    }, 3000);
-                    return;
+               if (!token) {
+    console.log('Nenhum token encontrado');
+    console.warn('🚫 Redirecionamento bloqueado para debug');
+    return;
                 }
                 throw new Error('Não autenticado');
             }
@@ -93,12 +91,10 @@ class GroupAdminManager {
             this.currentUser = userData;
             
             // Verificar se é admin
-            if (userData.role !== 'admin') {
-                this.showError('Acesso negado. Apenas administradores podem gerenciar subadministradores.');
-                setTimeout(() => {
-                    window.location.href = 'dashboard.html';
-                }, 3000);
-                return;
+            if (!token) {
+    console.log('Nenhum token encontrado');
+    console.warn('🚫 Redirecionamento bloqueado para debug');
+    return;
             }
 
             this.updateUserInfo(userData);
@@ -108,7 +104,7 @@ class GroupAdminManager {
                 await handleAuthError();
             } else {
                 localStorage.removeItem('token');
-                window.location.href = 'login.html';
+               console.warn('🚫 Redirecionamento bloqueado para debug');
             }
             throw error;
         }
@@ -253,7 +249,7 @@ class GroupAdminManager {
             } else if (response.status === 403) {
                 this.showError('Você não tem permissão para gerenciar subadministradores.');
                 setTimeout(() => {
-                    window.location.href = 'dashboard.html';
+                   console.warn('🚫 Redirecionamento bloqueado para debug');
                 }, 3000);
             } else {
                 throw new Error('Falha ao carregar subadministradores');
@@ -707,7 +703,7 @@ class GroupAdminManager {
             signOut();
         } else {
             localStorage.removeItem('token');
-            window.location.href = 'login.html';
+            console.warn('🚫 Redirecionamento bloqueado para debug');
         }
     }
 
