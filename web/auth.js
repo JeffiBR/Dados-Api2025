@@ -1,4 +1,4 @@
-// auth.js - VERSÃO COMPLETA E CORRIGIDA
+// auth.js - VERSÃO COMPLETA E CORRIGIDA (SEM TIMEOUT)
 
 const SUPABASE_URL = 'https://zhaetrzpkkgzfrwxfqdw.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpoYWV0cnpwa2tnemZyd3hmcWR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0MjM3MzksImV4cCI6MjA3Mjk5OTczOX0.UHoWWZahvp_lMDH8pK539YIAFTAUnQk9mBX5tdixwN0';
@@ -49,12 +49,9 @@ function isValidToken(token) {
 }
 
 /**
- * Função centralizada para requisições autenticadas com timeout
+ * Função centralizada para requisições autenticadas SEM TIMEOUT
  */
 async function authenticatedFetch(url, options = {}) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 segundos
-
     try {
         const session = await getSession();
         if (!session) {
@@ -78,7 +75,6 @@ async function authenticatedFetch(url, options = {}) {
 
         const finalOptions = {
             ...options,
-            signal: controller.signal,
             headers: { ...defaultHeaders, ...options.headers }
         };
 
@@ -111,12 +107,7 @@ async function authenticatedFetch(url, options = {}) {
 
         return response;
     } catch (error) {
-        if (error.name === 'AbortError') {
-            throw new Error('Timeout na requisição');
-        }
         throw error;
-    } finally {
-        clearTimeout(timeoutId);
     }
 }
 
@@ -750,4 +741,4 @@ window.handleAuthError = handleAuthError;
 window.redirectToLogin = redirectToLogin;
 window.clearAllCaches = clearAllCaches;
 
-console.log('✅ auth.js carregado - Versão Completa e Corrigida');
+console.log('✅ auth.js carregado - Versão Completa e Corrigida (SEM TIMEOUT)');
