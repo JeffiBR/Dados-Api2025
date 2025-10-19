@@ -1,4 +1,4 @@
-// route-guard.js - Sistema de proteção de rotas por permissões
+// route-guard.js - Sistema de proteção de rotas por permissões (COM RENOVAÇÃO DE TOKEN)
 async function routeGuard(requiredPermission) {
     try {
         const token = localStorage.getItem('token');
@@ -7,11 +7,49 @@ async function routeGuard(requiredPermission) {
             return false;
         }
 
+        // Verificar se o token está expirado
+        if (typeof isTokenExpired === 'function' && isTokenExpired(token)) {
+            console.log('Token expirado, redirecionando para login');
+            if (typeof handleAuthError === 'function') {
+                await handleAuthError();
+            } else {
+                localStorage.removeItem('token');
+                window.location.href = 'login.html';
+            }
+            return false;
+        }
+
+        // Tentar renovar token se estiver prestes a expirar
+        if (typeof ensureValidToken === 'function') {
+            try {
+                await ensureValidToken();
+            } catch (error) {
+                console.error('Erro ao renovar token:', error);
+                if (typeof handleAuthError === 'function') {
+                    await handleAuthError();
+                } else {
+                    localStorage.removeItem('token');
+                    window.location.href = 'login.html';
+                }
+                return false;
+            }
+        }
+
         const response = await fetch('/api/users/me', {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
         });
+
+        if (response.status === 401) {
+            if (typeof handleAuthError === 'function') {
+                await handleAuthError();
+            } else {
+                localStorage.removeItem('token');
+                window.location.href = 'login.html';
+            }
+            return false;
+        }
 
         if (!response.ok) {
             throw new Error('Não autenticado');
@@ -37,7 +75,12 @@ async function routeGuard(requiredPermission) {
         return true;
     } catch (error) {
         console.error('Erro na verificação de rota:', error);
-        window.location.href = 'login.html';
+        if (typeof handleAuthError === 'function') {
+            await handleAuthError();
+        } else {
+            localStorage.removeItem('token');
+            window.location.href = 'login.html';
+        }
         return false;
     }
 }
@@ -102,6 +145,20 @@ async function checkAccessExpiration() {
         const token = localStorage.getItem('token');
         if (!token) return;
 
+        // Verificar expiração do token primeiro
+        if (typeof isTokenExpired === 'function' && isTokenExpired(token)) {
+            if (typeof handleAuthError === 'function') {
+                await handleAuthError();
+            } else {
+                localStorage.removeItem('token');
+                showRouteGuardError('Sua sessão expirou. Faça login novamente.');
+                setTimeout(() => {
+                    window.location.href = 'login.html';
+                }, 3000);
+            }
+            return;
+        }
+
         const response = await fetch('/api/users/me', {
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -111,11 +168,25 @@ async function checkAccessExpiration() {
         if (response.status === 403) {
             const errorData = await response.json();
             if (errorData.detail && errorData.detail.includes('acesso expirou')) {
+                if (typeof handleAuthError === 'function') {
+                    await handleAuthError();
+                } else {
+                    localStorage.removeItem('token');
+                    showRouteGuardError('Seu acesso expirou. Entre em contato com o suporte.');
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 5000);
+                }
+            }
+        } else if (response.status === 401) {
+            if (typeof handleAuthError === 'function') {
+                await handleAuthError();
+            } else {
                 localStorage.removeItem('token');
-                showRouteGuardError('Seu acesso expirou. Entre em contato com o suporte.');
+                showRouteGuardError('Sua sessão expirou. Faça login novamente.');
                 setTimeout(() => {
                     window.location.href = 'login.html';
-                }, 5000);
+                }, 3000);
             }
         }
     } catch (error) {
