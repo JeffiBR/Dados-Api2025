@@ -60,6 +60,9 @@ async def handle_supabase_errors(request: Request, exc: APIError):
 # Incluir rotas de subadministradores
 app.include_router(group_admin_router)
 
+# Incluir rotas do dashboard
+app.include_router(dashboard_router)
+
 initial_status = {
     "status": "IDLE", "startTime": None, "progressPercent": 0, "etaSeconds": 0,
     "currentMarket": "", "totalMarkets": 0, "marketsProcessed": 0,
@@ -1736,3 +1739,7 @@ app.mount("/", StaticFiles(directory="web", html=True), name="static")
 @app.get("/")
 def read_root():
     return {"message": "Bem-vindo à API de Preços AL - Versão 3.4.1"}
+
+# Função auxiliar para calcular data de expiração
+def calcular_data_expiracao(dias_acesso: int) -> date:
+    return date.today() + timedelta(days=dias_acesso)
