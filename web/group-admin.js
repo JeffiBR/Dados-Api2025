@@ -1,4 +1,4 @@
-// group-admin.js - Gerenciamento de Subadministradores (CORRIGIDO)
+// group-admin.js - Gerenciamento de Subadministradores (COM DEBUG)
 class GroupAdminManager {
     constructor() {
         this.groupAdmins = [];
@@ -21,6 +21,7 @@ class GroupAdminManager {
 
     async checkAuth() {
         const token = localStorage.getItem('token');
+        console.log('Token no checkAuth:', token);
         if (!token) {
             window.location.href = 'login.html';
             return;
@@ -32,6 +33,8 @@ class GroupAdminManager {
                     'Authorization': `Bearer ${token}`
                 }
             });
+
+            console.log('Resposta do /api/users/me:', response);
 
             if (!response.ok) {
                 if (response.status === 403) {
@@ -45,6 +48,7 @@ class GroupAdminManager {
             }
 
             const userData = await response.json();
+            console.log('Dados do usuário:', userData);
             this.currentUser = userData;
             
             // Verificar se é admin
@@ -151,6 +155,8 @@ class GroupAdminManager {
                     'Authorization': `Bearer ${token}`
                 }
             });
+
+            console.log('Resposta do /api/group-admin:', response); // DEBUG
 
             if (response.ok) {
                 this.groupAdmins = await response.json();
