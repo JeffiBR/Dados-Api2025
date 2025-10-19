@@ -108,7 +108,7 @@ async def get_group_admin_user(current_user: UserProfile = Depends(get_current_u
 @group_admin_router.post("", response_model=GroupAdmin)
 async def create_group_admin(
     admin_data: GroupAdminCreate,
-    current_user: UserProfile = Depends(require_page_access('group_admin'))  # PERMISSÃO ALTERADA
+    current_user: UserProfile = Depends(require_page_access('group_admin'))
 ):
     """Cria um novo subadministrador (apenas admin geral)"""
     if current_user.role != 'admin':
@@ -152,7 +152,7 @@ async def create_group_admin(
 
 @group_admin_router.get("", response_model=List[GroupAdminWithDetails])
 async def list_group_admins(
-    current_user: UserProfile = Depends(require_page_access('group_admin'))  # PERMISSÃO ALTERADA
+    current_user: UserProfile = Depends(require_page_access('group_admin'))
 ):
     """Lista todos os subadministradores (apenas admin geral)"""
     if current_user.role != 'admin':
@@ -212,7 +212,7 @@ async def list_group_admins(
 async def update_group_admin(
     user_id: str,
     admin_data: GroupAdminUpdate,
-    current_user: UserProfile = Depends(require_page_access('group_admin'))  # PERMISSÃO ALTERADA
+    current_user: UserProfile = Depends(require_page_access('group_admin'))
 ):
     """Atualiza um subadministrador (apenas admin geral)"""
     if current_user.role != 'admin':
@@ -257,7 +257,7 @@ async def update_group_admin(
 @group_admin_router.delete("/{user_id}", status_code=204)
 async def delete_group_admin(
     user_id: str,
-    current_user: UserProfile = Depends(require_page_access('group_admin'))  # PERMISSÃO ALTERADA
+    current_user: UserProfile = Depends(require_page_access('group_admin'))
 ):
     """Remove um subadministrador (apenas admin geral)"""
     if current_user.role != 'admin':
@@ -527,17 +527,17 @@ async def delete_group_user(
         raise HTTPException(status_code=500, detail="Erro ao remover usuário do grupo")
 
 @group_admin_router.post("/users/{user_id}/renew", response_model=dict)
-async def renew_group_user_access(
+async def renew_user_access(
     user_id: str,
     renew_data: UserRenewRequest,
     current_user: UserProfile = Depends(get_group_admin_user)
 ):
-    """Renova o acesso de um usuário em um grupo específico (subadmin)"""
+    """Renova o acesso de um usuário em um grupo específico (subadmin) - CORRIGIDO"""
     try:
-        # Verifica se o usuário pertence a algum grupo gerenciado pelo subadmin
+        # Buscar todas as associações do usuário
         user_groups_response = await asyncio.to_thread(
             supabase_admin.table('user_groups')
-            .select('group_id, data_expiracao')
+            .select('id, group_id, data_expiracao')
             .eq('user_id', user_id)
             .execute
         )
@@ -545,49 +545,55 @@ async def renew_group_user_access(
         if not user_groups_response.data:
             raise HTTPException(status_code=404, detail="Usuário não encontrado em nenhum grupo")
         
+        # Verificar se o admin tem acesso a pelo menos um grupo do usuário
         user_group_ids = [ug['group_id'] for ug in user_groups_response.data]
         has_access = any(await verify_group_admin_access(current_user.id, group_id) for group_id in user_group_ids)
         
         if current_user.role != 'admin' and not has_access:
             raise HTTPException(status_code=403, detail="Acesso negado a este usuário")
         
-        # Calcula nova data de expiração
+        # Calcular nova data
         data_atual = date.today()
         dias_adicionais = renew_data.dias_adicionais
         
-        # Atualiza em todos os grupos do usuário que o subadmin gerencia
+        updated_count = 0
+        
+        # Atualizar cada associação que o admin tem acesso
         for user_group in user_groups_response.data:
             group_id = user_group['group_id']
             
             if current_user.role == 'admin' or await verify_group_admin_access(current_user.id, group_id):
                 data_expiracao = user_group['data_expiracao']
                 
+                # Converter string para date se necessário
                 if isinstance(data_expiracao, str):
                     data_expiracao = datetime.fromisoformat(data_expiracao).date()
                 
-                # Se já expirou, recomeça da data atual
+                # Calcular nova data
                 if data_expiracao < data_atual:
                     nova_data = data_atual + timedelta(days=dias_adicionais)
                 else:
-                    # Se ainda está ativo, adiciona dias à data atual de expiração
                     nova_data = data_expiracao + timedelta(days=dias_adicionais)
                 
-                # Atualiza a data de expiração
+                # Atualizar no banco
                 await asyncio.to_thread(
                     lambda: supabase_admin.table('user_groups')
                     .update({'data_expiracao': nova_data.isoformat()})
-                    .eq('user_id', user_id)
-                    .eq('group_id', group_id)
+                    .eq('id', user_group['id'])
                     .execute()
                 )
+                updated_count += 1
         
-        return {"message": f"Acesso renovado por {dias_adicionais} dias"}
+        if updated_count == 0:
+            raise HTTPException(status_code=403, detail="Nenhuma associação pôde ser renovada")
+        
+        return {"message": f"Acesso renovado por {dias_adicionais} dias para {updated_count} associação(ões)"}
         
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Erro ao renovar acesso do usuário: {e}")
-        raise HTTPException(status_code=500, detail="Erro ao renovar acesso do usuário")
+        logging.error(f"Erro ao renovar acesso do usuário: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro interno ao renovar acesso: {str(e)}")
 
 # --------------------------------------------------------------------------
 # --- ENDPOINTS PARA SUBADMINISTRADORES VERIFICAREM SEUS GRUPOS ---
