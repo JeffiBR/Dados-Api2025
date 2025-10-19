@@ -13,29 +13,20 @@
 </head>
 <body class="theme-dark">
     <script>
-        document.addEventListener('DOMContentLoaded', async function() {
-            // Verificar se as funções existem antes de chamar
-            if (typeof requireAuth !== 'function' || typeof routeGuard !== 'function') {
-                console.error('Funções de autenticação não carregadas');
-                return;
-            }
-            
-            if (!await requireAuth()) return;
-            
-            // CORREÇÃO: Usar a permissão correta
-            if (!await routeGuard('group_admin_users')) {
-                console.error('Usuário não tem permissão para acessar esta página');
-                return;
-            }
-            
-            if (typeof initializeDynamicMenu === 'function') {
-                await initializeDynamicMenu();
-            }
-            if (typeof checkAccessExpiration === 'function') {
-                await checkAccessExpiration();
-            }
-        });
-    </script>
+    document.addEventListener('DOMContentLoaded', async function() {
+        console.log('⚙️ Modo de debug ativado - autenticação temporariamente desativada');
+        console.log('Agora tu pode abrir o console (F12) pra ver o que está acontecendo.');
+
+        // Bloquear redirecionamentos automáticos
+        window.location.href = "#";
+
+        // Teste simples: mostra mensagem na tela
+        const msg = document.createElement('div');
+        msg.textContent = "Página carregada em modo debug (autenticação ignorada)";
+        msg.style.cssText = "position:fixed;top:10px;left:10px;background:#222;color:#0f0;padding:10px;border-radius:6px;z-index:9999;";
+        document.body.appendChild(msg);
+    });
+</script>
 
     <div class="app-container">
         <aside class="sidebar" id="sidebarMenu">
