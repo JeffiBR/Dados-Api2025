@@ -1,78 +1,81 @@
-// group-admin.js - Gerenciamento de Subadministradores (VERSÃO COMPLETA COM RECUPERAÇÃO DE TOKEN)
+// group-admin.js - Gerenciamento de Subadministradores (VERSÃO FINAL OTIMIZADA)
 class GroupAdminManager {
     constructor() {
+        // Prevenir múltiplas instâncias
+        if (window.groupAdminManagerInstance) {
+            return window.groupAdminManagerInstance;
+        }
+        window.groupAdminManagerInstance = this;
+
         this.groupAdmins = [];
         this.allUsers = [];
         this.allGroups = [];
         this.currentUser = null;
+        this.isLoading = false;
+        this.initialized = false;
+        
+        console.log('GroupAdminManager instanciado');
         this.init();
     }
 
     async init() {
+        if (this.initialized) {
+            console.log('GroupAdminManager já inicializado');
+            return;
+        }
+
         console.log('Inicializando GroupAdminManager...');
         
-        // Validar token antes de qualquer coisa
-        if (typeof validateToken === 'function') {
-            const isValid = await validateToken();
-            if (!isValid) {
-                console.error('Token inválido, abortando inicialização');
-                return;
-            }
+        try {
+            await this.checkAuth();
+            console.log('Auth verificado, carregando dados...');
+            await this.loadData();
+            console.log('Dados carregados, configurando UI...');
+            this.setupEventListeners();
+            this.renderGroupAdmins();
+            
+            this.initialized = true;
+            console.log('Inicialização completa');
+        } catch (error) {
+            console.error('Erro na inicialização:', error);
         }
-        
-        await this.checkAuth();
-        console.log('Auth verificado, carregando dados...');
-        await this.loadData();
-        console.log('Dados carregados, configurando UI...');
-        this.setupEventListeners();
-        this.renderGroupAdmins();
-        console.log('Inicialização completa');
     }
 
     async checkAuth() {
+        // Se já temos o usuário atual, não precisamos verificar novamente
+        if (this.currentUser) {
+            return;
+        }
+
         try {
             const token = localStorage.getItem('token');
-            console.log('Token no checkAuth:', token);
-            
             if (!token) {
+                console.log('Nenhum token encontrado, redirecionando para login');
                 window.location.href = 'login.html';
                 return;
             }
 
-            // Verificar se o token está malformado
-            if (typeof validateToken === 'function') {
-                const isValid = await validateToken();
-                if (!isValid) {
-                    console.error('Token inválido após validação');
-                    return;
-                }
+            // Usar a função do auth.js se disponível
+            let response;
+            if (typeof authenticatedFetch === 'function') {
+                response = await authenticatedFetch('/api/users/me');
+            } else {
+                response = await fetch('/api/users/me', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
             }
 
-            const response = await fetch('/api/users/me', {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            console.log('Resposta do /api/users/me:', response);
-
             if (response.status === 401) {
-                // Tentar recuperar o token
+                console.log('Token inválido, tentando recuperar...');
                 if (typeof recoverToken === 'function') {
                     const newToken = await recoverToken();
                     if (newToken) {
-                        // Tentar novamente com o novo token
                         return await this.checkAuth();
                     }
                 }
-                
-                if (typeof handleAuthError === 'function') {
-                    await handleAuthError();
-                } else {
-                    localStorage.removeItem('token');
-                    window.location.href = 'login.html';
-                }
-                return;
+                throw new Error('Sessão expirada');
             }
 
             if (!response.ok) {
@@ -87,7 +90,6 @@ class GroupAdminManager {
             }
 
             const userData = await response.json();
-            console.log('Dados do usuário:', userData);
             this.currentUser = userData;
             
             // Verificar se é admin
@@ -108,12 +110,62 @@ class GroupAdminManager {
                 localStorage.removeItem('token');
                 window.location.href = 'login.html';
             }
+            throw error;
+        }
+    }
+
+    updateUserInfo(userData) {
+        const userNameElement = document.getElementById('userName');
+        const userRoleElement = document.getElementById('userRole');
+        const userAvatarElement = document.getElementById('userAvatar');
+        
+        if (userNameElement) userNameElement.textContent = userData.full_name || 'Usuário';
+        if (userRoleElement) userRoleElement.textContent = this.formatRole(userData.role);
+        
+        if (userData.avatar_url && userAvatarElement) {
+            userAvatarElement.src = userData.avatar_url;
+        } else if (userAvatarElement) {
+            const userName = userData.full_name || 'U';
+            userAvatarElement.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=4f46e5&color=fff`;
+        }
+    }
+
+    formatRole(role) {
+        const roles = {
+            'admin': 'Administrador',
+            'user': 'Usuário',
+            'group_admin': 'Subadministrador'
+        };
+        return roles[role] || role;
+    }
+
+    async loadData() {
+        if (this.isLoading) {
+            console.log('Carregamento já em andamento...');
+            return;
+        }
+
+        this.isLoading = true;
+        this.showLoadingState();
+
+        try {
+            await Promise.all([
+                this.loadUsers(),
+                this.loadGroups(),
+                this.loadGroupAdmins()
+            ]);
+        } catch (error) {
+            console.error('Erro ao carregar dados:', error);
+            this.showError('Erro ao carregar dados. Tente recarregar a página.');
+        } finally {
+            this.isLoading = false;
+            this.hideLoadingState();
         }
     }
 
     async makeAuthenticatedRequest(url, options = {}) {
         try {
-            // Validar token antes de cada requisição
+            // Verificar token antes de cada requisição
             if (typeof validateToken === 'function') {
                 const isValid = await validateToken();
                 if (!isValid) {
@@ -154,44 +206,6 @@ class GroupAdminManager {
         } catch (error) {
             console.error('Erro na requisição autenticada:', error);
             throw error;
-        }
-    }
-
-    updateUserInfo(userData) {
-        const userNameElement = document.getElementById('userName');
-        const userRoleElement = document.getElementById('userRole');
-        const userAvatarElement = document.getElementById('userAvatar');
-        
-        if (userNameElement) userNameElement.textContent = userData.full_name || 'Usuário';
-        if (userRoleElement) userRoleElement.textContent = this.formatRole(userData.role);
-        
-        if (userData.avatar_url && userAvatarElement) {
-            userAvatarElement.src = userData.avatar_url;
-        } else if (userAvatarElement) {
-            const userName = userData.full_name || 'U';
-            userAvatarElement.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=4f46e5&color=fff`;
-        }
-    }
-
-    formatRole(role) {
-        const roles = {
-            'admin': 'Administrador',
-            'user': 'Usuário',
-            'group_admin': 'Subadministrador'
-        };
-        return roles[role] || role;
-    }
-
-    async loadData() {
-        try {
-            await Promise.all([
-                this.loadUsers(),
-                this.loadGroups(),
-                this.loadGroupAdmins()
-            ]);
-        } catch (error) {
-            console.error('Erro ao carregar dados:', error);
-            this.showError('Erro ao carregar dados. Tente recarregar a página.');
         }
     }
 
@@ -303,6 +317,8 @@ class GroupAdminManager {
     }
 
     setupEventListeners() {
+        console.log('Configurando event listeners...');
+        
         // Botão de adicionar subadmin
         const addBtn = document.getElementById('addGroupAdminBtn');
         if (addBtn) {
@@ -310,6 +326,8 @@ class GroupAdminManager {
                 e.preventDefault();
                 this.addGroupAdmin();
             });
+        } else {
+            console.error('Botão addGroupAdminBtn não encontrado');
         }
 
         // Formulário de editar subadmin
@@ -353,6 +371,8 @@ class GroupAdminManager {
                 this.closeEditModal();
             }
         });
+
+        console.log('Event listeners configurados');
     }
 
     async addGroupAdmin() {
@@ -570,6 +590,25 @@ class GroupAdminManager {
         });
     }
 
+    showLoadingState() {
+        // Implementar indicador de carregamento se necessário
+        const tbody = document.querySelector('#groupAdminsTable tbody');
+        if (tbody && !tbody.querySelector('.loading-state')) {
+            tbody.innerHTML = `
+                <tr class="loading-state">
+                    <td colspan="5" style="text-align: center; padding: 2rem;">
+                        <div class="loading-spinner"></div>
+                        <p>Carregando subadministradores...</p>
+                    </td>
+                </tr>
+            `;
+        }
+    }
+
+    hideLoadingState() {
+        // Remover indicador de carregamento se necessário
+    }
+
     showSuccess(message) {
         this.showNotification(message, 'success');
     }
@@ -615,6 +654,37 @@ class GroupAdminManager {
                     from { transform: translateX(0); opacity: 1; }
                     to { transform: translateX(100%); opacity: 0; }
                 }
+                .loading-spinner {
+                    border: 3px solid #f3f3f3;
+                    border-top: 3px solid #3498db;
+                    border-radius: 50%;
+                    width: 30px;
+                    height: 30px;
+                    animation: spin 1s linear infinite;
+                    margin: 0 auto 1rem;
+                }
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+                .empty-state {
+                    text-align: center;
+                    padding: 3rem 1rem;
+                    color: var(--muted-dark);
+                }
+                .empty-state i {
+                    font-size: 3rem;
+                    margin-bottom: 1rem;
+                    opacity: 0.5;
+                }
+                .empty-state h4 {
+                    margin: 0 0 0.5rem 0;
+                    font-weight: 600;
+                }
+                .empty-state p {
+                    margin: 0;
+                    opacity: 0.8;
+                }
             `;
             document.head.appendChild(style);
         }
@@ -640,9 +710,27 @@ class GroupAdminManager {
             window.location.href = 'login.html';
         }
     }
+
+    // Método para forçar recarregamento dos dados
+    async refresh() {
+        await this.loadData();
+    }
+
+    // Método para limpar dados (útil para logout)
+    clearData() {
+        this.groupAdmins = [];
+        this.allUsers = [];
+        this.allGroups = [];
+        this.currentUser = null;
+        this.initialized = false;
+    }
 }
 
 // Inicializar quando o DOM estiver carregado
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM carregado, inicializando GroupAdminManager...');
     new GroupAdminManager();
 });
+
+// Exportar para uso global (útil para debugging)
+window.GroupAdminManager = GroupAdminManager;
