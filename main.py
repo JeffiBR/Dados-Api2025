@@ -206,6 +206,10 @@ class UserGroupWithDetails(UserGroup):
     user_name: Optional[str] = None
     user_email: Optional[str] = None
 
+# MODELO PARA RENOVAÇÃO DE ACESSO
+class UserRenewRequest(BaseModel):
+    dias_adicionais: int = Field(..., ge=1, le=365)
+
 # --------------------------------------------------------------------------
 # --- 5. FUNÇÕES DE LOG ---
 # --------------------------------------------------------------------------
@@ -1372,7 +1376,7 @@ async def get_basket_realtime_prices(
 @app.post("/api/groups", response_model=Grupo)
 async def create_group(
     group: GrupoCreate, 
-    admin_user: UserProfile = Depends(require_page_access('group_admin_users'))  # PERMISSÃO ALTERADA
+    admin_user: UserProfile = Depends(require_page_access('group_admin_users'))
 ):
     try:
         group_data = group.dict()
@@ -1385,7 +1389,7 @@ async def create_group(
         raise HTTPException(status_code=400, detail="Erro ao criar grupo")
 
 @app.get("/api/groups", response_model=List[Grupo])
-async def list_groups(admin_user: UserProfile = Depends(require_page_access('group_admin_users'))):  # PERMISSÃO ALTERADA
+async def list_groups(admin_user: UserProfile = Depends(require_page_access('group_admin_users'))):
     try:
         resp = await asyncio.to_thread(
             supabase.table('grupos').select('*').order('nome').execute
@@ -1399,7 +1403,7 @@ async def list_groups(admin_user: UserProfile = Depends(require_page_access('gro
 async def update_group(
     group_id: int, 
     group: GrupoCreate, 
-    admin_user: UserProfile = Depends(require_page_access('group_admin_users'))  # PERMISSÃO ALTERADA
+    admin_user: UserProfile = Depends(require_page_access('group_admin_users'))
 ):
     try:
         group_data = group.dict()
@@ -1422,7 +1426,7 @@ async def update_group(
 @app.delete("/api/groups/{group_id}", status_code=204)
 async def delete_group(
     group_id: int, 
-    admin_user: UserProfile = Depends(require_page_access('group_admin_users'))  # PERMISSÃO ALTERADA
+    admin_user: UserProfile = Depends(require_page_access('group_admin_users'))
 ):
     try:
         group_resp = await asyncio.to_thread(
@@ -1445,7 +1449,7 @@ async def delete_group(
 @app.post("/api/user-groups", response_model=UserGroup)
 async def add_user_to_group(
     user_group: UserGroupCreate,
-    admin_user: UserProfile = Depends(require_page_access('group_admin_users'))  # PERMISSÃO ALTERADA
+    admin_user: UserProfile = Depends(require_page_access('group_admin_users'))
 ):
     try:
         logging.info(f"Tentando adicionar usuário {user_group.user_id} ao grupo {user_group.group_id}")
@@ -1518,7 +1522,7 @@ async def add_user_to_group(
 async def list_user_groups(
     user_id: Optional[str] = Query(None),
     group_id: Optional[int] = Query(None),
-    admin_user: UserProfile = Depends(require_page_access('group_admin_users'))  # PERMISSÃO ALTERADA
+    admin_user: UserProfile = Depends(require_page_access('group_admin_users'))
 ):
     try:
         query = supabase_admin.table('user_groups').select('*')
@@ -1589,7 +1593,7 @@ async def list_user_groups(
 @app.get("/api/users/{user_id}/groups", response_model=List[UserGroupWithDetails])
 async def get_user_groups(
     user_id: str,
-    admin_user: UserProfile = Depends(require_page_access('group_admin_users'))  # PERMISSÃO ALTERADA
+    admin_user: UserProfile = Depends(require_page_access('group_admin_users'))
 ):
     try:
         user_groups_response = await asyncio.to_thread(
@@ -1649,56 +1653,6 @@ async def get_user_groups(
     except Exception as e:
         logging.error(f"Erro ao buscar grupos do usuário: {e}")
         raise HTTPException(status_code=500, detail="Erro ao buscar grupos do usuário")
-# Adicione este endpoint no main.py, na seção de endpoints para grupos:
-
-@app.post("/api/user-groups/{user_group_id}/renew")
-async def renew_user_group_access(
-    user_group_id: int,
-    renew_data: UserRenewRequest,
-    user: UserProfile = Depends(require_page_access('group_admin_users'))
-):
-    """Endpoint alternativo para renovar acesso via user_group_id"""
-    try:
-        # Buscar a associação
-        user_group_response = await asyncio.to_thread(
-            supabase.table('user_groups')
-            .select('*')
-            .eq('id', user_group_id)
-            .single()
-            .execute
-        )
-        
-        if not user_group_response.data:
-            raise HTTPException(status_code=404, detail="Associação não encontrada")
-        
-        user_group = user_group_response.data
-        
-        # Calcular nova data
-        data_atual = date.today()
-        dias_adicionais = renew_data.dias_adicionais
-        
-        data_expiracao = user_group['data_expiracao']
-        if isinstance(data_expiracao, str):
-            data_expiracao = datetime.fromisoformat(data_expiracao).date()
-        
-        if data_expiracao < data_atual:
-            nova_data = data_atual + timedelta(days=dias_adicionais)
-        else:
-            nova_data = data_expiracao + timedelta(days=dias_adicionais)
-        
-        # Atualizar
-        await asyncio.to_thread(
-            lambda: supabase.table('user_groups')
-            .update({'data_expiracao': nova_data.isoformat()})
-            .eq('id', user_group_id)
-            .execute()
-        )
-        
-        return {"message": f"Acesso renovado por {dias_adicionais} dias"}
-        
-    except Exception as e:
-        logging.error(f"Erro ao renovar acesso: {e}")
-        raise HTTPException(status_code=500, detail=f"Erro ao renovar acesso: {str(e)}")
 
 # NOVO ENDPOINT CORRIGIDO PARA COMPATIBILIDADE COM FRONTEND
 @app.get("/api/my-groups-detailed", response_model=List[dict])
@@ -1767,7 +1721,7 @@ async def get_my_groups_detailed(current_user: UserProfile = Depends(get_current
 @app.delete("/api/user-groups/{user_group_id}", status_code=204)
 async def delete_user_group(
     user_group_id: int, 
-    admin_user: UserProfile = Depends(require_page_access('group_admin_users'))  # PERMISSÃO ALTERADA
+    admin_user: UserProfile = Depends(require_page_access('group_admin_users'))
 ):
     """Remove uma associação usuário-grupo específica"""
     try:
@@ -1778,6 +1732,56 @@ async def delete_user_group(
     except Exception as e:
         logging.error(f"Erro ao deletar associação usuário-grupo {user_group_id}: {e}")
         raise HTTPException(status_code=400, detail="Erro ao remover usuário do grupo")
+
+# ENDPOINT ALTERNATIVO PARA RENOVAÇÃO DE ACESSO
+@app.post("/api/user-groups/{user_group_id}/renew")
+async def renew_user_group_access(
+    user_group_id: int,
+    renew_data: UserRenewRequest,
+    user: UserProfile = Depends(require_page_access('group_admin_users'))
+):
+    """Endpoint alternativo para renovar acesso via user_group_id"""
+    try:
+        # Buscar a associação
+        user_group_response = await asyncio.to_thread(
+            supabase.table('user_groups')
+            .select('*')
+            .eq('id', user_group_id)
+            .single()
+            .execute
+        )
+        
+        if not user_group_response.data:
+            raise HTTPException(status_code=404, detail="Associação não encontrada")
+        
+        user_group = user_group_response.data
+        
+        # Calcular nova data
+        data_atual = date.today()
+        dias_adicionais = renew_data.dias_adicionais
+        
+        data_expiracao = user_group['data_expiracao']
+        if isinstance(data_expiracao, str):
+            data_expiracao = datetime.fromisoformat(data_expiracao).date()
+        
+        if data_expiracao < data_atual:
+            nova_data = data_atual + timedelta(days=dias_adicionais)
+        else:
+            nova_data = data_expiracao + timedelta(days=dias_adicionais)
+        
+        # Atualizar
+        await asyncio.to_thread(
+            lambda: supabase.table('user_groups')
+            .update({'data_expiracao': nova_data.isoformat()})
+            .eq('id', user_group_id)
+            .execute()
+        )
+        
+        return {"message": f"Acesso renovado por {dias_adicionais} dias"}
+        
+    except Exception as e:
+        logging.error(f"Erro ao renovar acesso: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao renovar acesso: {str(e)}")
 
 # --- Servir o Frontend ---
 app.mount("/", StaticFiles(directory="web", html=True), name="static")
