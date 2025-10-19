@@ -1,4 +1,4 @@
-# main.py (completo e corrigido com as novas permissões) - VERSÃO 3.4.1
+# main.py (completo e corrigido com as novas permissões) - VERSÃO 3.4.2
 import os
 import asyncio
 from datetime import date, timedelta, datetime
@@ -27,7 +27,7 @@ load_dotenv()
 app = FastAPI(
     title="API de Preços Arapiraca",
     description="Sistema completo para coleta e análise de preços de supermercados.",
-    version="3.4.1"
+    version="3.4.2"
 )
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] [%(levelname)s] %(message)s')
 
@@ -479,23 +479,24 @@ async def update_user(user_id: str, user_data: UserUpdate, admin_user: UserProfi
         print(f"DEBUG: Perfil atualizado com sucesso: {profile_response.data}")
         
         # Gerenciar grupos de admin
-        if user_data.role == "group_admin" and user_data.managed_groups:
+        if user_data.role == "group_admin":
             print(f"DEBUG: Configurando admin de grupo com grupos: {user_data.managed_groups}")
             
-            # Verificar se todos os grupos existem
-            groups_response = supabase.table('grupos').select('id').in_('id', user_data.managed_groups).execute()
-            existing_group_ids = [group['id'] for group in groups_response.data]
-            invalid_groups = set(user_data.managed_groups) - set(existing_group_ids)
-            
-            if invalid_groups:
-                raise HTTPException(status_code=404, detail=f"Grupos não encontrados: {invalid_groups}")
+            if user_data.managed_groups:
+                # Verificar se todos os grupos existem
+                groups_response = supabase.table('grupos').select('id').in_('id', user_data.managed_groups).execute()
+                existing_group_ids = [group['id'] for group in groups_response.data]
+                invalid_groups = set(user_data.managed_groups) - set(existing_group_ids)
+                
+                if invalid_groups:
+                    raise HTTPException(status_code=404, detail=f"Grupos não encontrados: {invalid_groups}")
             
             # Verificar se já existe registro
             existing_admin = supabase.table('group_admins').select('*').eq('user_id', user_id).execute()
             
             admin_record = {
                 'user_id': user_id,
-                'group_ids': user_data.managed_groups,
+                'group_ids': user_data.managed_groups or [],
                 'updated_at': datetime.now().isoformat()
             }
             
@@ -522,8 +523,6 @@ async def update_user(user_id: str, user_data: UserUpdate, admin_user: UserProfi
             if hasattr(delete_result, 'error') and delete_result.error:
                 error_msg = getattr(delete_result.error, 'message', str(delete_result.error))
                 print(f"DEBUG: Erro ao remover group_admins: {error_msg}")
-            else:
-                print(f"DEBUG: Group admin removido: {delete_result.data}")
         
         print("DEBUG: Usuário atualizado com sucesso")
         return {"message": "Usuário atualizado com sucesso"}
@@ -1783,6 +1782,48 @@ async def renew_user_group_access(
         logging.error(f"Erro ao renovar acesso: {e}")
         raise HTTPException(status_code=500, detail=f"Erro ao renovar acesso: {str(e)}")
 
+# NOVO ENDPOINT: Buscar usuários para designação como admin de grupo
+@app.get("/api/users/search")
+async def search_users_for_group_admin(
+    q: str = Query(..., description="Termo de busca por nome ou email"),
+    admin_user: UserProfile = Depends(require_page_access('group_admin_users'))
+):
+    """Busca usuários para designação como admin de grupo"""
+    try:
+        # Buscar por nome
+        profiles_response = await asyncio.to_thread(
+            supabase.table('profiles')
+            .select('id, full_name, role')
+            .ilike('full_name', f"%{q}%")
+            .execute
+        )
+        
+        users = []
+        for profile in profiles_response.data:
+            # Buscar email
+            email = None
+            try:
+                auth_response = await asyncio.to_thread(
+                    lambda: supabase_admin.auth.admin.get_user_by_id(profile['id'])
+                )
+                if auth_response.user:
+                    email = auth_response.user.email
+            except Exception as e:
+                logging.error(f"Erro ao buscar email do usuário {profile['id']}: {e}")
+            
+            users.append({
+                "id": profile["id"],
+                "full_name": profile.get("full_name"),
+                "email": email,
+                "role": profile.get("role")
+            })
+        
+        return users
+        
+    except Exception as e:
+        logging.error(f"Erro ao buscar usuários: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao buscar usuários")
+
 # --- Servir o Frontend ---
 app.mount("/", StaticFiles(directory="web", html=True), name="static")
 
@@ -1792,7 +1833,7 @@ app.mount("/", StaticFiles(directory="web", html=True), name="static")
 
 @app.get("/")
 def read_root():
-    return {"message": "Bem-vindo à API de Preços AL - Versão 3.4.1"}
+    return {"message": "Bem-vindo à API de Preços AL - Versão 3.4.2"}
 
 # Função auxiliar para calcular data de expiração
 def calcular_data_expiracao(dias_acesso: int) -> date:
