@@ -89,13 +89,18 @@ class Dashboard {
 
     async loadMarkets() {
         try {
-            const { data: markets, error } = await supabase
-                .from('supermercados')
-                .select('cnpj, nome, endereco')
-                .order('nome');
+            const token = await this.getSupabaseToken();
+            const response = await fetch('/api/dashboard/markets', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
 
-            if (error) throw error;
+            if (!response.ok) {
+                throw new Error('Erro ao carregar mercados');
+            }
 
+            const markets = await response.json();
             this.marketsData = markets;
 
             const marketFilter = document.getElementById('marketFilter');
@@ -879,9 +884,10 @@ class Dashboard {
 
     async loadAnalysisMarkets() {
         try {
+            const token = await this.getSupabaseToken();
             const response = await fetch('/api/dashboard/markets', {
                 headers: {
-                    'Authorization': `Bearer ${await this.getSupabaseToken()}`
+                    'Authorization': `Bearer ${token}`
                 }
             });
             
@@ -920,4 +926,212 @@ class Dashboard {
     }
 
     updateSelectedMarkets() {
-        const checkboxes = document.querySelector
+        const checkboxes = document.querySelectorAll('#marketCheckboxes input[type="checkbox"]:checked');
+        this.selectedMarkets = Array.from(checkboxes).map(cb => cb.value);
+        
+        const countElement = document.getElementById('selectedMarketsCount');
+        if (countElement) {
+            countElement.textContent = this.selectedMarkets.length;
+        }
+    }
+
+    updateDateRangeInfo() {
+        const period = document.getElementById('analysisPeriod').value;
+        const days = parseInt(period);
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
+        
+        const dateInfo = document.getElementById('dateRangeInfo');
+        if (dateInfo) {
+            dateInfo.textContent = `Período: ${startDate.toLocaleDateString('pt-BR')} à ${endDate.toLocaleDateString('pt-BR')}`;
+        }
+    }
+
+    async runProductAnalysis() {
+        const barcodes = this.productBarcodes.filter(b => b.trim() !== '');
+        
+        if (barcodes.length === 0) {
+            this.showNotification('Adicione pelo menos um código de barras', 'warning');
+            return;
+        }
+        
+        if (this.selectedMarkets.length === 0) {
+            this.showNotification('Selecione pelo menos um mercado', 'warning');
+            return;
+        }
+        
+        this.showLoading(true);
+        
+        try {
+            const period = document.getElementById('analysisPeriod').value;
+            const days = parseInt(period);
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - days);
+            
+            const requestData = {
+                start_date: startDate.toISOString().split('T')[0],
+                end_date: endDate.toISOString().split('T')[0],
+                product_barcodes: barcodes,
+                markets_cnpj: this.selectedMarkets
+            };
+            
+            const token = await this.getSupabaseToken();
+            const response = await fetch('/api/dashboard/product-barcode-analysis', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(requestData)
+            });
+            
+            if (!response.ok) throw new Error('Erro na análise');
+            
+            const analysisData = await response.json();
+            this.displayAnalysisResults(analysisData);
+            
+        } catch (error) {
+            console.error('Erro na análise de produtos:', error);
+            this.showNotification('Erro ao executar análise', 'error');
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    displayAnalysisResults(data) {
+        const resultsElement = document.getElementById('analysisResults');
+        resultsElement.style.display = 'block';
+        
+        // Implementar a exibição dos resultados nos gráficos e tabela
+        this.updateAnalysisCharts(data);
+        this.updateAnalysisTable(data);
+    }
+
+    updateAnalysisCharts(data) {
+        // Implementar atualização dos gráficos de análise
+        if (this.analysisCharts.line) {
+            this.analysisCharts.line.destroy();
+        }
+        if (this.analysisCharts.bar) {
+            this.analysisCharts.bar.destroy();
+        }
+        
+        // Criar gráficos com os dados recebidos
+        this.createAnalysisCharts(data);
+    }
+
+    createAnalysisCharts(data) {
+        const lineCtx = document.getElementById('lineAnalysisChart').getContext('2d');
+        const barCtx = document.getElementById('barAnalysisChart').getContext('2d');
+        
+        // Implementar criação dos gráficos com os dados
+        // Esta é uma implementação básica - adaptar conforme a estrutura dos dados
+        this.analysisCharts.line = new Chart(lineCtx, {
+            type: 'line',
+            data: {
+                labels: data.dates || [],
+                datasets: []
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+        
+        this.analysisCharts.bar = new Chart(barCtx, {
+            type: 'bar',
+            data: {
+                labels: data.products ? Object.values(data.products) : [],
+                datasets: []
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    }
+
+    updateAnalysisTable(data) {
+        const tableBody = document.querySelector('#analysisDataTable tbody');
+        tableBody.innerHTML = '';
+        
+        // Implementar atualização da tabela com os dados
+        if (data.message) {
+            tableBody.innerHTML = `<tr><td colspan="3">${data.message}</td></tr>`;
+            return;
+        }
+        
+        // Exemplo básico - adaptar conforme a estrutura dos dados
+        if (data.products && Object.keys(data.products).length > 0) {
+            Object.entries(data.products).forEach(([barcode, productName]) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${productName}</td>
+                    <td>${barcode}</td>
+                    <td>Dados disponíveis</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+    }
+
+    toggleChartType() {
+        this.currentChartType = this.currentChartType === 'line' ? 'bar' : 'line';
+        // Implementar toggle entre gráficos
+        this.showNotification(`Tipo de gráfico alterado para: ${this.currentChartType === 'line' ? 'Linha' : 'Barras'}`, 'info');
+    }
+
+    clearProductAnalysis() {
+        this.productBarcodes = [''];
+        this.selectedMarkets = [];
+        this.updateBarcodeInputs();
+        this.updateSelectedMarkets();
+        
+        const resultsElement = document.getElementById('analysisResults');
+        resultsElement.style.display = 'none';
+        
+        // Limpar gráficos
+        if (this.analysisCharts.line) {
+            this.analysisCharts.line.destroy();
+            this.analysisCharts.line = null;
+        }
+        if (this.analysisCharts.bar) {
+            this.analysisCharts.bar.destroy();
+            this.analysisCharts.bar = null;
+        }
+    }
+
+    async exportAnalysisData() {
+        try {
+            // Implementar exportação dos dados de análise
+            this.showNotification('Exportação em desenvolvimento', 'info');
+        } catch (error) {
+            console.error('Erro ao exportar análise:', error);
+            this.showNotification('Erro ao exportar dados', 'error');
+        }
+    }
+
+    logPageAccess() {
+        // Registrar acesso à página
+        if (typeof logPageAccess === 'function') {
+            logPageAccess('dashboard');
+        }
+    }
+
+    async getSupabaseToken() {
+        try {
+            const { data } = await supabase.auth.getSession();
+            return data.session?.access_token || null;
+        } catch (error) {
+            console.error('Erro ao obter token:', error);
+            return null;
+        }
+    }
+}
+
+// Inicializar o dashboard quando o DOM estiver carregado
+document.addEventListener('DOMContentLoaded', function() {
+    window.dashboard = new Dashboard();
+});
