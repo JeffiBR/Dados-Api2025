@@ -1,4 +1,4 @@
-// group-admin.js - Gerenciamento de Subadministradores (COM DEBUG)
+// group-admin.js - Gerenciamento de Subadministradores (COM DEBUG E RENOVAÇÃO DE TOKEN)
 class GroupAdminManager {
     constructor() {
         this.groupAdmins = [];
@@ -20,14 +20,19 @@ class GroupAdminManager {
     }
 
     async checkAuth() {
-        const token = localStorage.getItem('token');
-        console.log('Token no checkAuth:', token);
-        if (!token) {
-            window.location.href = 'login.html';
-            return;
-        }
-
         try {
+            // Verificar token antes de prosseguir
+            if (typeof ensureValidToken === 'function') {
+                await ensureValidToken();
+            }
+
+            const token = localStorage.getItem('token');
+            console.log('Token no checkAuth:', token);
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+
             const response = await fetch('/api/users/me', {
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -35,6 +40,16 @@ class GroupAdminManager {
             });
 
             console.log('Resposta do /api/users/me:', response);
+
+            if (response.status === 401) {
+                if (typeof handleAuthError === 'function') {
+                    await handleAuthError();
+                } else {
+                    localStorage.removeItem('token');
+                    window.location.href = 'login.html';
+                }
+                return;
+            }
 
             if (!response.ok) {
                 if (response.status === 403) {
@@ -63,7 +78,12 @@ class GroupAdminManager {
             this.updateUserInfo(userData);
         } catch (error) {
             console.error('Erro de autenticação:', error);
-            window.location.href = 'login.html';
+            if (typeof handleAuthError === 'function') {
+                await handleAuthError();
+            } else {
+                localStorage.removeItem('token');
+                window.location.href = 'login.html';
+            }
         }
     }
 
@@ -107,12 +127,24 @@ class GroupAdminManager {
 
     async loadUsers() {
         try {
+            // Verificar token antes da requisição
+            if (typeof ensureValidToken === 'function') {
+                await ensureValidToken();
+            }
+
             const token = localStorage.getItem('token');
             const response = await fetch('/api/users', {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
             });
+
+            if (response.status === 401) {
+                if (typeof handleAuthError === 'function') {
+                    await handleAuthError();
+                }
+                return;
+            }
 
             if (response.ok) {
                 this.allUsers = await response.json();
@@ -128,12 +160,24 @@ class GroupAdminManager {
 
     async loadGroups() {
         try {
+            // Verificar token antes da requisição
+            if (typeof ensureValidToken === 'function') {
+                await ensureValidToken();
+            }
+
             const token = localStorage.getItem('token');
             const response = await fetch('/api/groups', {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
             });
+
+            if (response.status === 401) {
+                if (typeof handleAuthError === 'function') {
+                    await handleAuthError();
+                }
+                return;
+            }
 
             if (response.ok) {
                 this.allGroups = await response.json();
@@ -149,6 +193,11 @@ class GroupAdminManager {
 
     async loadGroupAdmins() {
         try {
+            // Verificar token antes da requisição
+            if (typeof ensureValidToken === 'function') {
+                await ensureValidToken();
+            }
+
             const token = localStorage.getItem('token');
             const response = await fetch('/api/group-admin', {
                 headers: {
@@ -156,7 +205,14 @@ class GroupAdminManager {
                 }
             });
 
-            console.log('Resposta do /api/group-admin:', response); // DEBUG
+            console.log('Resposta do /api/group-admin:', response);
+
+            if (response.status === 401) {
+                if (typeof handleAuthError === 'function') {
+                    await handleAuthError();
+                }
+                return;
+            }
 
             if (response.ok) {
                 this.groupAdmins = await response.json();
@@ -281,28 +337,33 @@ class GroupAdminManager {
     }
 
     async addGroupAdmin() {
-        const userSelect = document.getElementById('userSelect');
-        const groupsSelect = document.getElementById('groupsSelect');
-        
-        if (!userSelect || !groupsSelect) {
-            this.showError('Elementos do formulário não encontrados');
-            return;
-        }
-        
-        const userId = userSelect.value;
-        const groupIds = Array.from(groupsSelect.selectedOptions).map(option => parseInt(option.value));
-
-        if (!userId) {
-            this.showError('Por favor, selecione um usuário');
-            return;
-        }
-
-        if (groupIds.length === 0) {
-            this.showError('Por favor, selecione pelo menos um grupo');
-            return;
-        }
-
         try {
+            // Verificar token antes da requisição
+            if (typeof ensureValidToken === 'function') {
+                await ensureValidToken();
+            }
+
+            const userSelect = document.getElementById('userSelect');
+            const groupsSelect = document.getElementById('groupsSelect');
+            
+            if (!userSelect || !groupsSelect) {
+                this.showError('Elementos do formulário não encontrados');
+                return;
+            }
+            
+            const userId = userSelect.value;
+            const groupIds = Array.from(groupsSelect.selectedOptions).map(option => parseInt(option.value));
+
+            if (!userId) {
+                this.showError('Por favor, selecione um usuário');
+                return;
+            }
+
+            if (groupIds.length === 0) {
+                this.showError('Por favor, selecione pelo menos um grupo');
+                return;
+            }
+
             const token = localStorage.getItem('token');
             const response = await fetch('/api/group-admin', {
                 method: 'POST',
@@ -315,6 +376,13 @@ class GroupAdminManager {
                     group_ids: groupIds
                 })
             });
+
+            if (response.status === 401) {
+                if (typeof handleAuthError === 'function') {
+                    await handleAuthError();
+                }
+                return;
+            }
 
             if (response.ok) {
                 this.showSuccess('Subadministrador designado com sucesso!');
@@ -365,16 +433,21 @@ class GroupAdminManager {
     }
 
     async updateGroupAdmin() {
-        const userId = document.getElementById('editUserId').value;
-        const groupIds = Array.from(document.getElementById('editGroupsSelect').selectedOptions)
-            .map(option => parseInt(option.value));
-
-        if (groupIds.length === 0) {
-            this.showError('Por favor, selecione pelo menos um grupo');
-            return;
-        }
-
         try {
+            // Verificar token antes da requisição
+            if (typeof ensureValidToken === 'function') {
+                await ensureValidToken();
+            }
+
+            const userId = document.getElementById('editUserId').value;
+            const groupIds = Array.from(document.getElementById('editGroupsSelect').selectedOptions)
+                .map(option => parseInt(option.value));
+
+            if (groupIds.length === 0) {
+                this.showError('Por favor, selecione pelo menos um grupo');
+                return;
+            }
+
             const token = localStorage.getItem('token');
             const response = await fetch(`/api/group-admin/${userId}`, {
                 method: 'PUT',
@@ -386,6 +459,13 @@ class GroupAdminManager {
                     group_ids: groupIds
                 })
             });
+
+            if (response.status === 401) {
+                if (typeof handleAuthError === 'function') {
+                    await handleAuthError();
+                }
+                return;
+            }
 
             if (response.ok) {
                 this.showSuccess('Subadministrador atualizado com sucesso!');
@@ -407,6 +487,11 @@ class GroupAdminManager {
         }
 
         try {
+            // Verificar token antes da requisição
+            if (typeof ensureValidToken === 'function') {
+                await ensureValidToken();
+            }
+
             const token = localStorage.getItem('token');
             const response = await fetch(`/api/group-admin/${userId}`, {
                 method: 'DELETE',
@@ -414,6 +499,13 @@ class GroupAdminManager {
                     'Authorization': `Bearer ${token}`
                 }
             });
+
+            if (response.status === 401) {
+                if (typeof handleAuthError === 'function') {
+                    await handleAuthError();
+                }
+                return;
+            }
 
             if (response.ok) {
                 this.showSuccess('Subadministrador removido com sucesso!');
@@ -572,8 +664,12 @@ class GroupAdminManager {
     }
 
     logout() {
-        localStorage.removeItem('token');
-        window.location.href = 'login.html';
+        if (typeof signOut === 'function') {
+            signOut();
+        } else {
+            localStorage.removeItem('token');
+            window.location.href = 'login.html';
+        }
     }
 }
 
