@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preço Em Foco - FAQ</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="designer.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth.js"></script>
+    <script src="menu.js"></script>
+    <script src="user-menu.js"></script>
+    <script src="theme.js"></script>
+    <style>
+        /* Estilos específicos para a página FAQ */
+        .faq-container {
+            display: flex;
+            gap: 2rem;
+            margin-top: 1.5rem;
+        }
+
+        .faq-sidebar {
+            flex: 0 0 250px;
+            background: var(--panel-dark);
+            border-radius: var(--radius);
+            border: 1px solid var(--border-dark);
+            padding: 1.5rem;
+            height: fit-content;
+            position: sticky;
+            top: 100px;
+        }
+
+        body.light-mode .faq-sidebar {
+            background: var(--panel-light);
+            border: 1px solid var(--border-light);
+        }
+
+        .faq-sidebar h3 {
+            color: var(--text-dark);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-dark);
+            font-weight: 600;
+        }
+
+        body.light-mode .faq-sidebar h3 {
+            color: var(--text-light);
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .faq-sidebar ul {
+            list-style: none;
+        }
+
+        .faq-sidebar li {
+            margin-bottom: 0.8rem;
+        }
+
+        .faq-sidebar a {
+            color: var(--muted-dark);
+            text-decoration: none;
+            display: block;
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            transition: var(--transition);
+            font-weight: 500;
+        }
+
+        body.light-mode .faq-sidebar a {
+            color: var(--muted-light);
+        }
+
+        .faq-sidebar a:hover, .faq-sidebar a.active {
+            background: rgba(79, 70, 229, 0.12);
+            color: var(--primary);
+        }
+
+        .faq-content {
+            flex: 1;
+        }
+
+        .faq-section {
+            margin-bottom: 2.5rem;
+            scroll-margin-top: 100px;
+        }
+
+        .faq-section h2 {
+            color: var(--text-dark);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.4rem;
+            font-weight: 600;
+        }
+
+        body.light-mode .faq-section h2 {
+            color: var(--text-light);
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .faq-section h2 i {
+            color: var(--primary);
+        }
+
+        .faq-item {
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border-dark);
+            border-radius: var(--radius);
+            overflow: hidden;
+            background: var(--panel-dark);
+        }
+
+        body.light-mode .faq-item {
+            background: var(--panel-light);
+            border: 1px solid var(--border-light);
+        }
+
+        .faq-question {
+            background: var(--panel-dark);
+            padding: 1.25rem 1.5rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: var(--transition);
+            border: none;
+            width: 100%;
+            text-align: left;
+            color: var(--text-dark);
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        body.light-mode .faq-question {
+            background: var(--panel-light);
+            color: var(--text-light);
+        }
+
+        .faq-question:hover {
+            background: rgba(79, 70, 229, 0.08);
+        }
+
+        .faq-answer {
+            padding: 0 1.5rem;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+            color: var(--muted-dark);
+        }
+
+        body.light-mode .faq-answer {
+            color: var(--muted-light);
+        }
+
+        .faq-answer.active {
+            padding: 1.5rem;
+            max-height: 1000px;
+        }
+
+        .faq-answer p {
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+
+        .faq-answer ul {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .highlight {
+            background: rgba(79, 70, 229, 0.08);
+            border-left: 4px solid var(--primary);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .feature-card {
+            background: var(--panel-dark);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            border: 1px solid var(--border-dark);
+            transition: var(--transition);
+            border-top: 4px solid var(--primary);
+        }
+
+        body.light-mode .feature-card {
+            background: var(--panel-light);
+            border: 1px solid var(--border-light);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .feature-card h4 {
+            color: var(--text-dark);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        body.light-mode .feature-card h4 {
+            color: var(--text-light);
+        }
+
+        .feature-card p {
+            font-size: 0.9rem;
+            color: var(--muted-dark);
+        }
+
+        body.light-mode .feature-card p {
+            color: var(--muted-light);
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            border: 1px solid var(--border-dark);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        body.light-mode .comparison-table {
+            border: 1px solid var(--border-light);
+        }
+
+        .comparison-table th, .comparison-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-dark);
+        }
+
+        body.light-mode .comparison-table th, 
+        body.light-mode .comparison-table td {
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .comparison-table th {
+            background: rgba(79, 70, 229, 0.1);
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .comparison-table tr:nth-child(even) {
+            background: rgba(0, 0, 0, 0.03);
+        }
+
+        body.light-mode .comparison-table tr:nth-child(even) {
+            background: rgba(0, 0, 0, 0.02);
+        }
+
+        .price-high {
+            color: var(--error);
+            font-weight: 600;
+        }
+
+        .price-low {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        @media (max-width: 1024px) {
+            .faq-container {
+                flex-direction: column;
+            }
+
+            .faq-sidebar {
+                position: static;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            if (!await requireAuth()) return;
+            await initializeDynamicMenu();
+            await checkAccessExpiration();
+            // Não há routeGuard para FAQ pois é uma página de acesso geral
+        });
+    </script>
+
+    <div class="app-container">
+        <aside class="sidebar" id="sidebarMenu">
+            <div class="sidebar-header">
+                <h1>Preço Em Foco</h1>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                   <li class="nav-header">ANÁLISE</li>
+                    <li><a href="/search.html"><i class="fas fa-search"></i> Busca</a></li>
+                    <li data-required-permission="compare"><a href="/compare.html"><i class="fas fa-chart-bar"></i> Comparador</a></li>
+                    <li data-required-permission="dashboard"><a href="/dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+                    <li data-required-permission="baskets"><a href="/cesta.html"><i class="fas fa-shopping-basket"></i> Minhas Cestas</a></li>
+
+                    <li class="nav-header">ADMINISTRAÇÃO</li>
+                    <li data-required-permission="coleta"><a href="/admin.html"><i class="fas fa-database"></i> Coleta</a></li>
+                    <li data-required-permission="collections"><a href="/collections.html"><i class="fas fa-history"></i> Histórico de Coletas</a></li>
+                    <li data-required-permission="product_log"><a href="/product-log.html"><i class="fas fa-file-alt"></i> Log de Produtos</a></li>
+                    <li data-required-permission="user_logs"><a href="/user-logs.html"><i class="fas fa-user-clock"></i> Logs de Usuários</a></li>
+                    <li data-required-permission="prune"><a href="/prune.html"><i class="fas fa-broom"></i> Limpeza de Dados</a></li>
+
+                    <li class="nav-header">CONFIGURAÇÃO</li>
+                    <li data-required-permission="markets"><a href="/markets.html"><i class="fas fa-store"></i> Gerenciar Mercados</a></li>
+                    <li data-required-permission="users"><a href="/users.html"><i class="fas fa-users"></i> Gerenciar Usuários</a></li>
+                    <li><a href="/faq.html" class="active"><i class="fas fa-question-circle"></i> FAQ</a></li>
+                </ul>
+            </nav>
+            <div class="theme-switcher">
+                <span>Tema</span>
+                <button id="themeToggle"><i class="fas fa-moon"></i></button>
+            </div>
+        </aside>
+
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <div class="main-content">
+            <header class="top-bar">
+                <div class="top-bar-left">
+                    <button class="mobile-menu-btn" id="mobileMenuBtn">
+                        <span></span><span></span><span></span>
+                    </button>
+                </div>
+                <div class="top-bar-right">
+                    <div class="user-menu" id="userMenu">
+                        <button class="user-menu-btn" id="userMenuBtn">
+                            <div class="user-avatar">
+                                <img src="https://ui-avatars.com/api/?name=U" alt="User" id="userAvatar">
+                            </div>
+                            <div class="user-info">
+                                <span class="user-name">Usuário</span>
+                                <span class="user-role">...</span>
+                            </div>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="user-dropdown" id="userDropdown">
+                            <a href="/profile.html" class="dropdown-item">
+                                <i class="fas fa-user"></i>
+                                <span>Meu Perfil</span>
+                            </a>
+                            <a href="/updates.html" class="dropdown-item">
+                                <i class="fas fa-sync-alt"></i>
+                                <span>Atualizações</span>
+                            </a>
+                            <a href="/faq.html" class="dropdown-item">
+                                <i class="fas fa-question-circle"></i>
+                                <span>FAQ</span>
+                            </a>
+                            <a href="/maintenance.html" class="dropdown-item">
+                                <i class="fas fa-tools"></i>
+                                <span>Manutenção</span>
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="#" class="dropdown-item logout-btn" id="logoutBtn">
+                                <i class="fas fa-sign-out-alt"></i>
+                                <span>Sair</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="page-content">
+                <main class="admin-panel">
+                    <div class="panel-header">
+                        <i class="fas fa-question-circle"></i>
+                        <h2>Perguntas Frequentes (FAQ)</h2>
+                    </div>
+                    <p class="panel-description">Encontre respostas para as dúvidas mais comuns sobre o sistema Preço Em Foco.</p>
+
+                    <div class="faq-container">
+                        <aside class="faq-sidebar">
+                            <h3>Navegação</h3>
+                            <ul>
+                                <li><a href="#sobre-sistema" class="active">Sobre o Sistema</a></li>
+                                <li><a href="#coleta-dados">Coleta de Dados</a></li>
+                                <li><a href="#cestas-basicas">Cestas Básicas</a></li>
+                                <li><a href="#busca-comparacao">Busca e Comparação</a></li>
+                            </ul>
+                        </aside>
+
+                        <div class="faq-content">
+                            <section id="sobre-sistema" class="faq-section">
+                                <h2><i class="fas fa-info-circle"></i> Sobre o Sistema</h2>
+
+                                <div class="faq-item">
+                                    <button class="faq-question">
+                                        <span>O que é o Preço Em Foco?</span>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </button>
+                                    <div class="faq-answer">
+                                        <p>O Preço Em Foco é uma plataforma completa de monitoramento e análise de preços de supermercados que coleta, processa e compara preços de produtos em tempo real, fornecendo insights valiosos para consumidores e empresas.</p>
+                                        <div class="highlight">
+                                            <p><strong>Funcionalidades principais:</strong> Comparação de preços, análise histórica, alertas de variação, gestão de cestas básicas e relatórios detalhados.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="faq-item">
+                                    <button class="faq-question">
+                                        <span>Quem pode usar o sistema?</span>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </button>
+                                    <div class="faq-answer">
+                                        <p>O sistema possui diferentes níveis de acesso:</p>
+                                        <ul>
+                                            <li><strong>Administradores:</strong> Acesso total a todas as funcionalidades</li>
+                                            <li><strong>Subadministradores:</strong> Gerenciam grupos específicos de usuários</li>
+                                            <li><strong>Usuários comuns:</strong> Acesso às funcionalidades básicas de comparação</li>
+                                            <li><strong>Visitantes:</strong> Buscas públicas limitadas</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div class="faq-item">
+                                    <button class="faq-question">
+                                        <span>Quais tecnologias são utilizadas?</span>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </button>
+                                    <div class="faq-answer">
+                                        <div class="feature-grid">
+                                            <div class="feature-card">
+                                                <h4><i class="fas fa-server"></i> Backend</h4>
+                                                <p>Python FastAPI para processamento de dados e API</p>
+                                            </div>
+                                            <div class="feature-card">
+                                                <h4><i class="fas fa-database"></i> Banco de Dados</h4>
+                                                <p>PostgreSQL com Supabase para armazenamento</p>
+                                            </div>
+                                            <div class="feature-card">
+                                                <h4><i class="fas fa-desktop"></i> Frontend</h4>
+                                                <p>HTML, CSS e JavaScript para interface responsiva</p>
+                                            </div>
+                                            <div class="feature-card">
+                                                <h4><i class="fas fa-plug"></i> APIs</h4>
+                                                <p>Integração com API oficial da SEFAZ Alagoas</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section id="coleta-dados" class="faq-section">
+                                <h2><i class="fas fa-database"></i> Coleta de Dados</h2>
+
+                                <div class="faq-item">
+                                    <button class="faq-question">
+                                        <span>Como funciona a coleta de preços?</span>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </button>
+                                    <div class="faq-answer">
+                                        <p>O sistema realiza coletas automáticas periódicas através da API oficial do Economiza Alagoas, capturando preços de mais de 400 produtos em diversos supermercados.</p>
+                                        <p>O processo inclui:</p>
+                                        <ul>
+                                            <li>Consulta programada à API oficial</li>
+                                            <li>Processamento e normalização dos dados</li>
+                                            <li>Armazenamento no banco de dados</li>
+                                            <li>Atualização dos relatórios e dashboards</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div class="faq-item">
+                                    <button class="faq-question">
+                                        <span>Com que frequência os dados são atualizados?</span>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </button>
+                                    <div class="faq-answer">
+                                        <ul>
+                                            <li><strong>Coletas automáticas:</strong> Podem ser agendadas diariamente</li>
+                                            <li><strong>Busca em tempo real:</strong> Disponível para consultas imediatas</li>
+                                            <li><strong>Histórico:</strong> Mantém dados dos últimos 15 dias</li>
+                                        </ul>
+                                        <div class="highlight">
+                                            <p><strong>Nota:</strong> A atualização em tempo real consulta diretamente a API oficial, garantindo os preços mais recentes disponíveis.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="faq-item">
+                                    <button class="faq-question">
+                                        <span>Quais produtos são monitorados?</span>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </button>
+                                    <div class="faq-answer">
+                                        <div class="feature-grid">
+                                            <div class="feature-card">
+                                                <h4><i class="fas fa-shopping-basket"></i> Mercearia</h4>
+                                                <p>Arroz, feijão, óleo, açúcar, café, farinha, etc.</p>
+                                            </div>
+                                            <div class="feature-card">
+                                                <h4><i class="fas fa-apple-alt"></i> Hortifrúti</h4>
+                                                <p>Frutas, verduras, legumes e ovos</p>
+                                            </div>
+                                            <div class="feature-card">
+                                                <h4><i class="fas fa-drumstick-bite"></i> Açougue</h4>
+                                                <p>Carnes, frangos, peixes e derivados</p>
+                                            </div>
+                                            <div class="feature-card">
+                                                <h4><i class="fas fa-cheese"></i> Laticínios</h4>
+                                                <p>Leite, queijos, iogurtes e manteiga</p>
+                                            </div>
+                                            <div class="feature-card">
+                                                <h4><i class="fas fa-wine-bottle"></i> Bebidas</h4>
+                                                <p>Refrigerantes, águas, sucos e cervejas</p>
+                                            </div>
+                                            <div class="feature-card">
+                                                <h4><i class="fas fa-pump-soap"></i> Limpeza</h4>
+                                                <p>Produtos de limpeza e higiene pessoal</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section id="cestas-basicas" class="faq-section">
+                                <h2><i class="fas fa-shopping-cart"></i> Cestas Básicas</h2>
+
+                                <div class="faq-item">
+                                    <button class="faq-question">
+                                        <span>O que são as cestas básicas?</span>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </button>
+                                    <div class="faq-answer">
+                                        <p>São listas personalizadas de produtos para monitoramento específico, permitindo comparações rápidas entre mercados.</p>
+                                        <p>Com as cestas básicas, você pode:</p>
+                                        <ul>
+                                            <li>Criar listas de compras frequentes</li>
+                                            <li>Comparar o custo total entre supermercados</li>
+                                            <li>Receber alertas quando produtos da sua cesta variam de preço</li>
+                                            <li>Economizar tempo nas compras do mês</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div class="faq-item">
+                                    <button class="faq-question">
+                                        <span>Quantas cestas posso criar?</span>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </button>
+                                    <div class="faq-answer">
+                                        <ul>
+                                            <li><strong>Limite:</strong> 3 cestas por usuário</li>
+                                            <li><strong>Produtos por cesta:</strong> Até 25 itens</li>
+                                            <li><strong>Personalização:</strong> Nome e composição livre</li>
+                                        </ul>
+                                        <div class="highlight">
+                                            <p><strong>Dica:</strong> Crie cestas temáticas como "Cesta do Mês", "Produtos de Limpeza" e "Itens Básicos" para organizar melhor suas compras.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="faq-item">
+                                    <button class="faq-question">
+                                        <span>Como comparo preços das minhas cestas?</span>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </button>
+                                    <div class="faq-answer">
+                                        <p>Através da função "Preços em Tempo Real" que busca valores atualizados em todos os mercados selecionados.</p>
+                                        <p>O sistema mostrará:</p>
+                                        <ul>
+                                            <li>Preço total da cesta em cada supermercado</li>
+                                            <li>Variação de preço em relação à última consulta</li>
+                                            <li>Supermercado com o menor preço total</li>
+                                            <li>Detalhamento por produto</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section id="busca-comparacao" class="faq-section">
+                                <h2><i class="fas fa-search-dollar"></i> Busca e Comparação de Preços</h2>
+
+                                <div class="faq-item">
+                                    <button class="faq-question">
+                                        <span>Como faço para buscar um produto?</span>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </button>
+                                    <div class="faq-answer">
+                                        <p>Digite o nome do produto na barra de busca da página de busca:</p>
+                                        <div class="highlight">
+                                            <p><strong>Recursos disponíveis:</strong></p>
+                                            <ul>
+                                                <li><strong>Busca simples:</strong> Digite o nome do produto</li>
+                                                <li><strong>Filtros:</strong> Por mercado, categoria ou data</li>
+                                                <li><strong>Sugestões:</strong> Sistema auxilia com correções</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="faq-item">
+                                    <button class="faq-question">
+                                        <span>Posso comparar preços entre mercados?</span>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </button>
+                                    <div class="faq-answer">
+                                        <p>Sim, a funcionalidade de comparação mostra:</p>
+                                        <ul>
+                                            <li><strong>Preço mais baixo</strong> e mais alto</li>
+                                            <li><strong>Variação histórica</strong> (últimos 15 dias)</li>
+                                            <li><strong>Disponibilidade</strong> por mercado</li>
+                                            <li><strong>Gráficos comparativos</strong> de evolução de preços</li>
+                                        </ul>
+
+                                        <p>Exemplo de comparação:</p>
+                                        <table class="comparison-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Supermercado</th>
+                                                    <th>Preço</th>
+                                                    <th>Variação</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td>Supermercado A</td>
+                                                    <td class="price-low">R$ 5,49</td>
+                                                    <td>-2%</td>
+                                                    <td>Melhor Preço</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Supermercado B</td>
+                                                    <td>R$ 5,79</td>
+                                                    <td>+3%</td>
+                                                    <td>Preço Médio</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Supermercado C</td>
+                                                    <td class="price-high">R$ 6,29</td>
+                                                    <td>+12%</td>
+                                                    <td>Preço Alto</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div class="faq-item">
+                                    <button class="faq-question">
+                                        <span>A busca em tempo real é diferente?</span>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </button>
+                                    <div class="faq-answer">
+                                        <p>Sim, a busca em tempo real consulta diretamente a API oficial, trazendo os preços mais atualizados disponíveis, sem usar o banco histórico.</p>
+                                        <div class="highlight">
+                                            <p><strong>Vantagens da busca em tempo real:</strong> Preços do dia, disponibilidade atualizada e informações mais precisas.</p>
+                                            <p><strong>Limitações:</strong> Pode ser mais lenta e depende da disponibilidade da API oficial.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <script src="mobile-menu.js"></script>
+    <script src="user-activity-monitor.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // FAQ accordion functionality
+            const faqQuestions = document.querySelectorAll('.faq-question');
+
+            faqQuestions.forEach(question => {
+                question.addEventListener('click', () => {
+                    const answer = question.nextElementSibling;
+                    const icon = question.querySelector('i');
+
+                    // Toggle current answer
+                    answer.classList.toggle('active');
+
+                    // Toggle icon
+                    if (answer.classList.contains('active')) {
+                        icon.classList.remove('fa-chevron-down');
+                        icon.classList.add('fa-chevron-up');
+                    } else {
+                        icon.classList.remove('fa-chevron-up');
+                        icon.classList.add('fa-chevron-down');
+                    }
+                });
+            });
+
+            // Smooth scrolling for sidebar links
+            const sidebarLinks = document.querySelectorAll('.faq-sidebar a');
+
+            sidebarLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+
+                    // Remove active class from all links
+                    sidebarLinks.forEach(item => item.classList.remove('active'));
+
+                    // Add active class to clicked link
+                    this.classList.add('active');
+
+                    // Scroll to section
+                    const targetId = this.getAttribute('href');
+                    const targetSection = document.querySelector(targetId);
+
+                    window.scrollTo({
+                        top: targetSection.offsetTop - 100,
+                        behavior: 'smooth'
+                    });
+                });
+            });
+
+            // Update active sidebar link on scroll
+            window.addEventListener('scroll', function() {
+                const sections = document.querySelectorAll('.faq-section');
+                const scrollPos = window.scrollY + 150;
+
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    const sectionHeight = section.offsetHeight;
+                    const sectionId = section.getAttribute('id');
+
+                    if (scrollPos >= sectionTop && scrollPos < sectionTop + sectionHeight) {
+                        sidebarLinks.forEach(link => link.classList.remove('active'));
+                        document.querySelector(`.faq-sidebar a[href="#${sectionId}"]`).classList.add('active');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1434 @@
+/* ====== PROFILE.CSS - VERSÃO CORRIGIDA E MELHORADA ====== */
+/* Estilos específicos para a página de perfil */
+
+/* ====== 1. VARIÁVEIS ESPECÍFICAS ====== */
+:root {
+    --profile-avatar-size: 140px;
+    --profile-avatar-size-mobile: 110px;
+    --section-spacing: 2.5rem;
+    --card-padding: 2.5rem;
+    --card-padding-mobile: 1.5rem;
+    --border-radius-large: 16px;
+    --transition-smooth: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* ====== 2. LAYOUT DO PERFIL ====== */
+.profile-panel {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem 0;
+    animation: fadeInUp 0.6s ease;
+}
+
+.profile-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--section-spacing);
+    padding: 0 1rem;
+}
+
+.profile-section {
+    background: var(--panel-dark);
+    border-radius: var(--border-radius-large);
+    border: 1px solid var(--border-dark);
+    padding: var(--card-padding);
+    box-shadow: 
+        0 4px 20px rgba(0, 0, 0, 0.08),
+        0 8px 40px rgba(0, 0, 0, 0.12);
+    transition: var(--transition-smooth);
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+}
+
+body.light-mode .profile-section {
+    background: var(--panel-light);
+    border: 1px solid var(--border-light);
+    box-shadow: 
+        0 4px 20px rgba(0, 0, 0, 0.04),
+        0 8px 40px rgba(0, 0, 0, 0.06);
+}
+
+.profile-section:hover {
+    transform: translateY(-4px);
+    box-shadow: 
+        0 8px 30px rgba(0, 0, 0, 0.12),
+        0 20px 60px rgba(0, 0, 0, 0.15);
+}
+
+body.light-mode .profile-section:hover {
+    box-shadow: 
+        0 8px 30px rgba(0, 0, 0, 0.08),
+        0 20px 60px rgba(0, 0, 0, 0.1);
+}
+
+/* Efeito de gradiente na borda */
+.profile-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    opacity: 0;
+    transition: var(--transition-smooth);
+}
+
+.profile-section:hover::before {
+    opacity: 1;
+}
+
+/* ====== 3. CABEÇALHOS E SEÇÕES ====== */
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-dark);
+    position: relative;
+}
+
+body.light-mode .section-header {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.section-header i {
+    font-size: 1.75rem;
+    color: var(--primary);
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.15), rgba(124, 58, 237, 0.1));
+    padding: 1rem;
+    border-radius: 14px;
+    transition: var(--transition-smooth);
+    position: relative;
+    overflow: hidden;
+}
+
+.section-header i::before {
+    position: relative;
+    z-index: 2;
+}
+
+.section-header i::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    transition: var(--transition-smooth);
+    opacity: 0;
+}
+
+.section-header:hover i::after {
+    left: 0;
+    opacity: 1;
+}
+
+.section-header:hover i {
+    color: white;
+    transform: scale(1.1) rotate(5deg);
+    box-shadow: 0 10px 30px rgba(79, 70, 229, 0.3);
+}
+
+.section-header h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin: 0;
+    background: linear-gradient(135deg, var(--text-dark), var(--primary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+body.light-mode .section-header h3 {
+    background: linear-gradient(135deg, var(--text-light), var(--primary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* ====== 4. GRID DE INFORMAÇÕES DO PERFIL ====== */
+.profile-info-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 3rem;
+    align-items: start;
+}
+
+@media (max-width: 968px) {
+    .profile-info-grid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        justify-items: center;
+    }
+}
+
+/* ====== 5. SEÇÃO DO AVATAR ====== */
+.avatar-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: var(--border-radius-large);
+    border: 1px solid var(--border-dark);
+}
+
+body.light-mode .avatar-section {
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px solid var(--border-light);
+}
+
+.avatar-container {
+    position: relative;
+    width: var(--profile-avatar-size);
+    height: var(--profile-avatar-size);
+    border-radius: 50%;
+    overflow: hidden;
+    border: 4px solid var(--primary);
+    box-shadow: 
+        0 8px 25px rgba(79, 70, 229, 0.25),
+        0 0 0 1px rgba(255, 255, 255, 0.1);
+    transition: var(--transition-smooth);
+    background: var(--input-dark);
+}
+
+body.light-mode .avatar-container {
+    background: var(--input-light);
+    box-shadow: 
+        0 8px 25px rgba(79, 70, 229, 0.15),
+        0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+.avatar-container:hover {
+    transform: scale(1.08);
+    border-color: var(--accent);
+    box-shadow: 
+        0 15px 40px rgba(79, 70, 229, 0.35),
+        0 0 0 2px rgba(124, 58, 237, 0.2);
+}
+
+.profile-avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: var(--transition-smooth);
+}
+
+.avatar-container:hover .profile-avatar {
+    transform: scale(1.1);
+}
+
+.avatar-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.9), rgba(124, 58, 237, 0.8));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: var(--transition-smooth);
+}
+
+.avatar-container:hover .avatar-overlay {
+    opacity: 1;
+}
+
+.avatar-change-btn {
+    background: rgba(255, 255, 255, 0.95);
+    color: var(--primary);
+    border: none;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    transform: scale(0.8);
+    font-size: 1.2rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.avatar-container:hover .avatar-change-btn {
+    transform: scale(1);
+}
+
+.avatar-change-btn:hover {
+    transform: scale(1.1) rotate(15deg);
+    background: white;
+    color: var(--accent);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.avatar-actions {
+    display: flex;
+    gap: 0.75rem;
+    width: 100%;
+    justify-content: center;
+}
+
+.avatar-actions .btn {
+    flex: 1;
+    max-width: 140px;
+    justify-content: center;
+    font-size: 0.85rem;
+}
+
+/* ====== 6. FORMULÁRIOS ====== */
+.info-form {
+    width: 100%;
+}
+
+.password-form {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.form-group {
+    position: relative;
+    margin-bottom: 2rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+    color: var(--muted-dark);
+    transition: var(--transition-smooth);
+    font-size: 0.95rem;
+}
+
+body.light-mode .form-group label {
+    color: var(--muted-light);
+}
+
+.form-group input {
+    width: 100%;
+    padding: 1.25rem 1.5rem;
+    border: 2px solid var(--border-dark);
+    border-radius: 12px;
+    background: var(--input-dark);
+    color: var(--text-dark);
+    font-size: 1rem;
+    transition: var(--transition-smooth);
+    font-family: inherit;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+body.light-mode .form-group input {
+    background: var(--input-light);
+    color: var(--text-light);
+    border: 2px solid var(--border-light);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: var(--input-dark);
+    box-shadow: 
+        0 0 0 3px rgba(79, 70, 229, 0.15),
+        inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+body.light-mode .form-group input:focus {
+    background: var(--input-light);
+    box-shadow: 
+        0 0 0 3px rgba(79, 70, 229, 0.1),
+        inset 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.form-group input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+body.light-mode .form-group input:disabled {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.disabled-field {
+    background: rgba(255, 255, 255, 0.03) !important;
+    color: var(--muted-dark) !important;
+}
+
+body.light-mode .disabled-field {
+    background: rgba(0, 0, 0, 0.03) !important;
+    color: var(--muted-light) !important;
+}
+
+/* ====== 7. TOGGLE DE SENHA - VERSÃO CORRIGIDA E CENTRALIZADA ====== */
+.password-toggle {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--muted-dark);
+    cursor: pointer;
+    padding: 0.75rem;
+    border-radius: 8px;
+    transition: var(--transition-smooth);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    margin: 0;
+}
+
+body.light-mode .password-toggle {
+    color: var(--muted-light);
+}
+
+.password-toggle:hover {
+    color: var(--primary);
+    background: rgba(79, 70, 229, 0.1);
+    transform: translateY(-50%) scale(1.1);
+}
+
+/* Ajuste ESSENCIAL para inputs de senha */
+.form-group {
+    position: relative;
+}
+
+.form-group input[type="password"],
+.form-group input[type="text"] {
+    padding-right: 4rem !important; /* Espaço extra para o botão */
+}
+
+/* Garantir que o input tenha altura consistente */
+.form-group input {
+    height: 56px;
+    box-sizing: border-box;
+}
+
+/* Correção específica para formulário de senha */
+.password-form .form-group {
+    margin-bottom: 2.5rem;
+}
+
+.password-form .form-group:last-of-type {
+    margin-bottom: 1.5rem;
+}
+
+/* ====== 8. INDICADOR DE FORÇA DA SENHA ====== */
+.password-strength {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 10px;
+    border: 1px solid var(--border-dark);
+}
+
+body.light-mode .password-strength {
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid var(--border-light);
+}
+
+.strength-bar {
+    height: 8px;
+    background: var(--border-dark);
+    border-radius: 4px;
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+    position: relative;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+body.light-mode .strength-bar {
+    background: var(--border-light);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.strength-bar::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 0%;
+    background: var(--error);
+    border-radius: 4px;
+    transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    box-shadow: 0 0 10px currentColor;
+}
+
+.strength-bar.weak::before {
+    width: 25%;
+    background: var(--error);
+}
+
+.strength-bar.medium::before {
+    width: 50%;
+    background: var(--warn);
+}
+
+.strength-bar.strong::before {
+    width: 75%;
+    background: #10b981;
+}
+
+.strength-bar.very-strong::before {
+    width: 100%;
+    background: var(--success);
+    box-shadow: 0 0 15px rgba(22, 163, 74, 0.5);
+}
+
+.strength-text {
+    font-size: 0.9rem;
+    color: var(--muted-dark);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+body.light-mode .strength-text {
+    color: var(--muted-light);
+}
+
+.strength-text::before {
+    content: '•';
+    font-size: 1.5rem;
+}
+
+.strength-bar.weak ~ .strength-text::before { color: var(--error); }
+.strength-bar.medium ~ .strength-text::before { color: var(--warn); }
+.strength-bar.strong ~ .strength-text::before { color: #10b981; }
+.strength-bar.very-strong ~ .strength-text::before { color: var(--success); }
+
+/* ====== 9. INFORMAÇÕES DE ACESSO ====== */
+.access-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.access-status-card {
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(124, 58, 237, 0.04));
+    border: 1px solid var(--border-dark);
+    border-radius: var(--border-radius-large);
+    padding: 2rem;
+    transition: var(--transition-smooth);
+    position: relative;
+    overflow: hidden;
+}
+
+body.light-mode .access-status-card {
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.05), rgba(124, 58, 237, 0.02));
+    border: 1px solid var(--border-light);
+}
+
+.access-status-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 35px rgba(79, 70, 229, 0.15);
+}
+
+.status-header {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.status-icon {
+    font-size: 2.5rem;
+    color: var(--primary);
+    background: rgba(79, 70, 229, 0.1);
+    padding: 1rem;
+    border-radius: 16px;
+    transition: var(--transition-smooth);
+}
+
+.access-status-card:hover .status-icon {
+    transform: scale(1.1);
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: white;
+}
+
+.status-info h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.3rem;
+    color: var(--text-dark);
+    font-weight: 700;
+}
+
+body.light-mode .status-info h4 {
+    color: var(--text-light);
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1.25rem;
+    border-radius: 100px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: 2px solid transparent;
+    transition: var(--transition-smooth);
+}
+
+.status-badge.active {
+    background: var(--success);
+    color: white;
+    border-color: rgba(22, 163, 74, 0.3);
+}
+
+.status-badge.warn {
+    background: var(--warn);
+    color: white;
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.status-badge.expired {
+    background: var(--error);
+    color: white;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.status-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.25rem;
+}
+
+.status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border-dark);
+    transition: var(--transition-smooth);
+}
+
+body.light-mode .status-item {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.status-item:hover {
+    background: rgba(255, 255, 255, 0.02);
+    padding: 1rem;
+    margin: 0 -1rem;
+    border-radius: 8px;
+    border-bottom-color: transparent;
+}
+
+.status-item:last-child {
+    border-bottom: none;
+}
+
+.status-item .label {
+    color: var(--muted-dark);
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+body.light-mode .status-item .label {
+    color: var(--muted-light);
+}
+
+.status-item .value {
+    color: var(--text-dark);
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+body.light-mode .status-item .value {
+    color: var(--text-light);
+}
+
+/* ====== 10. GRUPOS DE ACESSO ====== */
+.groups-section h4 {
+    margin-bottom: 1.25rem;
+    color: var(--text-dark);
+    font-size: 1.2rem;
+    font-weight: 600;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid var(--border-dark);
+}
+
+body.light-mode .groups-section h4 {
+    color: var(--text-light);
+    border-bottom: 2px solid var(--border-light);
+}
+
+.groups-list {
+    display: grid;
+    gap: 1.25rem;
+}
+
+.group-card {
+    background: var(--input-dark);
+    border: 1px solid var(--border-dark);
+    border-radius: 14px;
+    padding: 1.5rem;
+    transition: var(--transition-smooth);
+    position: relative;
+    overflow: hidden;
+}
+
+body.light-mode .group-card {
+    background: var(--input-light);
+    border: 1px solid var(--border-light);
+}
+
+.group-card:hover {
+    transform: translateX(8px);
+    border-color: var(--primary);
+    box-shadow: 0 8px 25px rgba(79, 70, 229, 0.15);
+}
+
+.group-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 4px;
+    background: linear-gradient(180deg, var(--primary), var(--accent));
+    opacity: 0;
+    transition: var(--transition-smooth);
+}
+
+.group-card:hover::before {
+    opacity: 1;
+}
+
+.group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    gap: 1rem;
+}
+
+.group-name {
+    font-weight: 600;
+    color: var(--text-dark);
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+body.light-mode .group-name {
+    color: var(--text-light);
+}
+
+.group-days {
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: white;
+    padding: 0.4rem 1rem;
+    border-radius: 100px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    white-space: nowrap;
+    box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
+}
+
+.group-expiration {
+    color: var(--muted-dark);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+body.light-mode .group-expiration {
+    color: var(--muted-light);
+}
+
+.group-expiration::before {
+    content: '⏰';
+    font-size: 0.8rem;
+}
+
+.no-groups {
+    text-align: center;
+    color: var(--muted-dark);
+    font-style: italic;
+    padding: 3rem 2rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 12px;
+    border: 2px dashed var(--border-dark);
+}
+
+body.light-mode .no-groups {
+    color: var(--muted-light);
+    background: rgba(0, 0, 0, 0.02);
+    border: 2px dashed var(--border-light);
+}
+
+/* ====== 11. INFORMAÇÕES DO ADMIN ====== */
+.admin-info {
+    text-align: center;
+    padding: 2.5rem;
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.05), rgba(124, 58, 237, 0.03));
+    border-radius: var(--border-radius-large);
+    border: 1px solid var(--border-dark);
+    margin-top: 1rem;
+}
+
+body.light-mode .admin-info {
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.03), rgba(124, 58, 237, 0.01));
+    border: 1px solid var(--border-light);
+}
+
+.admin-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: 100px;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    box-shadow: 
+        0 8px 25px rgba(79, 70, 229, 0.3),
+        0 4px 0 rgba(79, 70, 229, 0.2);
+    transition: var(--transition-smooth);
+}
+
+.admin-badge:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+        0 12px 35px rgba(79, 70, 229, 0.4),
+        0 6px 0 rgba(79, 70, 229, 0.2);
+}
+
+.admin-badge i {
+    animation: pulse 2s infinite;
+    font-size: 1.2rem;
+}
+
+.admin-description {
+    color: var(--muted-dark);
+    line-height: 1.7;
+    max-width: 500px;
+    margin: 0 auto;
+    font-size: 1.05rem;
+}
+
+body.light-mode .admin-description {
+    color: var(--muted-light);
+}
+
+/* ====== 12. MODAL DO AVATAR ====== */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(12px);
+    animation: fadeIn 0.3s ease;
+}
+
+.modal-content {
+    position: relative;
+    background: var(--panel-dark);
+    margin: 5% auto;
+    border-radius: var(--border-radius-large);
+    border: 1px solid var(--border-dark);
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 
+        0 25px 50px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.1);
+    animation: slideDown 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    overflow: hidden;
+}
+
+body.light-mode .modal-content {
+    background: var(--panel-light);
+    border: 1px solid var(--border-light);
+    box-shadow: 
+        0 25px 50px rgba(0, 0, 0, 0.2),
+        0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.75rem 2rem;
+    border-bottom: 1px solid var(--border-dark);
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.05), transparent);
+}
+
+body.light-mode .modal-header {
+    border-bottom: 1px solid var(--border-light);
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.03), transparent);
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: var(--text-dark);
+    font-size: 1.4rem;
+    font-weight: 700;
+}
+
+body.light-mode .modal-header h3 {
+    color: var(--text-light);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: var(--muted-dark);
+    font-size: 1.75rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    transition: var(--transition-smooth);
+}
+
+.modal-close:hover {
+    color: var(--error);
+    background: rgba(239, 68, 68, 0.1);
+    transform: rotate(90deg) scale(1.1);
+}
+
+.modal-body {
+    padding: 2.5rem;
+}
+
+.avatar-preview-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 2.5rem;
+}
+
+.avatar-preview {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid var(--primary);
+    box-shadow: 
+        0 15px 35px rgba(79, 70, 229, 0.25),
+        0 0 0 1px rgba(255, 255, 255, 0.1);
+    transition: var(--transition-smooth);
+}
+
+.avatar-preview:hover {
+    transform: scale(1.05);
+    box-shadow: 
+        0 20px 45px rgba(79, 70, 229, 0.35),
+        0 0 0 2px rgba(124, 58, 237, 0.2);
+}
+
+.modal-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.modal-actions .btn {
+    min-width: 160px;
+    justify-content: center;
+}
+
+/* ====== 13. MENSAGENS DE FEEDBACK ====== */
+.profile-message {
+    padding: 1.25rem 1.75rem;
+    border-radius: 14px;
+    margin-bottom: 2rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    animation: slideInDown 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    box-shadow: 
+        0 8px 25px rgba(0, 0, 0, 0.15),
+        0 4px 0 rgba(0, 0, 0, 0.1);
+    border: 1px solid transparent;
+    position: relative;
+    overflow: hidden;
+}
+
+.profile-message::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 4px;
+    background: currentColor;
+    opacity: 0.3;
+}
+
+.profile-message.success-message {
+    background: rgba(22, 163, 74, 0.12);
+    color: var(--success);
+    border-color: rgba(22, 163, 74, 0.25);
+}
+
+.profile-message.error-message {
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--error);
+    border-color: rgba(239, 68, 68, 0.25);
+}
+
+.profile-message.info-message {
+    background: rgba(59, 130, 246, 0.12);
+    color: #3b82f6;
+    border-color: rgba(59, 130, 246, 0.25);
+}
+
+.profile-message i {
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+
+/* ====== 14. ANIMAÇÕES ====== */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(40px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-60px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+/* ====== 15. RESPONSIVIDADE ====== */
+@media (max-width: 1024px) {
+    .profile-panel {
+        margin: 0 0.5rem;
+        padding: 1rem 0;
+    }
+
+    .profile-content {
+        padding: 0 0.5rem;
+    }
+
+    .profile-section {
+        padding: var(--card-padding-mobile);
+    }
+
+    .status-details {
+        grid-template-columns: 1fr;
+    }
+
+    .modal-content {
+        margin: 10% auto;
+        width: 95%;
+    }
+}
+
+@media (max-width: 768px) {
+    :root {
+        --profile-avatar-size: var(--profile-avatar-size-mobile);
+        --section-spacing: 2rem;
+        --card-padding: var(--card-padding-mobile);
+    }
+
+    .profile-panel {
+        margin: 0 0.25rem;
+        padding: 0.5rem 0;
+    }
+
+    .profile-info-grid {
+        gap: 1.5rem;
+    }
+
+    .section-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+        padding-bottom: 1.25rem;
+    }
+
+    .modal-body {
+        padding: 1.75rem;
+    }
+
+    .avatar-preview {
+        width: 160px;
+        height: 160px;
+    }
+
+    .modal-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .modal-actions .btn {
+        width: 100%;
+        max-width: 250px;
+    }
+
+    .group-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .group-days {
+        align-self: flex-start;
+    }
+}
+
+@media (max-width: 480px) {
+    .profile-section {
+        padding: 1.25rem;
+        margin: 0 0.25rem;
+    }
+
+    .avatar-container {
+        width: 100px;
+        height: 100px;
+    }
+
+    .avatar-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .avatar-actions .btn {
+        max-width: none;
+        width: 100%;
+    }
+
+    .modal-body {
+        padding: 1.25rem;
+    }
+
+    .modal-header {
+        padding: 1.25rem 1.5rem;
+    }
+
+    .profile-message {
+        padding: 1rem 1.25rem;
+        font-size: 0.9rem;
+    }
+
+    .admin-info {
+        padding: 1.75rem;
+    }
+
+    .admin-badge {
+        padding: 0.75rem 1.5rem;
+        font-size: 0.9rem;
+    }
+}
+
+/* ====== 16. ESTADOS DE CARREGAMENTO ====== */
+body.loading::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--accent), var(--primary));
+    z-index: 9999;
+    animation: loadingBar 1.5s infinite;
+    box-shadow: 0 0 10px rgba(79, 70, 229, 0.5);
+}
+
+@keyframes loadingBar {
+    0% {
+        transform: translateX(-100%);
+    }
+    50% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+/* ====== 17. BOTÕES ESPECÍFICOS DO PERFIL ====== */
+.btn-sm {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.875rem;
+    border-radius: 10px;
+}
+
+.avatar-actions .btn {
+    transition: var(--transition-smooth);
+    position: relative;
+    overflow: hidden;
+}
+
+.avatar-actions .btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: var(--transition-smooth);
+}
+
+.avatar-actions .btn:hover::before {
+    left: 100%;
+}
+
+/* ====== 18. ESTADOS DE FOCO E HOVER MELHORADOS ====== */
+.form-group input:invalid:not(:focus):not(:placeholder-shown) {
+    border-color: var(--error);
+    box-shadow: 
+        0 0 0 3px rgba(239, 68, 68, 0.1),
+        inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.form-group input:valid:not(:focus):not(:placeholder-shown) {
+    border-color: var(--success);
+    box-shadow: 
+        0 0 0 3px rgba(22, 163, 74, 0.1),
+        inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* ====== 19. SCROLL PERSONALIZADO PARA LISTAS ====== */
+.groups-list {
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+.groups-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.groups-list::-webkit-scrollbar-track {
+    background: var(--border-dark);
+    border-radius: 3px;
+}
+
+body.light-mode .groups-list::-webkit-scrollbar-track {
+    background: var(--border-light);
+}
+
+.groups-list::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 3px;
+}
+
+.groups-list::-webkit-scrollbar-thumb:hover {
+    background: var(--accent);
+}
+
+/* ====== 20. AJUSTES FINOS ====== */
+.profile-panel .panel-header {
+    margin-bottom: 2.5rem;
+    text-align: center;
+}
+
+.profile-panel .panel-header i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    display: block;
+}
+
+.profile-panel .panel-description {
+    text-align: center;
+    max-width: 600px;
+    margin: 0 auto 2rem;
+    font-size: 1.1rem;
+    line-height: 1.6;
+}
+
+/* Efeito de brilho sutil nos cards */
+.profile-section::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+    opacity: 0;
+    transition: var(--transition-smooth);
+    pointer-events: none;
+}
+
+.profile-section:hover::after {
+    opacity: 1;
+}
+
+/* Melhorar a legibilidade do texto */
+.profile-section {
+    line-height: 1.6;
+}
+
+/* Ajustes para elementos de formulário em foco */
+.form-group input:focus ~ label {
+    color: var(--primary);
+    transform: translateY(-2px);
+}
+
+/* Estados de botão aprimorados */
+.btn {
+    position: relative;
+    overflow: hidden;
+    transition: var(--transition-smooth);
+}
+
+.btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    transition: var(--transition-smooth);
+    transform: translate(-50%, -50%);
+}
+
+.btn:hover::after {
+    width: 300px;
+    height: 300px;
+}
+
+/* Garantir que as imagens de avatar sejam sempre quadradas */
+.profile-avatar, .avatar-preview {
+    aspect-ratio: 1 / 1;
+}
+
+/* Melhorar a hierarquia visual */
+.section-header h3 {
+    position: relative;
+}
+
+.section-header h3::after {
+    content: '';
+    position: absolute;
+    bottom: -0.5rem;
+    left: 0;
+    width: 40px;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    border-radius: 2px;
+    transition: var(--transition-smooth);
+}
+
+.section-header:hover h3::after {
+    width: 80px;
+}
+
+/* Ajustes de acessibilidade */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Suporte para dark/light mode transitions */
+.profile-section, .form-group input, .btn, .avatar-container {
+    transition: 
+        background-color 0.3s ease,
+        border-color 0.3s ease,
+        color 0.3s ease,
+        transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+        box-shadow 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Garantir que o z-index esteja correto para overlays */
+.modal {
+    z-index: 10000;
+}
+
+.profile-message {
+    z-index: 1000;
+}
+
+/* Melhorar o contraste para acessibilidade */
+@media (prefers-contrast: high) {
+    .profile-section {
+        border: 2px solid var(--border-dark);
+    }
+
+    body.light-mode .profile-section {
+        border: 2px solid var(--border-light);
+    }
+
+    .form-group input {
+        border-width: 2px;
+    }
+}
+
+/* Suporte para modo escuro automático */
+@media (prefers-color-scheme: dark) {
+    .profile-section:not(.light-mode) {
+        background: var(--panel-dark);
+        border-color: var(--border-dark);
+    }
+}
+
+@media (prefers-color-scheme: light) {
+    .profile-section:not(.dark-mode) {
+        background: var(--panel-light);
+        border-color: var(--border-light);
+    }
+}
