@@ -1,0 +1,255 @@
+/* ===== BARRA DE PROGRESSO DA PESQUISA COMPARE ===== */
+.progress-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    backdrop-filter: blur(5px);
+}
+
+.progress-overlay.active {
+    display: flex;
+}
+
+.progress-modal {
+    background: var(--panel-dark);
+    border-radius: 16px;
+    padding: 2rem;
+    width: 90%;
+    max-width: 500px;
+    border: 1px solid var(--border-dark);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: slideInUp 0.3s ease-out;
+}
+
+body.light-mode .progress-modal {
+    background: var(--panel-light);
+    border: 1px solid var(--border-light);
+}
+
+.progress-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.progress-header i {
+    font-size: 1.5rem;
+    color: var(--primary);
+}
+
+.progress-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+body.light-mode .progress-header h3 {
+    color: var(--text-light);
+}
+
+.progress-stats {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    color: var(--muted-dark);
+}
+
+body.light-mode .progress-stats {
+    color: var(--muted-light);
+}
+
+.progress-bar-container {
+    width: 100%;
+    height: 8px;
+    background: var(--border-dark);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+}
+
+body.light-mode .progress-bar-container {
+    background: var(--border-light);
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    border-radius: 4px;
+    width: 0%;
+    transition: width 0.3s ease;
+    position: relative;
+}
+
+.progress-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    animation: shimmer 2s infinite;
+}
+
+.progress-details {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+body.light-mode .progress-details {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.progress-step {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.progress-step:last-child {
+    margin-bottom: 0;
+}
+
+.step-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    background: var(--border-dark);
+    color: var(--muted-dark);
+    transition: var(--transition);
+}
+
+body.light-mode .step-icon {
+    background: var(--border-light);
+    color: var(--muted-light);
+}
+
+.step-icon.active {
+    background: var(--primary);
+    color: white;
+}
+
+.step-icon.completed {
+    background: var(--success);
+    color: white;
+}
+
+.step-info {
+    flex: 1;
+}
+
+.step-label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--muted-dark);
+    margin-bottom: 0.25rem;
+}
+
+body.light-mode .step-label {
+    color: var(--muted-light);
+}
+
+.step-label.active {
+    color: var(--text-dark);
+    font-weight: 600;
+}
+
+body.light-mode .step-label.active {
+    color: var(--text-light);
+}
+
+.step-value {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+body.light-mode .step-value {
+    color: var(--text-light);
+}
+
+.progress-time {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    color: var(--muted-dark);
+}
+
+body.light-mode .progress-time {
+    color: var(--muted-light);
+}
+
+.time-estimate {
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.progress-cancel {
+    width: 100%;
+    margin-top: 1rem;
+}
+
+/* Estados de loading */
+.progress-loading {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid transparent;
+    border-top: 2px solid var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 0.5rem;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .progress-modal {
+        margin: 1rem;
+        padding: 1.5rem;
+    }
+
+    .progress-header {
+        gap: 0.75rem;
+    }
+
+    .progress-header h3 {
+        font-size: 1.1rem;
+    }
+
+    .progress-details {
+        padding: 0.75rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .progress-modal {
+        padding: 1.25rem;
+    }
+
+    .progress-stats {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .progress-step {
+        gap: 0.5rem;
+    }
+}

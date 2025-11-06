@@ -1,0 +1,722 @@
+/* ===== SISTEMA DE NOTIFICAÇÕES - DESIGN APERFEIÇOADO ===== */
+
+/* Container principal refinado */
+.notification-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 15px;
+    height: 100%;
+}
+
+/* Botão do sino - Design mais sofisticado */
+.notification-btn {
+    position: relative;
+    background: var(--panel-dark);
+    border: 2px solid var(--border-dark);
+    font-size: 1.3rem;
+    cursor: pointer;
+    padding: 10px;
+    color: var(--text-dark);
+    border-radius: 12px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+body.light-mode .notification-btn {
+    background: var(--panel-light);
+    border: 2px solid var(--border-light);
+    color: var(--text-light);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.notification-btn:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 8px 20px rgba(79, 70, 229, 0.3);
+}
+
+.notification-btn:active {
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.4);
+}
+
+/* Badge de contagem - Design mais premium */
+.notification-badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+    color: white;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    font-size: 0.8rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 3px solid var(--panel-dark);
+    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+    animation: notificationPulse 2s infinite;
+    line-height: 1;
+    z-index: 2;
+}
+
+body.light-mode .notification-badge {
+    border: 3px solid var(--panel-light);
+}
+
+@keyframes notificationPulse {
+    0%, 100% { 
+        transform: scale(1); 
+        box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+    }
+    50% { 
+        transform: scale(1.15); 
+        box-shadow: 0 6px 16px rgba(255, 107, 107, 0.6);
+    }
+}
+
+/* Dropdown de notificações - Design mais elegante */
+.notification-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    width: 440px;
+    background: linear-gradient(135deg, var(--panel-dark), var(--bg-dark));
+    border: 1px solid var(--border-dark);
+    border-radius: 16px;
+    box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(255, 255, 255, 0.05);
+    display: none;
+    z-index: 1002;
+    margin-top: 12px;
+    opacity: 0;
+    transform: translateY(-15px) scale(0.95);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(20px);
+    overflow: hidden;
+}
+
+body.light-mode .notification-dropdown {
+    background: linear-gradient(135deg, var(--panel-light), var(--bg-light));
+    border: 1px solid var(--border-light);
+    box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.15),
+        0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+.notification-dropdown.show {
+    display: block;
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+/* Cabeçalho do dropdown - Design aprimorado */
+.notification-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-dark);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+}
+
+body.light-mode .notification-header {
+    background: rgba(255, 255, 255, 0.6);
+    border-bottom: 1px solid var(--border-light);
+}
+
+.notification-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+body.light-mode .notification-header h3 {
+    color: var(--text-light);
+}
+
+.mark-all-read {
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 10px 18px;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+.mark-all-read:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
+}
+
+.mark-all-read:active {
+    transform: translateY(0);
+}
+
+/* Lista de notificações - Scrollbar melhorada */
+.notification-list {
+    max-height: 500px;
+    overflow-y: auto;
+    background: transparent;
+}
+
+.notification-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.notification-list::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 3px;
+}
+
+.notification-list::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    border-radius: 3px;
+    opacity: 0.6;
+}
+
+.notification-list::-webkit-scrollbar-thumb:hover {
+    opacity: 1;
+}
+
+/* Itens de notificação - Design mais moderno */
+.notification-item {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-dark);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    background: transparent;
+}
+
+body.light-mode .notification-item {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.notification-item:last-child {
+    border-bottom: none;
+}
+
+.notification-item.unread {
+    background: linear-gradient(135deg, 
+        rgba(79, 70, 229, 0.08), 
+        rgba(79, 70, 229, 0.03));
+    border-left: 4px solid var(--primary);
+    padding-left: 20px;
+    backdrop-filter: blur(10px);
+}
+
+.notification-item.read {
+    background: transparent;
+    opacity: 0.7;
+}
+
+.notification-item:hover {
+    background: rgba(79, 70, 229, 0.1);
+    transform: translateX(4px);
+    border-left-color: var(--accent);
+}
+
+.notification-item.unread:hover {
+    background: rgba(79, 70, 229, 0.15);
+}
+
+/* Conteúdo da notificação - Tipografia melhorada */
+.notification-content {
+    position: relative;
+}
+
+.notification-title {
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--text-dark);
+    font-size: 1.05rem;
+    line-height: 1.4;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+body.light-mode .notification-title {
+    color: var(--text-light);
+}
+
+.notification-item.unread .notification-title {
+    color: var(--text-dark);
+    font-weight: 800;
+}
+
+body.light-mode .notification-item.unread .notification-title {
+    color: var(--text-light);
+}
+
+.notification-message {
+    font-size: 0.92rem;
+    color: var(--muted-dark);
+    margin-bottom: 12px;
+    line-height: 1.5;
+}
+
+body.light-mode .notification-message {
+    color: var(--muted-light);
+}
+
+.notification-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.82rem;
+    color: var(--muted-dark);
+}
+
+body.light-mode .notification-meta {
+    color: var(--muted-light);
+}
+
+.notification-time {
+    font-weight: 600;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+}
+
+body.light-mode .notification-time {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.notification-sender {
+    font-style: italic;
+    background: var(--primary);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* Botão marcar como lida - Design consistente */
+.mark-read-btn {
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    margin-top: 12px;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+    width: 100%;
+}
+
+.mark-read-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
+}
+
+/* Estado sem notificações - Design mais atrativo */
+.no-notifications {
+    padding: 60px 24px;
+    text-align: center;
+    color: var(--muted-dark);
+}
+
+body.light-mode .no-notifications {
+    color: var(--muted-light);
+}
+
+.no-notifications i {
+    font-size: 3rem;
+    margin-bottom: 20px;
+    opacity: 0.5;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.no-notifications p {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+/* Rodapé do dropdown */
+.notification-footer {
+    padding: 18px 24px;
+    border-top: 1px solid var(--border-dark);
+    text-align: center;
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+}
+
+body.light-mode .notification-footer {
+    background: rgba(255, 255, 255, 0.6);
+    border-top: 1px solid var(--border-light);
+}
+
+.notification-footer a {
+    color: var(--primary);
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.notification-footer a:hover {
+    color: var(--accent);
+    transform: translateY(-1px);
+}
+
+/* Indicador de não lido - Mais visível */
+.notification-item.unread::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 12px;
+    height: 12px;
+    background: var(--primary);
+    border-radius: 50%;
+    animation: notificationBlink 2s infinite;
+    box-shadow: 0 0 10px var(--primary);
+}
+
+@keyframes notificationBlink {
+    0%, 100% { 
+        opacity: 1; 
+        transform: translateY(-50%) scale(1);
+    }
+    50% { 
+        opacity: 0.7; 
+        transform: translateY(-50%) scale(1.1);
+    }
+}
+
+/* Estados ativos refinados */
+.notification-btn.active {
+    background: var(--primary);
+    color: white;
+    transform: scale(1.1);
+    box-shadow: 0 8px 25px rgba(79, 70, 229, 0.4);
+}
+
+/* ===== ANIMAÇÕES ESPECIAIS REFINADAS ===== */
+
+@keyframes notificationShake {
+    0%, 100% { transform: rotate(0deg) scale(1); }
+    25% { transform: rotate(-8deg) scale(1.05); }
+    75% { transform: rotate(8deg) scale(1.05); }
+}
+
+.notification-btn.has-new {
+    animation: notificationShake 0.6s cubic-bezier(0.4, 0, 0.2, 1) 2;
+}
+
+@keyframes slideInNotification {
+    from { 
+        opacity: 0; 
+        transform: translateX(30px) scale(0.95);
+    }
+    to { 
+        opacity: 1; 
+        transform: translateX(0) scale(1);
+    }
+}
+
+.notification-item.new {
+    animation: slideInNotification 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Estados especiais melhorados */
+.notification-badge.high-count {
+    background: linear-gradient(135deg, #ff6b6b, #ff4757);
+    animation: notificationPulse 1s infinite;
+}
+
+.notification-dropdown.empty .notification-list {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+}
+
+.notification-error {
+    padding: 24px;
+    text-align: center;
+    color: #ff6b6b;
+    background: rgba(255, 107, 107, 0.1);
+    border-radius: 12px;
+    margin: 16px;
+    border: 1px solid rgba(255, 107, 107, 0.2);
+}
+
+.notification-error i {
+    font-size: 2rem;
+    margin-bottom: 12px;
+}
+
+/* Efeito de clique premium */
+.notification-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 100%;
+    background: var(--primary);
+    border-radius: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0;
+    transition: transform 0.4s, opacity 0.4s;
+    z-index: -1;
+}
+
+.notification-btn:active::after {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0.2;
+}
+
+/* Estados de loading refinados */
+.notification-loading {
+    padding: 50px 24px;
+    text-align: center;
+    color: var(--muted-dark);
+}
+
+body.light-mode .notification-loading {
+    color: var(--muted-light);
+}
+
+.notification-loading .loader {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(79, 70, 229, 0.2);
+    border-radius: 50%;
+    border-top: 3px solid var(--primary);
+    animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    margin: 0 auto 20px;
+}
+
+/* ===== RESPONSIVIDADE APERFEIÇOADA ===== */
+
+/* Tablet (1024px e abaixo) */
+@media (max-width: 1024px) {
+    .notification-container {
+        margin-right: 10px;
+    }
+
+    .notification-dropdown {
+        width: 380px;
+        max-width: calc(100vw - 40px);
+        right: 0;
+    }
+}
+
+/* Mobile (768px e abaixo) */
+@media (max-width: 768px) {
+    .notification-container {
+        margin-right: 8px;
+    }
+
+    .notification-btn {
+        width: 48px;
+        height: 48px;
+        font-size: 1.25rem;
+        padding: 8px;
+    }
+
+    .notification-badge {
+        width: 20px;
+        height: 20px;
+        font-size: 0.75rem;
+        top: 5px;
+        right: 5px;
+    }
+
+    .notification-dropdown {
+        position: fixed;
+        width: 360px;
+        max-width: calc(100vw - 40px);
+        right: 20px;
+        left: auto;
+        top: 70px;
+        z-index: 1003;
+        border-radius: 20px;
+    }
+
+    .notification-header {
+        padding: 18px 20px;
+    }
+
+    .notification-item {
+        padding: 18px 20px;
+    }
+}
+
+/* Mobile pequeno (480px e abaixo) */
+@media (max-width: 480px) {
+    .notification-container {
+        margin-right: 6px;
+    }
+
+    .notification-btn {
+        width: 44px;
+        height: 44px;
+        font-size: 1.2rem;
+    }
+
+    .notification-badge {
+        width: 18px;
+        height: 18px;
+        font-size: 0.7rem;
+    }
+
+    .notification-dropdown {
+        width: 320px;
+        max-width: calc(100vw - 20px);
+        right: 10px;
+        top: 65px;
+        border-radius: 18px;
+    }
+
+    .notification-header {
+        padding: 16px 18px;
+    }
+
+    .notification-item {
+        padding: 16px 18px;
+    }
+}
+
+/* Overlay para mobile refinado */
+.notification-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 1001;
+    display: none;
+    backdrop-filter: blur(4px);
+}
+
+.notification-overlay.show {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* ===== ACESSIBILIDADE APERFEIÇOADA ===== */
+
+.notification-btn:focus {
+    outline: 3px solid var(--primary);
+    outline-offset: 3px;
+}
+
+.notification-btn:focus:not(:focus-visible) {
+    outline: none;
+}
+
+.notification-item:focus {
+    outline: 2px solid var(--primary);
+    outline-offset: -2px;
+    background: rgba(79, 70, 229, 0.15);
+}
+
+/* Suporte a prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+    .notification-btn,
+    .notification-item,
+    .notification-dropdown,
+    .mark-all-read,
+    .mark-read-btn {
+        transition: none;
+        animation: none;
+    }
+
+    .notification-badge {
+        animation: none;
+    }
+}
+
+/* Alto contraste melhorado */
+@media (prefers-contrast: high) {
+    .notification-item.unread {
+        border-left-width: 6px;
+        background: rgba(79, 70, 229, 0.2);
+    }
+
+    .notification-badge {
+        border: 3px solid #000;
+        background: #ff0000;
+    }
+
+    .notification-dropdown {
+        border: 2px solid currentColor;
+    }
+
+    .notification-btn {
+        border-width: 2px;
+    }
+}
+
+/* Modo escuro automático */
+@media (prefers-color-scheme: dark) {
+    .notification-dropdown:not(.light-mode) {
+        background: linear-gradient(135deg, var(--panel-dark), var(--bg-dark));
+        border-color: var(--border-dark);
+    }
+}
+
+/* Melhorias de performance */
+.notification-dropdown {
+    will-change: transform, opacity;
+}
+
+.notification-btn {
+    will-change: transform;
+}
+
+/* Suporte para navegadores mais antigos */
+@supports not (backdrop-filter: blur(10px)) {
+    .notification-dropdown {
+        background: var(--panel-dark);
+    }
+
+    body.light-mode .notification-dropdown {
+        background: var(--panel-light);
+    }
+}

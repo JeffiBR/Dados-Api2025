@@ -1,0 +1,240 @@
+/* ====== BARRA DE PROGRESSO DA PESQUISA ====== */
+
+.search-progress {
+    background: var(--panel-dark);
+    border: 1px solid var(--border-dark);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    display: none;
+}
+
+body.light-mode .search-progress {
+    background: var(--panel-light);
+    border: 1px solid var(--border-light);
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.progress-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+body.light-mode .progress-title {
+    color: var(--text-light);
+}
+
+.progress-title i {
+    color: var(--primary);
+    font-size: 1.1rem;
+}
+
+.progress-stats {
+    display: flex;
+    gap: 1.5rem;
+    font-size: 0.9rem;
+    color: var(--muted-dark);
+}
+
+body.light-mode .progress-stats {
+    color: var(--muted-light);
+}
+
+.progress-market {
+    background: rgba(79, 70, 229, 0.1);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    color: var(--primary);
+    font-weight: 500;
+}
+
+body.light-mode .progress-market {
+    background: rgba(79, 70, 229, 0.08);
+}
+
+.progress-bar-container {
+    width: 100%;
+    height: 8px;
+    background: var(--border-dark);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 1rem 0;
+    position: relative;
+}
+
+body.light-mode .progress-bar-container {
+    background: var(--border-light);
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    border-radius: 4px;
+    width: 0%;
+    transition: width 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    animation: shimmer 2s infinite;
+}
+
+.progress-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    font-size: 0.85rem;
+}
+
+.progress-percentage {
+    font-weight: 700;
+    color: var(--primary);
+    font-size: 1.1rem;
+}
+
+.progress-time {
+    color: var(--muted-dark);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+body.light-mode .progress-time {
+    color: var(--muted-light);
+}
+
+.progress-products {
+    color: var(--success);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.progress-estimate {
+    background: rgba(79, 70, 229, 0.1);
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    margin-top: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.85rem;
+    color: var(--text-dark);
+}
+
+body.light-mode .progress-estimate {
+    background: rgba(79, 70, 229, 0.08);
+    color: var(--text-light);
+}
+
+.progress-estimate i {
+    color: var(--primary);
+}
+
+/* Estados da barra de progresso */
+.search-progress.searching .progress-bar {
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+}
+
+.search-progress.completed .progress-bar {
+    background: linear-gradient(90deg, var(--success), #22c55e);
+}
+
+.search-progress.error .progress-bar {
+    background: linear-gradient(90deg, var(--error), #ef4444);
+}
+
+/* Animações */
+@keyframes shimmer {
+    0% {
+        left: -100%;
+    }
+    100% {
+        left: 100%;
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.search-progress.searching .progress-title {
+    animation: pulse 2s infinite;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .search-progress {
+        padding: 1.25rem;
+    }
+
+    .progress-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .progress-stats {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .progress-details {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .progress-market {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.8rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .search-progress {
+        padding: 1rem;
+        margin: 1rem 0;
+    }
+
+    .progress-stats {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .progress-details {
+        font-size: 0.8rem;
+    }
+
+    .progress-percentage {
+        font-size: 1rem;
+    }
+}
