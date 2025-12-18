@@ -91,7 +91,8 @@ async def consultar_produto(produto: str, mercado: Dict[str, str], data_coleta: 
                     'data_coleta': data_coleta, 
                     'codigo_barras': prod_info.get('gtin'), 
                     'tipo_unidade': detectar_tipo_unidade(nome_produto_original, unidade_medida_original),
-                    'coleta_id': coleta_id
+                    'coleta_id': coleta_id,
+                    'ncm': prod_info.get('ncm')  # NOVO CAMPO ADICIONADO
                 }
 
                 # ✅ ADICIONAR ENDEREÇO APENAS SE ESTIVER DISPONÍVEL (apenas na coleta completa)
